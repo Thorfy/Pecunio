@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Injector Stat",
+  "description": "Injected Extended Stat",
+  "version": "0.1",
+  "author": "rle",
+  "icons": {
+    "64": "icon.png"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://*.bankin.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.bankin.com/*"
+      ],
+      "js": [
+        "libs/chart.js",
+        "injected.js"
+      ]
+    }
+  ]
+}
