@@ -51,6 +51,9 @@ chrome.runtime.onConnect.addListener(port => {
 // create canvas -> ok
 // display chart.js with fake data -> ok
 // modify html for style
+// event on change url 
+// load data 1 time 
+//build chart only on page account
 
 //POPUP OPTION
 // create popup -> Ok
