@@ -18,6 +18,11 @@ port.onMessage.addListener(message => {
 });
 console.log('injected');
 
+
+// load data after getting port, message and bearer 
+// Promise.all([$promise1, $promise2]).then([promise1Result, promise2Result] => {});
+
+
 function getTransactionData(authHeader) {
     console.log("getTransactionData");
 
@@ -126,3 +131,18 @@ if(homeBlock.length != 0){
 }
 const ctx = canvasDiv.getContext('2d');
 const myChart = new Chart(ctx, chartJsConfig);
+
+// store url on load
+let currentPage = location.href;
+
+// listen for url changes
+setInterval(function() {
+    if (currentPage != location.href) {
+        // page has changed, set new page as 'current'
+        console.log("setinterval")
+        currentPage = location.href;
+
+        // if data is present xontruct the whole things
+        
+    }
+}, 500);

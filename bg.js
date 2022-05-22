@@ -31,7 +31,6 @@ chrome.runtime.onConnect.addListener(port => {
     });
 });
 
-
 // step for success
 
 //HEADER -> ok
@@ -41,8 +40,8 @@ chrome.runtime.onConnect.addListener(port => {
 //DATA
 // Do a call to api with custom header -> ok
 // update real Time header -> ok
-// avoid infinite while with ajax -> use setting instead -> OK
-// start sending ajax only 1 times when authHeader is ready to use -> use setting instead -> OK
+// avoid infinite while with ajax -> OK
+// start sending ajax only 1 times when authHeader is ready to use -> OK
 // choose account in function of tab in bankin
 // structure data correctly
 
@@ -51,9 +50,9 @@ chrome.runtime.onConnect.addListener(port => {
 // create canvas -> ok
 // display chart.js with fake data -> ok
 // modify html for style
-// event on change url 
+// event on change url -> ok 
 // load data 1 time 
-//build chart only on page account
+// build chart only on page account -> ok 
 
 //POPUP OPTION
 // create popup -> Ok
