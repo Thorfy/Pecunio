@@ -1,6 +1,9 @@
 let port = chrome.runtime.connect();
 let authHeader = false;
 const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
+let domain = "https://sync.bankin.com";
+let url = "/v2/transactions?limit=500";
+let allData = [];
 
 port.onMessage.addListener(message => {
     authHeader = message.data;
@@ -14,7 +17,7 @@ port.onMessage.addListener(message => {
             return false;
         }
     }
-    getTransactionData(authHeader);
+    getTransactionData(authHeader, domain, url);
 });
 console.log('injected');
 
@@ -23,7 +26,7 @@ console.log('injected');
 // Promise.all([$promise1, $promise2]).then([promise1Result, promise2Result] => {});
 
 
-function getTransactionData(authHeader) {
+function getTransactionData(authHeader, domain, url) {
     console.log("getTransactionData");
 
     const myInit = {
@@ -33,9 +36,16 @@ function getTransactionData(authHeader) {
         cache: 'default'
     };
 
-    fetch("https://sync.bankin.com/v2/transactions?limit=500&mytranscation", myInit)
+    fetch((domain + url), myInit)
         .then(res => res.json())
-
+        .then(data => {
+            if(data.resources && data.resources.length){
+                data.resources.map(transaction => allData.push(transaction))
+            }
+            if(data.pagination.next_uri && data.pagination.next_uri.length){
+                getTransactionData(authHeader, domain, data.pagination.next_uri);
+            }
+        })
 }
 
 //get config and data
@@ -142,7 +152,7 @@ setInterval(function() {
         console.log("setinterval")
         currentPage = location.href;
 
-        // if data is present xontruct the whole things
+        // if data is present contruct the whole things
         
     }
 }, 500);
