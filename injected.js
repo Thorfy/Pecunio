@@ -2,9 +2,12 @@ let port = chrome.runtime.connect();
 let authHeader = false;
 const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
 let domain = "https://sync.bankin.com";
-let url = "/v2/transactions?limit=500";
+
+let urTransactions = "/v2/transactions?limit=500";
+let urlCategory = "/v2/categories?limit=200";
+
 let allTransactions = [];
-let allcategories = [];
+let allCategory = [];
 
 port.onMessage.addListener(message => {
     authHeader = message.data;
@@ -15,8 +18,8 @@ port.onMessage.addListener(message => {
             return false;
 
     }
-    getTransactionData(authHeader, domain, url);
-    getCategoryData(authHeader, domain);
+    getBankinData(authHeader, domain, allTransactions, urTransactions);
+    getBankinData(authHeader, domain, allCategory, urlCategory);
 });
 
 // load data after getting port, message and bearer 
@@ -36,27 +39,7 @@ setInterval(function () {
     }
 }, 500);
 
-function getCategoryData(authHeader, domain, categoryUrl = "/v2/categories?limit=200") {
-    const myInit = {
-        method: 'GET',
-        headers: authHeader,
-        mode: 'cors',
-        cache: 'default'
-    };
-
-    fetch((domain + categoryUrl), myInit)
-        .then(res => res.json())
-        .then(data => {
-            if (data.resources && data.resources.length) {
-                data.resources.map(transaction => allcategories.push(transaction))
-            }
-            if (data.pagination.next_uri && data.pagination.next_uri.length) {
-                getCategoryData(authHeader, domain, data.pagination.next_uri);
-            }
-        })
-}
-
-function getTransactionData(authHeader, domain, url) {
+function getBankinData(authHeader, domain, globalVar, url) {
 
     const myInit = {
         method: 'GET',
@@ -69,10 +52,10 @@ function getTransactionData(authHeader, domain, url) {
         .then(res => res.json())
         .then(data => {
             if (data.resources && data.resources.length) {
-                data.resources.map(transaction => allTransactions.push(transaction))
+                data.resources.map(transaction => globalVar.push(transaction))
             }
             if (data.pagination.next_uri && data.pagination.next_uri.length) {
-                getTransactionData(authHeader, domain, data.pagination.next_uri);
+                getBankinData(authHeader, domain, data.pagination.next_uri);
             }
         })
 }
