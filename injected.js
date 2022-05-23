@@ -27,17 +27,23 @@ port.onMessage.addListener(message => {
 
 // store url on load
 let currentPage = location.href;
-
+build();
 // listen for url changes
 setInterval(function () {
     if (currentPage != location.href) {
         // page has changed, set new page as 'current'
         currentPage = location.href;
-        if (location.href === "https://app2.bankin.com/accounts") {
-            buildChart();
-        }
+       build();
     }
 }, 500);
+
+
+
+function build(){
+    if (location.href === "https://app2.bankin.com/accounts") {
+        buildChart();
+    }
+}
 
 function getBankinData(authHeader, domain, globalVar, url) {
 
@@ -93,17 +99,25 @@ function getChartJsConfig() {
             },
             scales: {
                 x: {
+                    grid: {
+                        color: "#e9f5f9",
+                        borderColor: "#d3eaf2",
+                        tickColor:"#e9f5f9"
+                    },
                     display: true,
                     title: {
-                        display: true
+                        color: "#92cbdf",
+                        display: false
                     }
                 },
                 y: {
                     display: true,
-                    title: {
-                        display: true,
-                        text: 'Value'
+                    grid: {
+                        color: "#e9f5f9",
+                        borderColor: "#d3eaf2",
+                        tickColor: "#e9f5f9"
                     },
+                    
                     suggestedMin: -10,
                     suggestedMax: 200
                 }
@@ -113,19 +127,21 @@ function getChartJsConfig() {
     return chartJsConfig;
 }
 
+
+
+
 function getFakeData() {
+    console.log(allTransactions)
+    console.log(allCategory)
 
 //get config and data
-    const DATA_COUNT = 12;
+    const DATA_COUNT = timeInterval();
     const labels = [];
     for (let i = 0; i < DATA_COUNT; ++i) {
         labels.push(i.toString());
     }
     const datapoints = [0, 20, 20, 60, 60, 120, 160, 180, 120, 125, 105, 110, 170];
     const datapoints1 = [260, 65, 185, 260, 42, 130, 180, 140, 300, 125, 125, 110, 170];
-    const datapoints2 = [0, 20, 20, 60, 60, 120, 160, 180, 120, 125, 105, 110, 170];
-    const datapoints3 = [0, 20, 20, 60, 60, 120, 160, 180, 120, 125, 105, 110, 170];
-    const datapoints4 = [0, 20, 20, 60, 60, 120, 160, 180, 120, 125, 105, 110, 170];
     const data = {
         labels: labels,
         datasets: [
@@ -141,27 +157,17 @@ function getFakeData() {
                 borderColor: "blue",
                 fill: false,
                 tension: 0.4
-            }, {
-                label: 'loyer',
-                data: datapoints2,
-                borderColor: "dark",
-                fill: false,
-                tension: 0.4
-            }, {
-                label: 'Sport',
-                data: datapoints3,
-                borderColor: "red",
-                fill: false,
-                tension: 0.4
-            }, {
-                label: 'revenue',
-                data: datapoints4,
-                borderColor: "green",
-                fill: false,
-                tension: 0.4
-            },
+            }
         ]
     };
 
     return data;
 }
+
+function timeInterval() {
+    //default val
+    let val = 12;
+    //get value of html input or button
+
+    return val;
+};
