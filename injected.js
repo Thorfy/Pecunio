@@ -55,7 +55,7 @@ function getBankinData(authHeader, domain, globalVar, url) {
                 data.resources.map(transaction => globalVar.push(transaction))
             }
             if (data.pagination.next_uri && data.pagination.next_uri.length) {
-                getBankinData(authHeader, domain, data.pagination.next_uri);
+                getBankinData(authHeader, domain, globalVar,data.pagination.next_uri);
             }
         })
 }
