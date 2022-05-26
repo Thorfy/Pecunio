@@ -72,20 +72,20 @@ function buildChart() {
     let transactionByCategory = false;
     if (allCategory.length && allTransactions.length) {
         transactionByCategory = mergeTransactionByCategory(allTransactions, allCategory);
-    }
 
-    //select categroy DIV
-    let homeBlock = document.getElementsByClassName("homeBlock")
-    let canvasDiv = document.createElement('canvas');
-    if (homeBlock.length != 0) {
-        homeBlock[0].innerHTML = "";
-        homeBlock[0].appendChild(canvasDiv);
-    }
-    let chartJsConfig = getChartJsConfig();
-    chartJsConfig.data = getRealData(allCategory, transactionByCategory);
-    const ctx = canvasDiv.getContext('2d');
-    const myChart = new Chart(ctx, chartJsConfig);
 
+        //select categroy DIV
+        let homeBlock = document.getElementsByClassName("homeBlock")
+        let canvasDiv = document.createElement('canvas');
+        if (homeBlock.length != 0) {
+            homeBlock[0].innerHTML = "";
+            homeBlock[0].appendChild(canvasDiv);
+        }
+        let chartJsConfig = getChartJsConfig();
+        chartJsConfig.data = getRealData(allCategory, transactionByCategory);
+        const ctx = canvasDiv.getContext('2d');
+        const myChart = new Chart(ctx, chartJsConfig);
+    }
 }
 
 function mergeTransactionByCategory(allTransactions, allCategory) {
@@ -128,6 +128,7 @@ function getChartJsConfig() {
             },
             scales: {
                 x: {
+                    type: 'time',
                     grid: {
                         color: "#e9f5f9",
                         borderColor: "#d3eaf2",
@@ -146,9 +147,6 @@ function getChartJsConfig() {
                         borderColor: "#d3eaf2",
                         tickColor: "#e9f5f9"
                     },
-
-                    suggestedMin: -10,
-                    suggestedMax: 200
                 }
             }
         },
@@ -157,11 +155,6 @@ function getChartJsConfig() {
 }
 
 function getRealData(categoryData, transactionByCategory = false) {
-    //get config and data
-    //const DATA_COUNT = timeInterval();
-
-    let lengthMax = 0;
-
 
     let data = {
         datasets: []
@@ -170,29 +163,31 @@ function getRealData(categoryData, transactionByCategory = false) {
         let transactions = transactionByCategory[parseInt(category.id)];
         let dateValueObject = [];
 
-        // par mois faire addition de chaque transaction
         transactions.forEach(transaction => {
-           dateValueObject.push({
-               x:transaction.date,
-               y:transaction.amount
-           })
+
+            // garde fou
+            // choose periode
+            //if(transaction.date.includes("2022")){
+                dateValueObject.push({
+                    x:transaction.date,
+                    y:transaction.amount,
+                    name: transaction.name
+                });
+            //}
         })
 
-        dateValueObject.sort(function (a, b) {
-            let dateA = new Date(a.x), dateB = new Date(b.x)
-            return dateA - dateB
-        });
+
         let dataCategory = {
             label: category.name,
             data: dateValueObject,
             borderColor: parseColorCSS("categoryColor_" + category.id),
             fill: false,
-            tension: 0.4
+            tension: 0.1
         }
 
         data.datasets.push(dataCategory);
-
     })
+
     return data
 }
 
