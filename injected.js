@@ -19,12 +19,19 @@ port.onMessage.addListener(message => {
             return false;
 
     }
-    getBankinData(authHeader, domain, allTransactions, urTransactions);
-    getBankinData(authHeader, domain, allCategory, urlCategory);
+    if(allTransactions.length == 0 && allCategory.length == 0){
+        console.log(allTransactions.length, allCategory.length);
+        getBankinData(authHeader, domain, allTransactions, urTransactions);
+        getBankinData(authHeader, domain, allCategory, urlCategory);
+    }
 });
 
 // load data after getting port, message and bearer 
 // Promise.all([$promise1, $promise2]).then([promise1Result, promise2Result] => {});
+
+// promise 1 load bankin data 
+
+
 
 // store url on load
 let currentPage = location.href;
@@ -82,13 +89,14 @@ function buildChart() {
             homeBlock[0].appendChild(canvasDiv);
         }
         let chartJsConfig = getChartJsConfig();
-        chartJsConfig.data = getRealData(allCategory, transactionByCategory);
+        chartJsConfig.data = getCumulatedDataFormated(allCategory, transactionByCategory);
         const ctx = canvasDiv.getContext('2d');
         const myChart = new Chart(ctx, chartJsConfig);
     }
 }
 
 function mergeTransactionByCategory(allTransactions, allCategory) {
+    preparedData = [];
     allTransactions.forEach(transaction => {
         allCategory.forEach(category => {
             if (!preparedData[category.id])
@@ -129,6 +137,7 @@ function getChartJsConfig() {
             scales: {
                 x: {
                     type: 'time',
+                    
                     grid: {
                         color: "#e9f5f9",
                         borderColor: "#d3eaf2",
@@ -154,7 +163,7 @@ function getChartJsConfig() {
     return chartJsConfig;
 }
 
-function getRealData(categoryData, transactionByCategory = false) {
+function getDataFormated(categoryData, transactionByCategory = false) {
 
     let data = {
         datasets: []
@@ -167,7 +176,7 @@ function getRealData(categoryData, transactionByCategory = false) {
 
             // garde fou
             // choose periode
-            //if(transaction.date.includes("2022")){
+           // if(transaction.date.includes("2022")){
                 dateValueObject.push({
                     x:transaction.date,
                     y:transaction.amount,
@@ -182,7 +191,7 @@ function getRealData(categoryData, transactionByCategory = false) {
             data: dateValueObject,
             borderColor: parseColorCSS("categoryColor_" + category.id),
             fill: false,
-            tension: 0.1
+            tension: 0.3
         }
 
         data.datasets.push(dataCategory);
@@ -190,6 +199,59 @@ function getRealData(categoryData, transactionByCategory = false) {
 
     return data
 }
+
+function getCumulatedDataFormated(categoryData, transactionByCategory = false) {
+
+    let data = {
+        datasets: []
+    }
+
+    categoryData.forEach(category => {
+        let transactions = transactionByCategory[parseInt(category.id)];
+        let dateValueObject = [];
+        let transactionObject = {};
+        transactions.forEach(transaction => {
+            // insert control of filter here 
+            //period, account, cumulative
+            console.log(transaction)
+
+            let dateObj = new Date(transaction.date);
+            let month = `${dateObj.getMonth() + 1}`.padStart(2, "0"); //months from 1-12
+            let year = dateObj.getUTCFullYear();
+            const stringDate = [year, month].join("-")
+            
+            if(!transactionObject[stringDate]){
+                transactionObject[stringDate] = transaction.amount;
+            }else{
+                transactionObject[stringDate] += transaction.amount;
+            }    
+
+        })
+        for (const date in transactionObject) {
+            dateValueObject.push({
+                x:date,
+                y:transactionObject[date],
+            });
+            
+            //console.log(`${date}: ${transactionObject[date]}`);
+        }
+
+        let dataCategory = {
+            label: category.name,
+            data: dateValueObject,
+            borderColor: parseColorCSS("categoryColor_" + category.id),
+            fill: false,
+            tension: 0.3
+        }
+
+        data.datasets.push(dataCategory);
+    })
+
+    return data
+}
+
+
+
 
 function getFakeData() {
     //get config and data
