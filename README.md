@@ -35,7 +35,7 @@ Add premium functionnality of bankin for free with a chrome extension
 - do export to csv
 
 ## ARCHITECTURE
-- use promise in content-script
+- use promise in content-script :white_check_mark:
 - manage error trough promises 
 
 ## FINALIZE
