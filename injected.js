@@ -6,10 +6,6 @@ let domain = "https://sync.bankin.com";
 let urTransactions = "/v2/transactions?limit=500";
 let urlCategory = "/v2/categories?limit=200";
 
-let allTransactions = [];
-let allCategory = [];
-let preparedData = [];
-
 port.onMessage.addListener(message => {
     console.log("OnMessage")
     authHeader = message.data;
@@ -20,17 +16,8 @@ port.onMessage.addListener(message => {
             return false;
 
     }
-    if(allTransactions.length == 0 && allCategory.length == 0){
-        getBankinData(authHeader, domain, allTransactions, urTransactions);
-        getBankinData(authHeader, domain, allCategory, urlCategory);
-    }
+    build();
 });
-
-// load data after getting port, message and bearer 
-// Promise.all([$promise1, $promise2]).then([promise1Result, promise2Result] => {});
-
-// promise 1 load bankin data 
-
 
 
 // store url on load
@@ -43,38 +30,55 @@ setInterval(function () {
         currentPage = location.href;
         build();
     }
-}, 500);
+}, 100);
 
 
 function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
-        buildChart();
+        Promise.all([loadData(urTransactions), loadData(urlCategory)]).then(([transac,categ]) => {
+            buildChart(transac, categ);
+        });
     }
 }
 
-function getBankinData(authHeader, domain, globalVar, url) {
+async function loadData(url){
+    return new Promise(async (resolve, reject) => {
+        let dataReturn = []
+        dataReturn = await getBankinData(authHeader, domain, dataReturn, url);
+        resolve(dataReturn);
+    })
+}
 
+async function getBankinData(authHeader, domain, globalVar, url){
     const myInit = {
         method: 'GET',
         headers: authHeader,
         mode: 'cors',
         cache: 'default'
     };
+    return new Promise((resolve, reject) => {
 
-    fetch((domain + url), myInit)
+        fetch((domain + url), myInit)
         .then(res => res.json())
-        .then(data => {
+        .then(async data => {
+
             if (data.resources && data.resources.length) {
                 data.resources.map(transaction => globalVar.push(transaction))
             }
+
             if (data.pagination.next_uri && data.pagination.next_uri.length) {
-                getBankinData(authHeader, domain, globalVar, data.pagination.next_uri);
+                globalVar = await getBankinData(authHeader, domain, globalVar, data.pagination.next_uri);
             }
+
+            resolve(globalVar);
         })
+        .catch(error => reject(error));
+
+    })
 }
 
 
-function buildChart() {
+function buildChart(allTransactions, allCategory) {
 
     let transactionByCategory = false;
     if (allCategory.length && allTransactions.length) {
@@ -115,7 +119,6 @@ function mergeTransactionByCategory(allTransactions, allCategory) {
         })
 
     })
-    //console.log(preparedData);
     return preparedData;
 }
 
