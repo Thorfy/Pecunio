@@ -25,8 +25,5 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 );
 
 chrome.runtime.onConnect.addListener(port => {
-    portEvent = port
-    port.postMessage({
-        data: allHeaders
-    });
+    portEvent = port;
 });
