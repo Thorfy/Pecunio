@@ -164,43 +164,6 @@ function getChartJsConfig() {
     return chartJsConfig;
 }
 
-function getDataFormated(categoryData, transactionByCategory = false) {
-
-    let data = {
-        datasets: []
-    }
-    categoryData.forEach(category => {
-        let transactions = transactionByCategory[parseInt(category.id)];
-        let dateValueObject = [];
-
-        transactions.forEach(transaction => {
-
-            // garde fou
-            // choose periode
-            // if(transaction.date.includes("2022")){
-                dateValueObject.push({
-                    x:transaction.date,
-                    y:transaction.amount,
-                    name: transaction.name
-                });
-            //}
-        })
-
-
-        let dataCategory = {
-            label: category.name,
-            data: dateValueObject,
-            borderColor: parseColorCSS("categoryColor_" + category.id),
-            fill: false,
-            tension: 0.3
-        }
-
-        data.datasets.push(dataCategory);
-    })
-
-    return data
-}
-
 function getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
 
     let data = {
@@ -212,6 +175,7 @@ function getDataFormated(categoryData, transactionByCategory, isCumulative = fal
         let dateValueObject = [];
         let transactionObject = {};
         transactions.forEach(transaction => {
+            
             // insert control of filter here 
             //period, account, cumulative
 
@@ -256,47 +220,6 @@ function getDataFormated(categoryData, transactionByCategory, isCumulative = fal
 
     return data
 }
-
-
-
-
-function getFakeData() {
-    //get config and data
-    const DATA_COUNT = timeInterval();
-    const labels = [];
-    for (let i = 0; i < DATA_COUNT; ++i) {
-        labels.push(i.toString());
-    }
-    const datapoints = [0, 20, 20, 60, 60, 120, 160, 180, 120, 125, 105, 110, 170];
-    const datapoints1 = [260, 65, 185, 260, 42, 130, 180, 140, 300, 125, 125, 110, 170];
-    const data = {
-        labels: labels,
-        datasets: [
-            {
-                label: 'Course',
-                data: datapoints,
-                borderColor: parseColorCSS("categoryColor_162"),
-                fill: false,
-                tension: 0.4
-            }, {
-                label: 'Voiture',
-                data: datapoints1,
-                borderColor: parseColorCSS("categoryColor_162"),
-                fill: false,
-                tension: 0.4
-            }
-        ]
-    };
-
-    return data;
-}
-
-function timeInterval() {
-    //default val
-    let val = 12;
-    //get value of html input or button
-    return val;
-};
 
 //trick for get real color of category
 function parseColorCSS(strClass) {
