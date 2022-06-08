@@ -16,7 +16,8 @@
   "permissions": [
     "tabs",
     "activeTab",
-    "webRequest"
+    "webRequest", 
+    "storage"
   ],
   "host_permissions": [
     "https://*.bankin.com/*"

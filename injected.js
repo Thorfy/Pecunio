@@ -38,18 +38,31 @@ setInterval(function () {
 function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
         authHeader.then(res => {
-            Promise.all([loadData(res, urlTransactions), loadData(res, urlCategory)]).then(([transac,categ]) => {
+            Promise.all([loadData(res, urlTransactions, "transac"), loadData(res, urlCategory, "categ")]).then(([transac,categ]) => {
                 buildChart(transac, categ);
             });
         });
     }
 }
 
-async function loadData(authHeader, url){
+async function loadData(authHeader, url, type){
     return new Promise(async (resolve, reject) => {
         let dataReturn = []
-        dataReturn = await getBankinData(authHeader, domain, dataReturn, url);
-        console.log(dataReturn)
+
+        //verify chrome storage
+        let cacheData  = await chrome.storage.local.get(['cache_data_'+type, 'cache_time_'+type])
+
+        //verify time of cache
+        if(cacheData && cacheData['cache_data_'+type] && (cacheData['cache_time_'+type] > Date.now() - 2000*60)){
+            dataReturn = cacheData['cache_data_'+type];
+
+        }else{
+            dataReturn = await getBankinData(authHeader, domain, dataReturn, url);
+            let cacheObject = {};
+            cacheObject['cache_data_'+type] = dataReturn; 
+            cacheObject['cache_time_'+type] = Date.now(); 
+            chrome.storage.local.set(cacheObject);
+        }        
         resolve(dataReturn);
     })
 }
