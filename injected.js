@@ -1,28 +1,30 @@
-let port = chrome.runtime.connect();
-let authHeader = false;
 const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
-let domain = "https://sync.bankin.com";
+const domain = "https://sync.bankin.com";
+const urlTransactions = "/v2/transactions?limit=500";
+const urlCategory = "/v2/categories?limit=200";
 
-let urTransactions = "/v2/transactions?limit=500";
-let urlCategory = "/v2/categories?limit=200";
-
-port.onMessage.addListener(message => {
-    console.log("OnMessage")
-    authHeader = message.data;
-    if (Object.keys(authHeader).length === 0)
-        return false
-    for (const property in authHeader) {
-        if (!requiredHeader.includes(property))
-            return false;
-
-    }
-    build();
+let port = chrome.runtime.connect();
+let authHeader = new Promise((resolve, reject)=> {
+    port.onMessage.addListener(message => {
+        console.log("OnMessage")
+        
+        if (Object.keys(message.data).length === 0)
+            return false
+        for (const property in message.data) {
+            if (!requiredHeader.includes(property))
+                return false;
+        }
+        resolve(message.data);    
+    });    
 });
 
 
+
+build();
+
 // store url on load
 let currentPage = location.href;
-build();
+
 // listen for url changes
 setInterval(function () {
     if (currentPage != location.href) {
@@ -35,16 +37,19 @@ setInterval(function () {
 
 function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
-        Promise.all([loadData(urTransactions), loadData(urlCategory)]).then(([transac,categ]) => {
-            buildChart(transac, categ);
+        authHeader.then(res => {
+            Promise.all([loadData(res, urlTransactions), loadData(res, urlCategory)]).then(([transac,categ]) => {
+                buildChart(transac, categ);
+            });
         });
     }
 }
 
-async function loadData(url){
+async function loadData(authHeader, url){
     return new Promise(async (resolve, reject) => {
         let dataReturn = []
         dataReturn = await getBankinData(authHeader, domain, dataReturn, url);
+        console.log(dataReturn)
         resolve(dataReturn);
     })
 }
