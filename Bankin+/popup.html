@@ -1,10 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+    <title>CSV Exporter</title>
+    <style>
+        body {
+            height: 100%;
+            width: 500px;
+            font-family: 'Gotham book', sans-serif;
+            color: #fff;
+            text-align: center;
+            background-image: linear-gradient(149deg, #02c1ff, #29abff 27%, #751ff6), linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
+        }
 
+        .button {
+            position: static;
+            display: inline-block;
+            overflow: visible;
+            padding: 18px 20px;
+            clear: none;
+            border-style: solid;
+            border-width: 2px;
+            border-color: hsla(0, 0%, 100%, 0.19);
+            border-radius: 90px;
+            background-color: #fff;
+            background-image: none;
+            box-shadow: 0 21px 35px 1px rgb(62 71 182 / 19%);
+            font-family: 'Gotham book', sans-serif;
+            color: #00325b;
+            font-size: 16px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .w-button {
+            border: 0;
+            line-height: inherit;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <a href="https://bankin.com/" target="_blank" rel="noopener noreferrer" class="button w-button"> Go to Bankin
+        </a>
+    </div>
+    <div>
+        <div>
+            <h1>Export CSV Transactions</h2>
+        </div>
+        <div>
+            <h2>1 . Choose Dates</h2>
+        </div>
+        <div>
+            <div>Start date<br>
+                <input type="date">
+            </div>
+            <div>End date<br>
+                <input type="date">
+            </div>
+        </div>
+        <div>
+            <h2>2 . Choose Account</h2>
+            <p>Multiple account selection available </p>
+            <div>comptes:<input type="select" multiple></div>
+        </div>
+        <div>
+            <h2>3 . Download CSV </h2>
+            <div style="display: none;"><button>export</button></div>
+        </div>
+
+    </div>
 </body>
+
 </html>
