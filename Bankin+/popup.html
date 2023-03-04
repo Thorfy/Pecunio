@@ -48,11 +48,11 @@
         </a>
     </div>
     <div>
+        <h1>Settings</h2>
+    </div>
+    <div>
         <div>
-            <h1>Export CSV Transactions</h2>
-        </div>
-        <div>
-            <h2>1 . Choose Dates</h2>
+            <h2>1 . Dates</h2>
         </div>
         <div>
             <div>Start date<br>
@@ -63,13 +63,16 @@
             </div>
         </div>
         <div>
-            <h2>2 . Choose Account</h2>
-            <p>Multiples accounts selection available </p>
-            <div>Accounts:<input id="accounts" type="select" multiple></div>
+            <h2>2 . Accounts</h2>
+            <div id="loadingAccount"><img src="Loading.gif" style="width: 30%;"></div>
+            <div id="inputAccount" style="display: none;">
+                <p>Accounts</p>
+                <select id="accounts" multiple></select>
+            </div>
         </div>
         <div>
             <h2>3 . Download CSV </h2>
-            <div style="display: none;"><button id="exportCsv">export</button></div>
+            <div ><button class="button w-button" id="exportCsv" style="width: 100%; background-color:#00ce94; color: #fff;">export</button></div>
         </div>
 
     </div>

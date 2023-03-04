@@ -5,11 +5,19 @@ document.addEventListener('DOMContentLoaded', function () {
     let endDate = document.querySelector('#endDate');
     let accounts = document.querySelector('#accounts');
     
-    chrome.storage.local.get(['startDate', 'endDate','accounts'], function (data) {
+    chrome.storage.local.get(['startDate', 'endDate'], function (data) {
         for (const input of inputs) {
             input.value = data[input.id]
         }
     });
+
+    chrome.storage.local.get(['accountsList'], function (data) {
+        for (const account of data.accountsList){
+            let newOption = new Option(account,account);
+            accounts.add(newOption, undefined);
+        }
+    });
+    
     
     let inputs = [startDate, endDate, accounts]
     for (const input of inputs) {

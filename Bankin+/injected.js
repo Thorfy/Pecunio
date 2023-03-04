@@ -17,10 +17,9 @@ let authHeader = new Promise((resolve, reject) => {
         resolve(message.data);
     });
 });
+chrome.storage.local.set({ 'accounts': "undefined" });
 
-
-
-build()
+build();
 
 // store url on load
 let currentPage = location.href;
@@ -30,7 +29,7 @@ setInterval(function () {
     if (currentPage != location.href) {
         // page has changed, set new page as 'current'
         currentPage = location.href;
-        build()
+        build();
     }
 }, 100);
 
@@ -38,12 +37,16 @@ setInterval(function () {
 function build() {
     //routing 
     if (location.href === "https://app2.bankin.com/accounts") {
+
+        loadingscreen();
+
         authHeader.then(res => {
             Promise.all([loadData(res, urlTransactions, "transac"), loadData(res, urlCategory, "categ")]).then(async ([transac, categ]) => {
 
                 let settings = await chrome.storage.local.get(['startDate', 'endDate', 'accounts'])
+                defineMandatorySetting(settings)
+
                 transac = await applySettingOnData(transac, settings)
-                
                 chrome.storage.local.set({ 'transac': transac });
                 chrome.storage.local.set({ 'categ': categ });
 
@@ -74,6 +77,26 @@ async function loadData(authHeader, url, type) {
         resolve(dataReturn);
     })
 }
+function loadingscreen() {
+    let homeBlock = document.getElementsByClassName("homeBlock")
+    let imgdiv = document.createElement('img')
+    imgdiv.src = chrome.runtime.getURL("Loading.gif")
+    imgdiv.style = "text-align: center;"
+    homeBlock[0].innerHTML = ""
+    homeBlock[0].appendChild(imgdiv)
+}
+
+function defineMandatorySetting(settings) {
+    return new Promise(async (resolve, reject) => {
+        let list = []
+        let htmlElements = await document.querySelectorAll('.accountRow')
+        htmlElements.forEach((x) => {
+            const href = x.href.split("/")
+            list.push(href[4])
+        })
+        chrome.storage.local.set({ 'accountsList': list });
+    })
+}
 
 function applySettingOnData(transactions, settings) {
     return new Promise((resolve, reject) => {
@@ -81,6 +104,7 @@ function applySettingOnData(transactions, settings) {
         let startDate = Date.parse(settings.startDate)
         let endDate = Date.parse(settings.endDate)
         let accounts = settings.accounts
+
         console.log(settings, startDate, endDate)
         console.log(transactions)
 
@@ -90,7 +114,6 @@ function applySettingOnData(transactions, settings) {
                 (!(startDate && endDate) || (Date.parse(transaction.date) >= startDate && Date.parse(transaction.date) <= endDate)) &&
                 (accounts == "undefined" || (accounts.includes(transaction.account.id)))
             ) {
-                console.log("never")
                 returned.push(transaction)
             }
         }
@@ -135,7 +158,7 @@ function buildChart(allTransactions, allCategory) {
         transactionByCategory = mergeTransactionByCategory(allTransactions, allCategory);
 
 
-        //select categroy DIV
+        //select category DIV
         let homeBlock = document.getElementsByClassName("homeBlock")
         let canvasDiv = document.createElement('canvas');
         if (homeBlock.length != 0) {
