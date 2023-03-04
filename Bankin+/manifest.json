@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Bankin+",
   "description": "Bankin unofficial premium addons",
-  "version": "0.1.1",
+  "version": "0.1.5",
   "author": "Remy Lefebvre",
   "icons": {
     "64": "icon.png"
@@ -15,7 +15,8 @@
   },
   "permissions": [
     "webRequest", 
-    "storage"
+    "storage",
+    "unlimitedStorage"  
   ],
   "host_permissions": [
     "https://*.bankin.com/*"

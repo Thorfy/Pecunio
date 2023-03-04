@@ -7,7 +7,7 @@
     <style>
         body {
             height: 100%;
-            width: 500px;
+            width: 300px;
             font-family: 'Gotham book', sans-serif;
             color: #fff;
             text-align: center;
@@ -56,23 +56,24 @@
         </div>
         <div>
             <div>Start date<br>
-                <input type="date">
+                <input id="startDate" type="date">
             </div>
             <div>End date<br>
-                <input type="date">
+                <input id="endDate" type="date">
             </div>
         </div>
         <div>
             <h2>2 . Choose Account</h2>
-            <p>Multiple account selection available </p>
-            <div>comptes:<input type="select" multiple></div>
+            <p>Multiples accounts selection available </p>
+            <div>Accounts:<input id="accounts" type="select" multiple></div>
         </div>
         <div>
             <h2>3 . Download CSV </h2>
-            <div style="display: none;"><button>export</button></div>
+            <div style="display: none;"><button id="exportCsv">export</button></div>
         </div>
 
     </div>
-</body>
-
+</body> 
 </html>
+
+<script src="popup.js"></script>
