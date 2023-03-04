@@ -14,14 +14,20 @@
     "service_worker": "bg.js"
   },
   "permissions": [
-    "webRequest", 
+    "webRequest",
     "storage",
-    "unlimitedStorage"  
+    "unlimitedStorage"
   ],
-  "web_accessible_resources": [{
-    "resources": ["Loading.gif"],
-    "matches": [ "https://app2.bankin.com/*" ]
-  }],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "Loading.gif"
+      ],
+      "matches": [
+        "https://app2.bankin.com/*"
+      ]
+    }
+  ],
   "host_permissions": [
     "https://*.bankin.com/*"
   ],
