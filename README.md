@@ -2,3 +2,7 @@
 Add premium functionnality of bankin for free with a chrome extension 
 
 # TODO README
+
+![image](https://user-images.githubusercontent.com/19363319/222931725-3560fdd6-8ad6-4e37-aefa-00c89e4f19d1.png)
+
+![image](https://user-images.githubusercontent.com/19363319/222931738-84d780c3-3cbd-4eda-9b71-41a123b8ae85.png)
