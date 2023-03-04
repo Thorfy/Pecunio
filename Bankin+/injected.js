@@ -40,8 +40,13 @@ function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
         authHeader.then(res => {
             Promise.all([loadData(res, urlTransactions, "transac"), loadData(res, urlCategory, "categ")]).then(async ([transac, categ]) => {
+
+                let settings = await chrome.storage.local.get(['startDate', 'endDate', 'accounts'])
+                transac = await applySettingOnData(transac, settings)
+                
                 chrome.storage.local.set({ 'transac': transac });
                 chrome.storage.local.set({ 'categ': categ });
+
                 await buildChart(transac, categ);
             });
         });
@@ -66,10 +71,33 @@ async function loadData(authHeader, url, type) {
             cacheObject['cache_time_' + type] = Date.now();
             chrome.storage.local.set(cacheObject);
         }
-        console.log(dataReturn)
         resolve(dataReturn);
     })
 }
+
+function applySettingOnData(transactions, settings) {
+    return new Promise((resolve, reject) => {
+
+        let startDate = Date.parse(settings.startDate)
+        let endDate = Date.parse(settings.endDate)
+        let accounts = settings.accounts
+        console.log(settings, startDate, endDate)
+        console.log(transactions)
+
+        let returned = []
+        for (const transaction of transactions) {
+            if (
+                (!(startDate && endDate) || (Date.parse(transaction.date) >= startDate && Date.parse(transaction.date) <= endDate)) &&
+                (accounts == "undefined" || (accounts.includes(transaction.account.id)))
+            ) {
+                console.log("never")
+                returned.push(transaction)
+            }
+        }
+        resolve(returned)
+    })
+}
+
 
 async function getBankinData(authHeader, domain, globalVar, url) {
     const myInit = {
@@ -100,7 +128,7 @@ async function getBankinData(authHeader, domain, globalVar, url) {
 }
 
 
-async function buildChart(allTransactions, allCategory) {
+function buildChart(allTransactions, allCategory) {
 
     let transactionByCategory = false;
     if (allCategory.length && allTransactions.length) {
@@ -115,7 +143,7 @@ async function buildChart(allTransactions, allCategory) {
             homeBlock[0].appendChild(canvasDiv);
         }
         let chartJsConfig = getChartJsConfig();
-        chartJsConfig.data = await getDataFormated(allCategory, transactionByCategory, true);
+        chartJsConfig.data = getDataFormated(allCategory, transactionByCategory, true);
         const ctx = canvasDiv.getContext('2d');
         const myChart = new Chart(ctx, chartJsConfig);
     }
@@ -189,7 +217,7 @@ function getChartJsConfig() {
     return chartJsConfig;
 }
 
-async function getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
+function getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
 
     let data = {
         datasets: []
@@ -197,10 +225,6 @@ async function getDataFormated(categoryData, transactionByCategory, isCumulative
     let startDate = false;
     let endDate = false;
 
-    startDate = Date.parse(await getStorageData("startDate"));
-    endDate = Date.parse(await getStorageData("endDate"));
-
-    console.log(startDate, endDate)
     categoryData.forEach(category => {
 
         let transactions = transactionByCategory[parseInt(category.id)];
@@ -216,21 +240,21 @@ async function getDataFormated(categoryData, transactionByCategory, isCumulative
             let month = `${dateObj.getMonth() + 1}`.padStart(2, "0"); //months from 1-12
             let year = dateObj.getUTCFullYear();
             const stringDate = [year, month].join("-")
-            if (!(startDate && endDate) || (Date.parse(stringDate) >= startDate && Date.parse(stringDate) <= endDate)) {
-                if (isCumulative) {
-                    if (!transactionObject[stringDate]) {
-                        transactionObject[stringDate] = transaction.amount;
-                    } else {
-                        transactionObject[stringDate] += transaction.amount;
-                    }
+
+            if (isCumulative) {
+                if (!transactionObject[stringDate]) {
+                    transactionObject[stringDate] = transaction.amount;
                 } else {
-                    dateValueObject.push({
-                        x: transaction.date,
-                        y: transaction.amount,
-                        name: transaction.name
-                    });
+                    transactionObject[stringDate] += transaction.amount;
                 }
+            } else {
+                dateValueObject.push({
+                    x: transaction.date,
+                    y: transaction.amount,
+                    name: transaction.name
+                });
             }
+
         })
         if (isCumulative) {
             for (const date in transactionObject) {
@@ -254,17 +278,6 @@ async function getDataFormated(categoryData, transactionByCategory, isCumulative
 
     return data
 
-}
-
-function getStorageData(keys) {
-    return new Promise((resolve, reject) => {
-        // Asynchronously fetch all data from storage.sync.
-        chrome.storage.local.get(keys, (items) => {
-            console.log(items[keys])
-            // Pass the data retrieved from storage down the promise chain.
-            return resolve(items[keys]);
-        })
-    })
 }
 
 //trick for get real color of category
