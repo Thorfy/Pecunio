@@ -39,6 +39,7 @@ function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
 
         loadingscreen();
+        loadSettings();
 
         authHeader.then(res => {
             Promise.all([loadData(res, urlTransactions, "transac"), loadData(res, urlCategory, "categ")]).then(async ([transac, categ]) => {
@@ -50,7 +51,7 @@ function build() {
                 chrome.storage.local.set({ 'transac': transac });
                 chrome.storage.local.set({ 'categ': categ });
 
-                await buildChart(transac, categ);
+                await buildChart(transac, categ, settings);
             });
         });
     }
@@ -77,6 +78,7 @@ async function loadData(authHeader, url, type) {
         resolve(dataReturn);
     })
 }
+
 function loadingscreen() {
     let homeBlock = document.getElementsByClassName("homeBlock")
     let imgdiv = document.createElement('img')
@@ -86,7 +88,7 @@ function loadingscreen() {
     homeBlock[0].appendChild(imgdiv)
 }
 
-function defineMandatorySetting(settings) {
+function loadSettings(){
     return new Promise(async (resolve, reject) => {
         let list = []
         let htmlElements = await document.querySelectorAll('.accountRow')
@@ -96,6 +98,10 @@ function defineMandatorySetting(settings) {
         })
         chrome.storage.local.set({ 'accountsList': list });
     })
+}
+
+function defineMandatorySetting(settings) {
+   
 }
 
 function applySettingOnData(transactions, settings) {
@@ -151,7 +157,7 @@ async function getBankinData(authHeader, domain, globalVar, url) {
 }
 
 
-function buildChart(allTransactions, allCategory) {
+function buildChart(allTransactions, allCategory, settings) {
 
     let transactionByCategory = false;
     if (allCategory.length && allTransactions.length) {
@@ -165,7 +171,7 @@ function buildChart(allTransactions, allCategory) {
             homeBlock[0].innerHTML = "";
             homeBlock[0].appendChild(canvasDiv);
         }
-        let chartJsConfig = getChartJsConfig();
+        let chartJsConfig = getChartJsConfig(settings);
         chartJsConfig.data = getDataFormated(allCategory, transactionByCategory, true);
         const ctx = canvasDiv.getContext('2d');
         const myChart = new Chart(ctx, chartJsConfig);
@@ -196,7 +202,7 @@ function mergeTransactionByCategory(allTransactions, allCategory) {
 }
 
 
-function getChartJsConfig() {
+function getChartJsConfig(settings) {
 
     const chartJsConfig = {
         type: 'line',
@@ -205,7 +211,7 @@ function getChartJsConfig() {
             plugins: {
                 title: {
                     display: true,
-                    text: 'depense sur X mois (todo dynamic)'
+                    text: "Depense sur " + monthDiff(settings.startDate, settings.endDate) + " mois"
                 },
             },
             interaction: {
@@ -245,8 +251,6 @@ function getDataFormated(categoryData, transactionByCategory, isCumulative = fal
     let data = {
         datasets: []
     }
-    let startDate = false;
-    let endDate = false;
 
     categoryData.forEach(category => {
 
@@ -311,4 +315,11 @@ function parseColorCSS(strClass) {
     let colorVal = window.getComputedStyle(styleElement).backgroundColor;
     styleElement.remove();
     return colorVal;
+}
+
+
+function monthDiff(dateFrom, dateTo) {
+    dateFrom = new Date(dateFrom)
+    dateTo = new Date(dateTo)
+    return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()))
 }
