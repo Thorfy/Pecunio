@@ -8,10 +8,15 @@ document.addEventListener('DOMContentLoaded', function () {
     let startDate = document.querySelector('#startDate');
     let endDate = document.querySelector('#endDate');
     let accounts = document.querySelector('#accounts');
-
+    let csvExport = document.querySelector("#exportCsv");
     chrome.storage.local.get(['startDate', 'endDate'], function (data) {
-        for (const input of inputs) {
-            input.value = data[input.id]
+        data.endDate
+        if (data.endDate != "undefined" && data.startDate != "undefined") {
+            console.log(data)
+            startDate.value = data.startDate
+            endDate.value = data.endDate
+        } else {
+            endDate.value = new Date().toDateInputValue()
         }
     });
 
@@ -30,9 +35,52 @@ document.addEventListener('DOMContentLoaded', function () {
             chrome.storage.local.set({ [this.id]: this.value });
         })
     }
+
+
     //load data
 
     chrome.storage.local.get(['transac', 'categ'], function (data) {
-        console.log(data)
+
+        csvExport.addEventListener('click', function () {
+            // Convert Object to JSON
+            let jsonObject = JSON.stringify(data.transac);
+            let csvContent = "data:text/csv;charset=utf-8," + ConvertToCSV(jsonObject)
+            let encodedUri = encodeURI(csvContent);
+
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "transaction_export_"+new Date().toLocaleDateString()+".csv");
+            document.body.appendChild(link); // Required for FF
+            link.click(); // This will download the data file named "my_data.csv".
+
+        })
+
+
+
     });
+
+
+    function ConvertToCSV(objArray) {
+
+
+        var array = typeof objArray != 'object' ? JSON.parse(objArray) : objArray;
+        var str = '';
+
+        let keys = Object.keys(array[0])
+        str = keys.join(",") + "\r\n"
+
+        for (var i = 0; i < array.length; i++) {
+            var line = '';
+            for (var index in array[i]) {
+                if (line != '') line += ','
+                if (typeof array[i][index] === 'object' && array[i][index] != null) array[i][index] = array[i][index].id
+                line += array[i][index];
+            }
+
+            str += line + '\r\n';
+        }
+
+        return str;
+    }
 });
+
