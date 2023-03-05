@@ -6,14 +6,14 @@ Add premium functionnality of bankin for free with a chrome extension
   There is many way to install chrome extension. 
   Here we gonna explain 1 of them. 
 
-  # Enable developer mode. 
+## Enable developer mode. 
       1. first we need to access to your browser extension page: chrome://extensions/
       2. then active developer mode in the top right corner: 
 
 ![developerMode](https://user-images.githubusercontent.com/19363319/222980054-0bff93c4-7cff-461c-b030-b5d375108cdf.PNG)
 
 
-  # Folders Method  
+## Folders Method  
       1. Download last release of the extension available here: https://github.com/Thorfy/Bankin-/releases/latest
       2. unzip it in Folders 
       3. load the folders inside chrome://extensions/ 
