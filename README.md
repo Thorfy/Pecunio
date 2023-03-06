@@ -1,5 +1,5 @@
 # Bankin-
-Add boosted and enhanced feature for bankin.com with a chrome extension 
+  Add boosted and enhanced feature for bankin.com with a chrome extension 
 
 # Download extension: https://chrome.google.com/webstore/detail/bankin%20/jeomdpldhaigmdbjobamliaipijhmiie?hl=fr&authuser=0
 
