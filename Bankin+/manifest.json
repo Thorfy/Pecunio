@@ -37,6 +37,7 @@
         "https://*.bankin.com/*"
       ],
       "js": [
+        "js/BankinData.js",
         "libs/chart.js",
         "libs/chartjs-adapter-date-fns.js",
         "injected.js"

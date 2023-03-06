@@ -6,7 +6,6 @@ const urlCategory = "/v2/categories?limit=200";
 let port = chrome.runtime.connect();
 let authHeader = new Promise((resolve, reject) => {
     port.onMessage.addListener(message => {
-        console.log("OnMessage")
 
         if (Object.keys(message.data).length === 0)
             return false
@@ -20,6 +19,12 @@ let authHeader = new Promise((resolve, reject) => {
 chrome.storage.local.set({ 'accounts': "undefined" });
 
 build();
+
+// let dataClass = new BankinData()
+// let loadDataVal = dataClass.getData()
+// loadDataVal.then((res) => {
+//     console.log(res)
+// })
 
 // store url on load
 let currentPage = location.href;
@@ -110,9 +115,6 @@ function applySettingOnData(transactions, settings) {
         let startDate = Date.parse(settings.startDate)
         let endDate = Date.parse(settings.endDate)
         let accounts = settings.accounts
-
-        console.log(settings, startDate, endDate)
-        console.log(transactions)
 
         let returned = []
         for (const transaction of transactions) {
