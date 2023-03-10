@@ -15,21 +15,16 @@ class Hidder{
         button.style = "width: 20px;"
         button.id = "hideButton"
 
-        let spanHeaderAmmount = document.querySelector(".dbl.fs14.fw7.lh18.elp")
-        let spanHeaderText = document.querySelector(".dbl.fs1.elp")
-        this.spanHeaderAmmount  = spanHeaderAmmount
+        this.spanHeaderAmmount  =  document.querySelector(".dbl.fs14.fw7.lh18.elp")
+        this.spanHeaderText = document.querySelector(".dbl.fs1.elp")
 
-        this.spanHeaderText = spanHeaderText
         this.spanHeaderText.append(button)
 
     }
 
     loadEvent(){
-        let hideButton = document.querySelector("#hideButton")
-        this.hideButton = hideButton 
-
-        let blurryDivs = document.querySelectorAll(".amountGreen")
-        this.blurryDivs = blurryDivs 
+        this.hideButton = document.querySelector("#hideButton") 
+        this.blurryDivs = document.querySelectorAll(".amountGreen") 
 
         this.enableBlurry()
 
@@ -45,6 +40,7 @@ class Hidder{
     enableBlurry(){
         this.spanHeaderAmmount.style = "filter: blur(6px);" 
         this.blurryDivs.forEach(x =>{
+            console.log('nope')
             x.style = "filter: blur(6px);" 
         }) 
         this.hideButton.src = chrome.runtime.getURL("asset/eyeClose.png")

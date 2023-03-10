@@ -44,7 +44,9 @@ function build() {
 
     //routing 
     if (location.href === "https://app2.bankin.com/accounts") {
-        setTimeout(() => {  new Hidder() }, 50);
+
+        setTimeout(() => {  new Hidder() }, 500);
+        
         loadingscreen();
         loadSettings();
 
