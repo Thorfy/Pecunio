@@ -1,5 +1,9 @@
 class Settings {
 
+    constructor(){
+        this.loadSettings()
+    }
+
     loadSettings() {
         return new Promise(async function (resolve, reject) {
             let settings = await chrome.storage.local.get(this.getSettingName())
@@ -10,6 +14,9 @@ class Settings {
 
     getSetting(key) {
         return this.settings[key];
+    }
+    getAllSetting(){
+        return this.setSettings 
     }
 
     getSettingName() {

@@ -22,10 +22,16 @@ class Hidder{
 
     }
 
-    loadEvent(){
+    loadElement(){
+        this.spanHeaderAmmount  =  document.querySelector(".dbl.fs14.fw7.lh18.elp")
+        this.spanHeaderText = document.querySelector(".dbl.fs1.elp")
+
         this.hideButton = document.querySelector("#hideButton") 
         this.blurryDivs = document.querySelectorAll(".amountGreen") 
+    }
 
+    loadEvent(){
+        this.loadElement()
         this.enableBlurry()
 
         this.hideButton.addEventListener('click', () =>{
@@ -37,7 +43,9 @@ class Hidder{
         })
     }
 
-    enableBlurry(){
+    enableBlurry(){        
+        this.loadElement()
+
         this.spanHeaderAmmount.style = "filter: blur(6px);" 
         this.blurryDivs.forEach(x =>{
             x.style = "filter: blur(6px);" 
@@ -46,6 +54,8 @@ class Hidder{
     }
 
     disableBlurry(){
+        this.loadElement()
+
         this.spanHeaderAmmount.style = "" 
         this.blurryDivs.forEach(x =>{
             x.style = "" 
@@ -54,6 +64,8 @@ class Hidder{
     }
 
     isBlurry(){
+        this.loadElement()
+
         if(this.spanHeaderAmmount.getAttribute("style").indexOf("filter:") != -1)
             return true
         return false
