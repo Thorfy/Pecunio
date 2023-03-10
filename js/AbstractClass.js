@@ -14,7 +14,7 @@ class AbstractConfig {
         this.declareEvent();
     }
 
-    #loadData(){
+    #loadData(BankinData ){
 
     }
 

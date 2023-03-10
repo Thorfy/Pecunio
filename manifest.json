@@ -5,7 +5,7 @@
   "version": "0.1.6",
   "author": "Remy Lefebvre",
   "icons": {
-    "64": "icon.png"
+    "64": "asset/icon.png"
   },
   "action": {
     "default_popup": "popup.html"
@@ -21,10 +21,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "Loading.gif"
+        "asset/Loading.gif",
+        "asset/eye.png",
+        "asset/eyeClose.png"
       ],
       "matches": [
-        "https://app2.bankin.com/*"
+        "https://*.bankin.com/*"
       ]
     }
   ],
@@ -38,6 +40,7 @@
       ],
       "js": [
         "js/BankinData.js",
+        "js/Hidder.js",
         "libs/chart.js",
         "libs/chartjs-adapter-date-fns.js",
         "injected.js"

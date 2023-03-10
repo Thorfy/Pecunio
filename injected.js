@@ -39,10 +39,12 @@ setInterval(function () {
 }, 100);
 
 
+
 function build() {
+
     //routing 
     if (location.href === "https://app2.bankin.com/accounts") {
-
+        setTimeout(() => {  new Hidder() }, 50);
         loadingscreen();
         loadSettings();
 
@@ -87,13 +89,13 @@ async function loadData(authHeader, url, type) {
 function loadingscreen() {
     let homeBlock = document.getElementsByClassName("homeBlock")
     let imgdiv = document.createElement('img')
-    imgdiv.src = chrome.runtime.getURL("Loading.gif")
+    imgdiv.src = chrome.runtime.getURL("asset/Loading.gif")
     imgdiv.style = "text-align: center;"
     homeBlock[0].innerHTML = ""
     homeBlock[0].appendChild(imgdiv)
 }
 
-function loadSettings(){
+function loadSettings() {
     return new Promise(async (resolve, reject) => {
         let list = []
         let htmlElements = await document.querySelectorAll('.accountRow')
@@ -106,7 +108,7 @@ function loadSettings(){
 }
 
 function defineMandatorySetting(settings) {
-   
+
 }
 
 function applySettingOnData(transactions, settings) {
