@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Bankin+",
   "description": "Bankin unofficial premium addons",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "author": "Remy Lefebvre",
   "icons": {
     "64": "asset/icon.png"
