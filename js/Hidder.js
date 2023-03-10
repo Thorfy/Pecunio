@@ -40,7 +40,6 @@ class Hidder{
     enableBlurry(){
         this.spanHeaderAmmount.style = "filter: blur(6px);" 
         this.blurryDivs.forEach(x =>{
-            console.log('nope')
             x.style = "filter: blur(6px);" 
         }) 
         this.hideButton.src = chrome.runtime.getURL("asset/eyeClose.png")
