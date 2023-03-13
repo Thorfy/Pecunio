@@ -21,9 +21,7 @@ chrome.storage.local.set({ 'accounts': "undefined" });
 let dataClass = new BankinData()
 let loadDataVal = dataClass.getData()
 
-setTimeout(async () => {  new Hidder() 
-
-
+setTimeout(async () => { 
     build();
 
     // store url on load
@@ -37,9 +35,6 @@ setTimeout(async () => {  new Hidder()
             build();
         }
     }, 100);
-    
-
-
 }, 500);
 
 
