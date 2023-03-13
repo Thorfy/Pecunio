@@ -16,7 +16,7 @@ class Settings {
         return this.settings[key];
     }
     getAllSetting(){
-        return this.setSettings 
+        return this.settings 
     }
 
     getSettingName() {

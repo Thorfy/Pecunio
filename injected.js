@@ -18,25 +18,29 @@ let authHeader = new Promise((resolve, reject) => {
 });
 chrome.storage.local.set({ 'accounts': "undefined" });
 
-build();
+let dataClass = new BankinData()
+let loadDataVal = dataClass.getData()
 
-// let dataClass = new BankinData()
-// let loadDataVal = dataClass.getData()
-// loadDataVal.then((res) => {
-//     console.log(res)
-// })
+setTimeout(async () => {  new Hidder() 
 
-// store url on load
-let currentPage = location.href;
 
-// listen for url changes
-setInterval(function () {
-    if (currentPage != location.href) {
-        // page has changed, set new page as 'current'
-        currentPage = location.href;
-        build();
-    }
-}, 100);
+    build();
+
+    // store url on load
+    let currentPage = location.href;
+    
+    // listen for url changes
+    setInterval(function () {
+        if (currentPage != location.href) {
+            // page has changed, set new page as 'current'
+            currentPage = location.href;
+            build();
+        }
+    }, 100);
+    
+
+
+}, 500);
 
 
 
@@ -47,48 +51,19 @@ function build() {
 
         setTimeout(() => {  new Hidder() }, 500);
         
-        loadingscreen();
+        loadingScreen();
         loadSettings();
+        loadDataVal.then(async (res) => {
+                transac = await applySettingOnData(res.transaction)
+                chrome.storage.local.set({ 'transac': res.transaction });
+                chrome.storage.local.set({ 'categ': res.category });
 
-        authHeader.then(res => {
-            Promise.all([loadData(res, urlTransactions, "transac"), loadData(res, urlCategory, "categ")]).then(async ([transac, categ]) => {
-
-                let settings = await chrome.storage.local.get(['startDate', 'endDate', 'accounts'])
-                defineMandatorySetting(settings)
-
-                transac = await applySettingOnData(transac, settings)
-                chrome.storage.local.set({ 'transac': transac });
-                chrome.storage.local.set({ 'categ': categ });
-
-                await buildChart(transac, categ, settings);
-            });
-        });
+                await buildChart(transac,  res.category);
+        })
     }
 }
 
-async function loadData(authHeader, url, type) {
-    return new Promise(async (resolve, reject) => {
-        let dataReturn = []
-
-        //verify chrome storage
-        let cacheData = await chrome.storage.local.get(['cache_data_' + type, 'cache_time_' + type])
-
-        //verify time of cache
-        if (cacheData && cacheData['cache_data_' + type] && (cacheData['cache_time_' + type] > Date.now() - 2000 * 60)) {
-            dataReturn = cacheData['cache_data_' + type];
-
-        } else {
-            dataReturn = await getBankinData(authHeader, domain, dataReturn, url);
-            let cacheObject = {};
-            cacheObject['cache_data_' + type] = dataReturn;
-            cacheObject['cache_time_' + type] = Date.now();
-            chrome.storage.local.set(cacheObject);
-        }
-        resolve(dataReturn);
-    })
-}
-
-function loadingscreen() {
+function loadingScreen() {
     let homeBlock = document.getElementsByClassName("homeBlock")
     let imgdiv = document.createElement('img')
     imgdiv.src = chrome.runtime.getURL("asset/Loading.gif")
@@ -109,12 +84,10 @@ function loadSettings() {
     })
 }
 
-function defineMandatorySetting(settings) {
 
-}
-
-function applySettingOnData(transactions, settings) {
-    return new Promise((resolve, reject) => {
+function applySettingOnData(transactions) {
+    return new Promise(async (resolve, reject) => {
+        let settings = await chrome.storage.local.get(['startDate', 'endDate', 'accounts'])
 
         let startDate = Date.parse(settings.startDate)
         let endDate = Date.parse(settings.endDate)
@@ -133,37 +106,7 @@ function applySettingOnData(transactions, settings) {
     })
 }
 
-
-async function getBankinData(authHeader, domain, globalVar, url) {
-    const myInit = {
-        method: 'GET',
-        headers: authHeader,
-        mode: 'cors',
-        cache: 'default'
-    };
-    return new Promise((resolve, reject) => {
-
-        fetch((domain + url), myInit)
-            .then(res => res.json())
-            .then(async data => {
-
-                if (data.resources && data.resources.length) {
-                    data.resources.map(transaction => globalVar.push(transaction))
-                }
-
-                if (data.pagination.next_uri && data.pagination.next_uri.length) {
-                    globalVar = await getBankinData(authHeader, domain, globalVar, data.pagination.next_uri);
-                }
-
-                resolve(globalVar);
-            })
-            .catch(error => reject(error));
-
-    })
-}
-
-
-function buildChart(allTransactions, allCategory, settings) {
+async function buildChart(allTransactions, allCategory) {
 
     let transactionByCategory = false;
     if (allCategory.length && allTransactions.length) {
@@ -177,8 +120,8 @@ function buildChart(allTransactions, allCategory, settings) {
             homeBlock[0].innerHTML = "";
             homeBlock[0].appendChild(canvasDiv);
         }
-        let chartJsConfig = getChartJsConfig(settings);
-        chartJsConfig.data = getDataFormated(allCategory, transactionByCategory, true);
+        let chartJsConfig = await getChartJsConfig();
+        chartJsConfig.data = await getDataFormated(allCategory, transactionByCategory, true);
         const ctx = canvasDiv.getContext('2d');
         const myChart = new Chart(ctx, chartJsConfig);
     }
@@ -208,7 +151,8 @@ function mergeTransactionByCategory(allTransactions, allCategory) {
 }
 
 
-function getChartJsConfig(settings) {
+async function getChartJsConfig() {
+    let settings = await chrome.storage.local.get(['startDate', 'endDate'])
 
     const chartJsConfig = {
         type: 'line',
@@ -219,6 +163,14 @@ function getChartJsConfig(settings) {
                     display: true,
                     text: "Depense sur " + monthDiff(settings.startDate, settings.endDate) + " mois"
                 },
+                legend: {
+                    onClick : async function (evt, item) {
+                        let currentVal = await chrome.storage.local.get([item.text])
+                        await chrome.storage.local.set({[item.text]: !currentVal[item.text] })
+                        // callback original event 
+                        Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
+                     },
+                }
             },
             interaction: {
                 intersect: false,
@@ -252,11 +204,17 @@ function getChartJsConfig(settings) {
     return chartJsConfig;
 }
 
-function getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
+async function getDataFormated(categoryData, transactionByCategory, isCumulative = false ) {
 
     let data = {
         datasets: []
     }
+    let settingsList = []
+    await categoryData.forEach(category => {
+        settingsList.push(category.name)
+    })
+    let settings =  await chrome.storage.local.get(settingsList)
+    console.log(settings)
 
     categoryData.forEach(category => {
 
@@ -297,13 +255,14 @@ function getDataFormated(categoryData, transactionByCategory, isCumulative = fal
                 });
             }
         }
-
+        //let get Config and load it 
         let dataCategory = {
             label: category.name,
             data: dateValueObject,
             borderColor: parseColorCSS("categoryColor_" + category.id),
             fill: false,
-            tension: 0.3
+            tension: 0.3,
+            hidden: settings[category.name]
         }
 
         data.datasets.push(dataCategory);
