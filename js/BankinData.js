@@ -1,12 +1,15 @@
 class BankinData {
 
+    static requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
+    static domain = "https://sync.bankin.com";
+    static urlTransactions = "/v2/transactions?limit=500";
+    static urlCategory = "/v2/categories?limit=200";
+
     constructor() {
 
-        this.requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
-        this.domain = "https://sync.bankin.com";
-        this.urlTransactions = "/v2/transactions?limit=500";
-        this.urlCategory = "/v2/categories?limit=200";
         this.port = chrome.runtime.connect();
+
+
         
         this.authRequest = new Promise((resolve, reject) => {
             this.port.onMessage.addListener(message => {
@@ -14,20 +17,34 @@ class BankinData {
                 if (Object.keys(message.data).length === 0)
                     return false
                 for (const property in message.data) {
-                    if (!this.requiredHeader.includes(property))
+                    if (!BankinData.requiredHeader.includes(property))
                         return false;
                 }
-                resolve(message.data);
+
+                this.authHeader = message.data
+                resolve(this.authHeader) 
             });
         });
+
+        this.authRequest.then(authHeader => {
+            console.log("test")
+            Promise.all([this.loadCache(authHeader, BankinData.urlTransactions, "transac"), this.loadCache(authHeader, BankinData.urlCategory, "categ")]).then(async ([transac, categ]) => {
+                loadDataVal = {transaction: transac, category: categ}
+                evt.dispatch('data_loaded');
+            });
+        })
     
     }
 
     getData() {
+        console.log("getData")
         return this.authRequest.then(authHeader => {
-            return new Promise(async (resolve, reject) => {
-                Promise.all([this.loadCache(authHeader, this.urlTransactions, "transac"), this.loadCache(authHeader, this.urlCategory, "categ")]).then(async ([transac, categ]) => {
+            return new Promise((resolve, reject) => {
+                console.log("test")
+                Promise.all([this.loadCache(authHeader, BankinData.urlTransactions, "transac"), this.loadCache(authHeader, BankinData.urlCategory, "categ")]).then(async ([transac, categ]) => {
                     resolve({transaction: transac, category: categ})
+                    evt.dispatch('data_loaded');
+                
                 });
             });
         })
@@ -65,7 +82,7 @@ class BankinData {
         };
         return new Promise((resolve, reject) => {
 
-            fetch((this.domain + url), myInit)
+            fetch((BankinData.domain + url), myInit)
                 .then(res => res.json())
                 .then(async data => {
 

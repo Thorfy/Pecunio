@@ -39,6 +39,8 @@
         "https://*.bankin.com/*"
       ],
       "js": [
+        "js/Evt.js",
+        "js/Settings.js",
         "js/BankinData.js",
         "js/Hidder.js",
         "libs/chart.js",

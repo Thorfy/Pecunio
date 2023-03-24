@@ -1,60 +1,36 @@
-const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
-const domain = "https://sync.bankin.com";
-const urlTransactions = "/v2/transactions?limit=500";
-const urlCategory = "/v2/categories?limit=200";
+const evt = new Evt()
+const settingClass = new Settings()
+const dataClass = new BankinData()
 
-let port = chrome.runtime.connect();
-let authHeader = new Promise((resolve, reject) => {
-    port.onMessage.addListener(message => {
+let setting;
+let loadDataVal;
 
-        if (Object.keys(message.data).length === 0)
-            return false
-        for (const property in message.data) {
-            if (!requiredHeader.includes(property))
-                return false;
-        }
-        resolve(message.data);
-    });
+
+
+evt.listen('data_loaded', () => {
+    build(loadDataVal)
 });
-chrome.storage.local.set({ 'accounts': "undefined" });
 
-let dataClass = new BankinData()
-let loadDataVal = dataClass.getData()
-
-setTimeout(async () => { 
-    build();
-
-    // store url on load
-    let currentPage = location.href;
-    
-    // listen for url changes
-    setInterval(function () {
-        if (currentPage != location.href) {
-            // page has changed, set new page as 'current'
-            currentPage = location.href;
-            build();
-        }
-    }, 100);
-}, 500);
+evt.listen("settings_reloaded", () => {
+    setting = settingClass.getAllSetting()
+})
 
 
-
-function build() {
+async function build(data) {
+    console.log(data);
 
     //routing 
     if (location.href === "https://app2.bankin.com/accounts") {
 
-        setTimeout(() => {  new Hidder() }, 500);
-        
+        setTimeout(() => { new Hidder() }, 500);
+
         loadingScreen();
         loadSettings();
-        loadDataVal.then(async (res) => {
-                transac = await applySettingOnData(res.transaction)
-                chrome.storage.local.set({ 'transac': res.transaction });
-                chrome.storage.local.set({ 'categ': res.category });
+        transac = await applySettingOnData(data.transaction)
+        chrome.storage.local.set({ 'transac': data.transaction });
+        chrome.storage.local.set({ 'categ': data.category });
 
-                await buildChart(transac,  res.category);
-        })
+        await buildChart(transac, data.category);
     }
 }
 
@@ -159,12 +135,12 @@ async function getChartJsConfig() {
                     text: "Depense sur " + monthDiff(settings.startDate, settings.endDate) + " mois"
                 },
                 legend: {
-                    onClick : async function (evt, item) {
+                    onClick: async function (evt, item) {
                         let currentVal = await chrome.storage.local.get([item.text])
-                        await chrome.storage.local.set({[item.text]: !currentVal[item.text] })
+                        await chrome.storage.local.set({ [item.text]: !currentVal[item.text] })
                         // callback original event 
                         Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
-                     },
+                    },
                 }
             },
             interaction: {
@@ -199,7 +175,7 @@ async function getChartJsConfig() {
     return chartJsConfig;
 }
 
-async function getDataFormated(categoryData, transactionByCategory, isCumulative = false ) {
+async function getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
 
     let data = {
         datasets: []
@@ -208,7 +184,7 @@ async function getDataFormated(categoryData, transactionByCategory, isCumulative
     await categoryData.forEach(category => {
         settingsList.push(category.name)
     })
-    let settings =  await chrome.storage.local.get(settingsList)
+    let settings = await chrome.storage.local.get(settingsList)
     console.log(settings)
 
     categoryData.forEach(category => {
