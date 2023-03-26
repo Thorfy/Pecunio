@@ -29,7 +29,8 @@ class BankinData {
         this.authRequest.then(authHeader => {
             console.log("test")
             Promise.all([this.loadCache(authHeader, BankinData.urlTransactions, "transac"), this.loadCache(authHeader, BankinData.urlCategory, "categ")]).then(async ([transac, categ]) => {
-                loadDataVal = {transaction: transac, category: categ}
+                this.dataVal = {transaction: transac, category: categ} 
+                loadDataVal = this.dataVal 
                 evt.dispatch('data_loaded');
             });
         })
