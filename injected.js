@@ -4,32 +4,39 @@ const dataClass = new BankinData()
 
 let setting;
 let loadDataVal;
+let currentUrl = location.href;
 
-
-
-evt.listen('data_loaded', () => {
-    build(loadDataVal)
+evt.listen('data_loaded', async () => {
+    await build(loadDataVal)
 });
 
 evt.listen("settings_reloaded", () => {
     setting = settingClass.getAllSetting()
 })
 
+evt.listen('url_change', async () => {
+    console.log('test')
+    await build(loadDataVal)
+});
+
+
+setInterval(() => { 
+    if (location.href != currentUrl) {
+        currentUrl = location.href;
+        evt.dispatch('url_change');
+    }
+ }, 1000);
+
 
 async function build(data) {
-    console.log(data);
-
+    evt.dispatch('build called');
+    await settingClass.loadSettings()
     //routing 
     if (location.href === "https://app2.bankin.com/accounts") {
-
         setTimeout(() => { new Hidder() }, 500);
-
         loadingScreen();
-        loadSettings();
         transac = await applySettingOnData(data.transaction)
-        chrome.storage.local.set({ 'transac': data.transaction });
-        chrome.storage.local.set({ 'categ': data.category });
-
+        await settingClass.setSettings({ 'transac': data.transaction, 'categ': data.category })
         await buildChart(transac, data.category);
     }
 }
@@ -43,26 +50,12 @@ function loadingScreen() {
     homeBlock[0].appendChild(imgdiv)
 }
 
-function loadSettings() {
-    return new Promise(async (resolve, reject) => {
-        let list = []
-        let htmlElements = await document.querySelectorAll('.accountRow')
-        htmlElements.forEach((x) => {
-            const href = x.href.split("/")
-            list.push(href[4])
-        })
-        chrome.storage.local.set({ 'accountsList': list });
-    })
-}
-
-
 function applySettingOnData(transactions) {
     return new Promise(async (resolve, reject) => {
-        let settings = await chrome.storage.local.get(['startDate', 'endDate', 'accounts'])
 
-        let startDate = Date.parse(settings.startDate)
-        let endDate = Date.parse(settings.endDate)
-        let accounts = settings.accounts
+        let startDate = Date.parse(settingClass.getSetting('startDate'))
+        let endDate = Date.parse(settingClass.getSetting('endDate'))
+        let accounts = settingClass.getSetting('accounts');
 
         let returned = []
         for (const transaction of transactions) {

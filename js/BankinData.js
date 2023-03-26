@@ -26,48 +26,34 @@ class BankinData {
             });
         });
 
-        this.authRequest.then(authHeader => {
-            console.log("test")
-            Promise.all([this.loadCache(authHeader, BankinData.urlTransactions, "transac"), this.loadCache(authHeader, BankinData.urlCategory, "categ")]).then(async ([transac, categ]) => {
-                this.dataVal = {transaction: transac, category: categ} 
-                loadDataVal = this.dataVal 
-                evt.dispatch('data_loaded');
-            });
+        this.authRequest.then(() => {
+            this.reloadData()
         })
     
     }
 
-    getData() {
-        console.log("getData")
-        return this.authRequest.then(authHeader => {
-            return new Promise((resolve, reject) => {
-                console.log("test")
-                Promise.all([this.loadCache(authHeader, BankinData.urlTransactions, "transac"), this.loadCache(authHeader, BankinData.urlCategory, "categ")]).then(async ([transac, categ]) => {
-                    resolve({transaction: transac, category: categ})
-                    evt.dispatch('data_loaded');
-                
-                });
-            });
-        })
+    reloadData() {
+        return Promise.all([this.loadCache(this.authHeader, BankinData.urlTransactions, "transac"), this.loadCache(this.authHeader, BankinData.urlCategory, "categ")]).then(async ([transac, categ]) => {
+            this.dataVal = {transaction: transac, category: categ} 
+            loadDataVal = this.dataVal 
+            evt.dispatch('data_loaded');
+        });
     }
 
     loadCache(authHeader, url, type) {
         return new Promise(async (resolve, reject) => {
             let dataReturn = []
-
-            //verify chrome storage
-            let cacheData = await chrome.storage.local.get(['cache_data_' + type, 'cache_time_' + type])
-
+            
             //verify time of cache
-            if (cacheData && cacheData['cache_data_' + type] && (cacheData['cache_time_' + type] > Date.now() - 2000 * 60)) {
-                dataReturn = cacheData['cache_data_' + type];
-
+            if ( settingClass.getSetting('cache_data_' + type) && settingClass.getSetting('cache_time_' + type) > Date.now() - 2000 * 60) {
+                dataReturn = settingClass.getSetting('cache_data_' + type);
             } else {
                 dataReturn = await this.getBankinDataApi(authHeader, dataReturn, url);
                 let cacheObject = {};
                 cacheObject['cache_data_' + type] = dataReturn;
                 cacheObject['cache_time_' + type] = Date.now();
-                chrome.storage.local.set(cacheObject);
+
+                await settingClass.setSettings(cacheObject)
             }
             resolve(dataReturn);
         })

@@ -6,11 +6,11 @@ class Evt {
     constructor() {
         this.initPrivate();
     }
-    listen(str, cb) {
+    listen(str, cb, once = false) {
         if(this._eventDispatched[str]) {
             cb();
         } else {
-            document.addEventListener(this._key + str, cb, { once:true });
+            document.addEventListener(this._key + str, cb, { once:once });
         }
     }
     dispatch(str) {

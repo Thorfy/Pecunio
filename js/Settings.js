@@ -1,12 +1,21 @@
 class Settings {
 
-    static allSettingName = ['startDate', 'endDate', 'accounts'];
+    static allSettingName = [
+        'startDate', 
+        'endDate', 
+        'accounts',
+        'cache_data_transac', 
+        'cache_time_transac', 
+        'cache_data_categ', 
+        'cache_time_categ'
+    ];
 
     constructor() {
-        this.settings;
 
+        this.settings;
         this.loadSettings()
-        evt.listen('setting_updated', async () => await this.loadSettings());
+        
+        evt.listen('setting_updated', this.loadSettings());
     }
 
     async loadSettings() {
