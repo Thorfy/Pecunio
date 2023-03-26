@@ -6,9 +6,6 @@ class Hidder{
     }
 
     //Todo Gestion du setting hide
-    //set
-    //get
-    //load
 
     insertButton(){
         let button  = document.createElement('img')
@@ -32,20 +29,22 @@ class Hidder{
 
     loadEvent(){
         this.loadElement()
-        this.enableBlurry()
+        this.disableBlurry()
+
+        if(settingClass.getSetting('isBlurry'))
+            this.enableBlurry()
 
         this.hideButton.addEventListener('click', () =>{
             if(this.isBlurry())
                 return this.disableBlurry()
              
-            return this.enableBlurry()
-            
+            return this.enableBlurry() 
         })
     }
 
-    enableBlurry(){        
+    enableBlurry(){
+        settingClass.setSettings({ 'isBlurry': true })
         this.loadElement()
-
         this.spanHeaderAmmount.style = "filter: blur(6px);" 
         this.blurryDivs.forEach(x =>{
             x.style = "filter: blur(6px);" 
@@ -54,6 +53,7 @@ class Hidder{
     }
 
     disableBlurry(){
+        settingClass.setSettings({ 'isBlurry': false })
         this.loadElement()
 
         this.spanHeaderAmmount.style = "" 

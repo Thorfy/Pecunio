@@ -7,14 +7,15 @@ class Settings {
         'cache_data_transac', 
         'cache_time_transac', 
         'cache_data_categ', 
-        'cache_time_categ'
+        'cache_time_categ',
+        'isBlurry'
     ];
 
     constructor() {
 
         this.settings;
         this.loadSettings()
-        
+
         evt.listen('setting_updated', this.loadSettings());
     }
 

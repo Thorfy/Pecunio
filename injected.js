@@ -29,12 +29,15 @@ setInterval(() => {
 
 
 async function build(data) {
+    //routing choose with class is called
+
     evt.dispatch('build called');
     await settingClass.loadSettings()
     //routing 
     if (location.href === "https://app2.bankin.com/accounts") {
-        setTimeout(() => { new Hidder() }, 500);
         loadingScreen();
+
+        setTimeout(() => { new Hidder() }, 500);
         transac = await applySettingOnData(data.transaction)
         await settingClass.setSettings({ 'transac': data.transaction, 'categ': data.category })
         await buildChart(transac, data.category);
@@ -42,12 +45,15 @@ async function build(data) {
 }
 
 function loadingScreen() {
-    let homeBlock = document.getElementsByClassName("homeBlock")
+    let rightBlock = document.getElementsByClassName("rightColumn")
+    let childBlock = rightBlock[0].children
+
     let imgdiv = document.createElement('img')
     imgdiv.src = chrome.runtime.getURL("asset/Loading.gif")
     imgdiv.style = "text-align: center;"
-    homeBlock[0].innerHTML = ""
-    homeBlock[0].appendChild(imgdiv)
+
+    childBlock[0].innerHTML = ""
+    childBlock[0].appendChild(imgdiv)
 }
 
 function applySettingOnData(transactions) {
