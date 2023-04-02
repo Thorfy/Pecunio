@@ -4,9 +4,7 @@ class Hidder{
         this.insertButton()
         this.loadEvent()
     }
-
-    //Todo Gestion du setting hide
-
+    
     insertButton(){
         let button  = document.createElement('img')
         button.style = "width: 20px;"

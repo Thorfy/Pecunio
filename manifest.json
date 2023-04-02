@@ -43,6 +43,7 @@
         "js/Settings.js",
         "js/BankinData.js",
         "js/Hidder.js",
+        "js/ChartData.js",
         "libs/chart.js",
         "libs/chartjs-adapter-date-fns.js",
         "injected.js"

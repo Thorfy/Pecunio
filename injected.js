@@ -1,46 +1,40 @@
-const evt = new Evt()
-const settingClass = new Settings()
-const dataClass = new BankinData()
+const evt = new Evt();
+const settingClass = new Settings();
+const dataClass = new BankinData();
 
 let setting;
 let loadDataVal;
 let currentUrl = location.href;
 
 evt.listen('data_loaded', async () => {
-    await build(loadDataVal)
+    await build(loadDataVal);
 });
 
 evt.listen("settings_reloaded", () => {
-    setting = settingClass.getAllSetting()
-})
-
-evt.listen('url_change', async () => {
-    console.log('test')
-    await build(loadDataVal)
+    setting = settingClass.getAllSetting();
 });
 
+evt.listen('url_change', async () => {
+    console.log('test');
+    await build(loadDataVal);
+});
 
-setInterval(() => { 
+setInterval(() => {
     if (location.href != currentUrl) {
         currentUrl = location.href;
         evt.dispatch('url_change');
     }
- }, 1000);
-
+}, 1000);
 
 async function build(data) {
-    //routing choose with class is called
-
     evt.dispatch('build called');
-    await settingClass.loadSettings()
-    //routing 
+    await settingClass.loadSettings();
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen();
-
         setTimeout(() => { new Hidder() }, 500);
-        transac = await applySettingOnData(data.transaction)
-        await settingClass.setSettings({ 'transac': data.transaction, 'categ': data.category })
-        await buildChart(transac, data.category);
+        const chartData = new ChartData(data.transaction, data.category, setting);
+        const preparedData = await chartData.prepareData();
+        await buildChart(preparedData);
     }
 }
 
@@ -56,70 +50,23 @@ function loadingScreen() {
     childBlock[0].appendChild(imgdiv)
 }
 
-function applySettingOnData(transactions) {
-    return new Promise(async (resolve, reject) => {
-
-        let startDate = Date.parse(settingClass.getSetting('startDate'))
-        let endDate = Date.parse(settingClass.getSetting('endDate'))
-        let accounts = settingClass.getSetting('accounts');
-
-        let returned = []
-        for (const transaction of transactions) {
-            if (
-                (!(startDate && endDate) || (Date.parse(transaction.date) >= startDate && Date.parse(transaction.date) <= endDate)) &&
-                (accounts == "undefined" || (accounts.includes(transaction.account.id)))
-            ) {
-                returned.push(transaction)
-            }
-        }
-        resolve(returned)
-    })
+async function buildChart(formattedData) {
+    let chartJsConfig = await getChartJsConfig();
+    chartJsConfig.data = formattedData;
+    const canvasDiv = createCanvasElement();
+    const ctx = canvasDiv.getContext('2d');
+    const myChart = new Chart(ctx, chartJsConfig);
 }
 
-async function buildChart(allTransactions, allCategory) {
-
-    let transactionByCategory = false;
-    if (allCategory.length && allTransactions.length) {
-        transactionByCategory = mergeTransactionByCategory(allTransactions, allCategory);
-
-
-        //select category DIV
-        let homeBlock = document.getElementsByClassName("homeBlock")
-        let canvasDiv = document.createElement('canvas');
-        if (homeBlock.length != 0) {
-            homeBlock[0].innerHTML = "";
-            homeBlock[0].appendChild(canvasDiv);
-        }
-        let chartJsConfig = await getChartJsConfig();
-        chartJsConfig.data = await getDataFormated(allCategory, transactionByCategory, true);
-        const ctx = canvasDiv.getContext('2d');
-        const myChart = new Chart(ctx, chartJsConfig);
+function createCanvasElement() {
+    let homeBlock = document.getElementsByClassName("homeBlock");
+    let canvasDiv = document.createElement('canvas');
+    if (homeBlock.length != 0) {
+        homeBlock[0].innerHTML = "";
+        homeBlock[0].appendChild(canvasDiv);
     }
+    return canvasDiv;
 }
-
-function mergeTransactionByCategory(allTransactions, allCategory) {
-    preparedData = [];
-    exceptionCat = [326, 282]
-    allTransactions.forEach(transaction => {
-        allCategory.forEach(category => {
-            if (!preparedData[category.id])
-                preparedData[category.id] = [];
-
-            if (transaction.category.id === category.id && !exceptionCat.includes(transaction.category.id)) {
-                preparedData[category.id].push(transaction);
-            } else {
-                category.categories.forEach(childCategory => {
-                    if (transaction.category.id === childCategory.id && !exceptionCat.includes(transaction.category.id)) {
-                        preparedData[category.id].push(transaction);
-                    }
-                })
-            }
-        })
-
-    })
-    return preparedData;
-}
-
 
 async function getChartJsConfig() {
     let settings = await chrome.storage.local.get(['startDate', 'endDate'])
@@ -173,75 +120,6 @@ async function getChartJsConfig() {
     }
     return chartJsConfig;
 }
-
-async function getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
-
-    let data = {
-        datasets: []
-    }
-    let settingsList = []
-    await categoryData.forEach(category => {
-        settingsList.push(category.name)
-    })
-    let settings = await chrome.storage.local.get(settingsList)
-    console.log(settings)
-
-    categoryData.forEach(category => {
-
-        let transactions = transactionByCategory[parseInt(category.id)];
-        let dateValueObject = [];
-        let transactionObject = {};
-        transactions.forEach(transaction => {
-
-            // insert control of filter here 
-            //period, account, cumulative
-
-
-            let dateObj = new Date(transaction.date);
-            let month = `${dateObj.getMonth() + 1}`.padStart(2, "0"); //months from 1-12
-            let year = dateObj.getUTCFullYear();
-            const stringDate = [year, month].join("-")
-
-            if (isCumulative) {
-                if (!transactionObject[stringDate]) {
-                    transactionObject[stringDate] = transaction.amount;
-                } else {
-                    transactionObject[stringDate] += transaction.amount;
-                }
-            } else {
-                dateValueObject.push({
-                    x: transaction.date,
-                    y: transaction.amount,
-                    name: transaction.name
-                });
-            }
-
-        })
-        if (isCumulative) {
-            for (const date in transactionObject) {
-                dateValueObject.push({
-                    x: date,
-                    y: transactionObject[date],
-                });
-            }
-        }
-        //let get Config and load it 
-        let dataCategory = {
-            label: category.name,
-            data: dateValueObject,
-            borderColor: parseColorCSS("categoryColor_" + category.id),
-            fill: false,
-            tension: 0.3,
-            hidden: settings[category.name]
-        }
-
-        data.datasets.push(dataCategory);
-    })
-
-    return data
-
-}
-
 //trick for get real color of category
 function parseColorCSS(strClass) {
     let styleElement = document.createElement("div");
@@ -251,7 +129,6 @@ function parseColorCSS(strClass) {
     styleElement.remove();
     return colorVal;
 }
-
 
 function monthDiff(dateFrom, dateTo) {
     dateFrom = new Date(dateFrom)
