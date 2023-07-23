@@ -45,7 +45,6 @@ async function build(data) {
         let dateChoosed = document.querySelector("#monthSelector .active .dib").textContent.toLocaleLowerCase();
         const chartData2 = new ChartData2(data.transaction, data.category, dateChoosed.split(" "));
         const preparedData = await chartData2.prepareData();
-        console.log(preparedData, preparedData.sort((a, b) => b.flow - a.flow))
         let categBlock = document.getElementsByClassName("categoryChart");
         let canvasDiv = document.createElement('canvas');
         if (categBlock.length != 0) {
