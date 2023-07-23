@@ -15,7 +15,6 @@ evt.listen("settings_reloaded", () => {
 });
 
 evt.listen('url_change', async () => {
-    console.log('test');
     await build(loadDataVal);
 });
 
@@ -29,12 +28,28 @@ setInterval(() => {
 async function build(data) {
     evt.dispatch('build called');
     await settingClass.loadSettings();
+    //TODO CONSTANT
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen();
         setTimeout(() => { new Hidder() }, 500);
         const chartData = new ChartData(data.transaction, data.category, setting);
         const preparedData = await chartData.prepareData();
         await buildChart(preparedData);
+    //TODO CONSTANT
+    }else if(location.href === "https://app2.bankin.com/categories"){
+
+        //TODO ADD LISTEN EVENT ON MONTHSELECTOR
+        let dateChoosed = document.querySelector("#monthSelector .active .dib").textContent.toLocaleLowerCase();
+        const chartData2 = new ChartData2(data.transaction, data.category, dateChoosed.split(" "));
+        const preparedData = await chartData2.prepareData();
+       
+        
+        //call object for setting up chart
+        // prepare chart data 
+        // prepare chart config
+        // build chart
+        //use all transac ? or call api ? 
+
     }
 }
 
@@ -78,6 +93,7 @@ async function getChartJsConfig() {
             plugins: {
                 title: {
                     display: true,
+                    //TODO constant or other
                     text: "Depense sur " + monthDiff(settings.startDate, settings.endDate) + " mois"
                 },
                 legend: {

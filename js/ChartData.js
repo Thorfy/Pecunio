@@ -21,9 +21,12 @@ class ChartData {
 
             let returned = []
             for (const transaction of this.transactions) {
+                let transactionDate = new Date(transaction.date);
+                transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
+                let modifiedDate = transactionDate.toDateString()
                 if (
-                    (!(startDate && endDate) || (Date.parse(transaction.date) >= startDate && Date.parse(transaction.date) <= endDate)) &&
-                    (accounts == "undefined" || (accounts.includes(transaction.account.id)))
+                    (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate)) &&
+                    (accounts == undefined || (accounts != undefined && accounts.includes(transaction.account.id)))
                 ) {
                     returned.push(transaction)
                 }
@@ -65,7 +68,6 @@ class ChartData {
             settingsList.push(category.name)
         })
         let settings = await chrome.storage.local.get(settingsList)
-        console.log(settings)
 
         categoryData.forEach(category => {
 
@@ -77,8 +79,9 @@ class ChartData {
                 // insert control of filter here 
                 //period, account, cumulative
 
-
                 let dateObj = new Date(transaction.date);
+                dateObj.setMonth(dateObj.getMonth() + transaction.current_month)
+
                 let month = `${dateObj.getMonth() + 1}`.padStart(2, "0"); //months from 1-12
                 let year = dateObj.getUTCFullYear();
                 const stringDate = [year, month].join("-")
