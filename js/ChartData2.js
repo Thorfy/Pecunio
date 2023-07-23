@@ -18,6 +18,8 @@ class ChartData2 {
             let returned = []
             for (const transaction of this.transactions) {
                 let transactionDate = new Date(transaction.date);
+                //attention invalide date if no verif on day
+                transactionDate.setDate(1)
                 transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
                 if ((transactionDate.toLocaleString('default', { month: 'long' }) === this.params[0]) && (transactionDate.getUTCFullYear() === parseInt(this.params[1]))) {
                     returned.push(transaction)
@@ -78,6 +80,7 @@ class ChartData2 {
                 "child": childData
             })
         })
+        console.log(datasets)
         return datasets
 
     }
