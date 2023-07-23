@@ -8,9 +8,9 @@ class ChartData2 {
     async prepareData() {
         let filteredTransactions = await this.applySettingOnData();
         let transactionByCategory = this.mergeTransactionByCategory(filteredTransactions, this.categories);
-        //console.log(filteredTransactions, transactionByCategory)
-        //let formattedData = await this.getDataFormated(this.categories, transactionByCategory, true);
-        //return formattedData;
+        let formattedData = await this.getDataFormated(this.categories, transactionByCategory, true);
+        let sankeyData = this.convertDataToSankeyFormat(formattedData);
+        return sankeyData;
     }
 
     applySettingOnData() {
@@ -19,7 +19,6 @@ class ChartData2 {
             for (const transaction of this.transactions) {
                 let transactionDate = new Date(transaction.date);
                 transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
-                
                 if ((transactionDate.toLocaleString('default', { month: 'long' }) === this.params[0]) && (transactionDate.getUTCFullYear() === parseInt(this.params[1]))) {
                     returned.push(transaction)
                 }
@@ -58,67 +57,65 @@ class ChartData2 {
 
     async getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
 
-        let data = {
-            datasets: []
-        }
-        let settingsList = []
-        await categoryData.forEach(category => {
-            settingsList.push(category.name)
-        })
-        let settings = await chrome.storage.local.get(settingsList)
+        let datasets = []
 
-        categoryData.forEach(category => {
-
-            let transactions = transactionByCategory[parseInt(category.id)];
-            let dateValueObject = [];
-            let transactionObject = {};
-            transactions.forEach(transaction => {
-
-                // insert control of filter here 
-                //period, account, cumulative
-
-                let dateObj = new Date(transaction.date);
-                let month = `${dateObj.getMonth() + 1}`.padStart(2, "0"); //months from 1-12
-                let year = dateObj.getUTCFullYear();
-                const stringDate = [year, month].join("-")
-
-                if (isCumulative) {
-                    if (!transactionObject[stringDate]) {
-                        transactionObject[stringDate] = transaction.amount;
-                    } else {
-                        transactionObject[stringDate] += transaction.amount;
-                    }
-                } else {
-                    dateValueObject.push({
-                        x: transaction.date,
-                        y: transaction.amount,
-                        name: transaction.name
-                    });
-                }
-
+        categoryData.forEach(categoryParent => {
+            const transactions = transactionByCategory[parseInt(categoryParent.id)];
+            let childData = []
+            categoryParent.categories.forEach(categoryEnfant => {
+                const transactionsChild = transactionByCategory[parseInt(categoryEnfant.id)];
+                childData.push({
+                    "id": categoryEnfant.id,
+                    "name": categoryEnfant.name,
+                    "transactions": transactionsChild
+                })
             })
-            if (isCumulative) {
-                for (const date in transactionObject) {
-                    dateValueObject.push({
-                        x: date,
-                        y: transactionObject[date],
-                    });
-                }
-            }
-            //let get Config and load it 
-            let dataCategory = {
-                label: category.name,
-                data: dateValueObject,
-                borderColor: parseColorCSS("categoryColor_" + category.id),
-                fill: false,
-                tension: 0.3,
-                hidden: settings[category.name]
-            }
 
-            data.datasets.push(dataCategory);
+            datasets.push({
+                "id": categoryParent.id,
+                "name": categoryParent.name,
+                "transactions": transactions,
+                "child": childData
+            })
         })
 
-        return data
+        console.log(datasets)
 
+        return datasets
+
+    }
+    convertDataToSankeyFormat(data, exceptionalCategories = [2]) {
+        var sankeyData = [];
+
+        
+        
+        // Traiter tous les nœuds de niveau supérieur.
+        data.forEach(function (node) {
+            
+            if(node.child){
+                node.child.forEach(function (childNode){
+                    let totalAmount = childNode.transactions.reduce(function (total, transaction) {
+                        return total + Math.abs(transaction.amount);  // On utilise Math.abs pour éviter les valeurs négatives
+                    }, 0);
+
+                    if(exceptionalCategories.includes(node.id) && totalAmount > 0){
+                        sankeyData.push({ from: childNode.name, to: "Budget", flow: totalAmount, id: node.id });
+                    }else if(totalAmount > 0){
+                        sankeyData.push({ from: node.name, to: childNode.name, flow: totalAmount , id: node.id });
+                    }
+
+                })
+            }
+
+            let totalAmount = node.transactions.reduce(function (total, transaction) {
+                return total + Math.abs(transaction.amount);  // On utilise Math.abs pour éviter les valeurs négatives
+            }, 0);
+
+            if(!exceptionalCategories.includes(node.id) && totalAmount > 0){
+                sankeyData.push({ from: "Budget", to: node.name, flow: totalAmount , id:node.id });
+            }
+        });
+
+        return sankeyData;
     }
 }

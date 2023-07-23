@@ -37,13 +37,42 @@ async function build(data) {
         await buildChart(preparedData);
     //TODO CONSTANT
     }else if(location.href === "https://app2.bankin.com/categories"){
-
+        let menu = document.querySelector("#monthSelector")
+        menu.addEventListener("click", () => {
+            evt.dispatch('url_change');
+        }, {once:true});
         //TODO ADD LISTEN EVENT ON MONTHSELECTOR
         let dateChoosed = document.querySelector("#monthSelector .active .dib").textContent.toLocaleLowerCase();
         const chartData2 = new ChartData2(data.transaction, data.category, dateChoosed.split(" "));
         const preparedData = await chartData2.prepareData();
-       
-        
+        console.log(preparedData, preparedData.sort((a, b) => b.flow - a.flow))
+        let categBlock = document.getElementsByClassName("categoryChart");
+        let canvasDiv = document.createElement('canvas');
+        if (categBlock.length != 0) {
+            categBlock[0].innerHTML = "";
+            categBlock[0].appendChild(canvasDiv);
+        }
+        const ctx = canvasDiv.getContext('2d');
+
+        //TODO use id in from to
+        //TODO add label to option
+        //TODO create object for prepareData configChart createChart and displayChart
+
+        const myChart = new Chart(ctx, {
+            type: 'sankey',
+            data: {
+                datasets: [{
+                    label: 'My Dataset',
+                    data: preparedData,
+                    colorFrom: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                    colorTo: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                    colorMode: '', // or 'gradient' or 'from' or 'to'
+                }]
+            },
+            options: {
+                responsive: true,
+            }
+        });
         //call object for setting up chart
         // prepare chart data 
         // prepare chart config
