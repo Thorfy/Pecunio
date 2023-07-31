@@ -14,13 +14,13 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build
-        run: zip -r chrome-extension-${{ github.event.pull_request.head.sha }}.zip dist
+        run: zip -r chrome-extension-${{ github.sha }}.zip .
 
       - name: Archive chrome-extension artifact
         uses: actions/upload-artifact@v2
         with:
           name: chrome-extension-${{ github.sha }}
-          path: chrome-extension-${{ github.event.pull_request.head.sha }}.zip
+          path: chrome-extension-${{ github.sha }}.zip
           
           
   # api usage reference:
@@ -53,7 +53,7 @@ jobs:
       - name: Upload step
         run: |-
           chrome-webstore-upload upload --auto-publish \\
-            --source chrome-extension-${{ github.event.pull_request.head.sha }}.zip \\
+            --source chrome-extension-${{ github.sha }}.zip \\
             --extension-id ${{ env.EXTENSION_ID }} \\
             --client-id ${{ secrets.CI_GOOGLE_CLIENT_ID }} \\
             --client-secret ${{ secrets.CI_GOOGLE_CLIENT_SECRET }} \\
