@@ -9,8 +9,6 @@ class BankinData {
 
         this.port = chrome.runtime.connect();
 
-
-        
         this.authRequest = new Promise((resolve, reject) => {
             this.port.onMessage.addListener(message => {
     
@@ -45,7 +43,7 @@ class BankinData {
             let dataReturn = []
             
             //verify time of cache
-            if ( settingClass.getSetting('cache_data_' + type) && settingClass.getSetting('cache_time_' + type) > Date.now() - 2000 * 60) {
+            if (settingClass.getSetting('cache_data_' + type) && settingClass.getSetting('cache_time_' + type) > Date.now() - 2000 * 60) {
                 evt.dispatch("cache_data_" + type + "_loaded");
                 dataReturn = settingClass.getSetting('cache_data_' + type);
             } else {

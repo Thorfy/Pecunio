@@ -26,7 +26,7 @@ class ChartData {
                 let modifiedDate = transactionDate.toDateString()
                 if (
                     (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate)) &&
-                    (accounts == undefined || (accounts != undefined && accounts.includes(transaction.account.id)))
+                    (accounts == null || (accounts != null && accounts.includes(transaction.account.id)))
                 ) {
                     returned.push(transaction)
                 }

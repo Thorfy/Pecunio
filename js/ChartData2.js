@@ -80,7 +80,6 @@ class ChartData2 {
                 "child": childData
             })
         })
-        console.log(datasets)
         return datasets
 
     }
