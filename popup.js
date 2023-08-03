@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-    console.log("popupReady")
 
     let currentVersionImg = document.querySelector("#currentVersion")
     let cvSource = "https://img.shields.io/badge/installed-" + chrome.runtime.getManifest().version + "-blue"
@@ -11,19 +10,23 @@ document.addEventListener('DOMContentLoaded', function () {
     let csvExport = document.querySelector("#exportCsv");
     chrome.storage.local.get(['startDate', 'endDate'], function (data) {
         data.endDate
-        if (data.endDate != "undefined" && data.startDate != "undefined") {
-            console.log(data)
+        if (data.endDate != null && data.startDate != null ) {
             startDate.value = data.startDate
             endDate.value = data.endDate
         } else {
+            startDate.value = new Date(null).toDateInputValue()
             endDate.value = new Date().toDateInputValue()
         }
     });
 
     chrome.storage.local.get(['accountsList'], function (data) {
-        for (const account of data.accountsList) {
-            let newOption = new Option(account, account);
-            accounts.add(newOption, undefined);
+        if (data.accountsList !=null) {
+            for (const account of data.accountsList) {
+                let newOption = new Option(account, account);
+                accounts.add(newOption, undefined);
+            }
+        } else {
+
         }
     });
 
@@ -31,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let inputs = [startDate, endDate, accounts]
     for (const input of inputs) {
         input.addEventListener('blur', function () {
-            console.log(this.id, this.value)
             chrome.storage.local.set({ [this.id]: this.value });
         })
     }
@@ -39,17 +41,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     //load data
 
-    chrome.storage.local.get(['transac', 'categ'], function (data) {
-
+    chrome.storage.local.get(['cache_data_transac', 'cache_data_categ'], function (data) {
         csvExport.addEventListener('click', function () {
             // Convert Object to JSON
-            let jsonObject = JSON.stringify(data.transac);
+            let jsonObject = JSON.stringify(data.cache_data_transac);
             let csvContent = "data:text/csv;charset=utf-8," + ConvertToCSV(jsonObject)
             let encodedUri = encodeURI(csvContent);
 
             var link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "transaction_export_"+new Date().toLocaleDateString()+".csv");
+            link.setAttribute("download", "transaction_export_" + new Date().toLocaleDateString() + ".csv");
             document.body.appendChild(link); // Required for FF
             link.click(); // This will download the data file named "my_data.csv".
 
