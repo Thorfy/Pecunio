@@ -1,5 +1,5 @@
 class Hidder{
-    static blurryClassList = ".amountGreen"
+    static blurryClassList = ".amountGreen,.amountRed,.amountBlack"
     constructor(){
         this.insertButton()
         this.loadEvent()
@@ -22,7 +22,7 @@ class Hidder{
         this.spanHeaderText = document.querySelector(".dbl.fs1.elp")
 
         this.hideButton = document.querySelector("#hideButton") 
-        this.blurryDivs = document.querySelectorAll(".amountGreen") 
+        this.blurryDivs = document.querySelectorAll(Hidder.blurryClassList) 
     }
 
     loadEvent(){
