@@ -1,4 +1,16 @@
-document.addEventListener('DOMContentLoaded', function () {
+const evt = new Evt();
+const settingClass = new Settings();
+
+let setting; 
+
+evt.listen("settings_reloaded", () => {
+    setting = settingClass.getAllSetting();
+});
+
+
+document.addEventListener('DOMContentLoaded', async function () {
+
+    await settingClass.loadSettings();
 
     let currentVersionImg = document.querySelector("#currentVersion")
     let cvSource = "https://img.shields.io/badge/installed-" + chrome.runtime.getManifest().version + "-blue"
