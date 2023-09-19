@@ -7,7 +7,7 @@ let loadDataVal;
 let currentUrl = location.href;
 
 evt.listen('data_loaded', async () => {
-    await build(loadDataVal);
+    await build();
 });
 
 evt.listen("settings_reloaded", () => {
@@ -15,7 +15,7 @@ evt.listen("settings_reloaded", () => {
 });
 
 evt.listen('url_change', async () => {
-    await build(loadDataVal);
+    await build();
 });
 
 setInterval(() => {
@@ -25,14 +25,14 @@ setInterval(() => {
     }
 }, 1000);
 
-async function build(data) {
+async function build() {
     evt.dispatch('build called');
     await settingClass.loadSettings();
     //TODO CONSTANT
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen();
         setTimeout(() => { new Hidder() }, 500);
-        const chartData = new ChartData(data.transaction, data.category, setting);
+        const chartData = new ChartData(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), setting);
         const preparedData = await chartData.prepareData();
         await buildChart(preparedData);
     //TODO CONSTANT
@@ -43,7 +43,7 @@ async function build(data) {
         }, {once:true});
         //TODO ADD LISTEN EVENT ON MONTHSELECTOR
         let dateChoosed = document.querySelector("#monthSelector .active .dib").textContent.toLocaleLowerCase();
-        const chartData2 = new ChartData2(data.transaction, data.category, dateChoosed.split(" "));
+        const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), dateChoosed.split(" "));
         const preparedData = await chartData2.prepareData();
         let categBlock = document.getElementsByClassName("categoryChart");
         let canvasDiv = document.createElement('canvas');

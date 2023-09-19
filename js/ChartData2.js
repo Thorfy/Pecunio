@@ -58,7 +58,6 @@ class ChartData2 {
     }
 
     async getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
-
         let datasets = []
 
         categoryData.forEach(categoryParent => {
@@ -85,8 +84,6 @@ class ChartData2 {
     }
     convertDataToSankeyFormat(data, exceptionalCategories = [2]) {
         var sankeyData = [];
-
-        
         
         // Traiter tous les nœuds de niveau supérieur.
         data.forEach(function (node) {

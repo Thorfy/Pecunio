@@ -41,7 +41,7 @@ class BankinData {
     loadCache(authHeader, url, type) {
         return new Promise(async (resolve, reject) => {
             let dataReturn = []
-            
+
             //verify time of cache
             if (settingClass.getSetting('cache_data_' + type) && settingClass.getSetting('cache_time_' + type) > Date.now() - 2000 * 60) {
                 evt.dispatch("cache_data_" + type + "_loaded");
