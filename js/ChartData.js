@@ -1,5 +1,7 @@
 class ChartData {
     constructor(transactions, categories, settings) {
+        console.log(transactions, categories)
+
         this.transactions = transactions;
         this.categories = categories;
         this.settings = settings;
@@ -24,13 +26,12 @@ class ChartData {
                 let transactionDate = new Date(transaction.date);
                 transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
                 let modifiedDate = transactionDate.toDateString()
-                if (
-                    (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate)) &&
-                    (accounts == null || (accounts != null && accounts.includes(transaction.account.id)))
-                ) {
+                if (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate))
+                {
                     returned.push(transaction)
                 }
             }
+            console.log(returned)
             resolve(returned)
         })
     }
