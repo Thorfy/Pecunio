@@ -1,13 +1,19 @@
+// Ensure these classes/functions are imported or defined elsewhere
+// import { Evt, Settings, BankinData, Hidder, ChartData, ChartData2, Chart, getChartJsConfig } from 'path_to_definitions';
+
 const evt = new Evt();
 const settingClass = new Settings();
 const dataClass = new BankinData();
 
-let setting;
-let loadDataVal;
+let setting = settingClass.getAllSetting();
 let currentUrl = location.href;
 
 evt.listen('data_loaded', async () => {
-    await build();
+    try {
+        await build();
+    } catch (error) {
+        console.error("Error during data_loaded event:", error);
+    }
 });
 
 evt.listen("settings_reloaded", () => {
@@ -15,120 +21,167 @@ evt.listen("settings_reloaded", () => {
 });
 
 evt.listen('url_change', async () => {
-    await build();
+    try {
+        await build();
+    } catch (error) {
+        console.error("Error during url_change event:", error);
+    }
 });
 
 setInterval(() => {
-    if (location.href != currentUrl) {
+    if (location.href !== currentUrl) {
         currentUrl = location.href;
         evt.dispatch('url_change');
     }
-}, 1000);
+}, 1000); // Consider using other methods to detect URL changes
 
 async function build() {
     evt.dispatch('build called');
+
     await settingClass.loadSettings();
-    //TODO CONSTANT
+
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen();
         setTimeout(() => { new Hidder() }, 500);
         const chartData = new ChartData(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), setting);
         const preparedData = await chartData.prepareData();
         await buildChart(preparedData);
-    //TODO CONSTANT
-    }else if(location.href === "https://app2.bankin.com/categories"){
-        let menu = document.querySelector("#monthSelector")
-        menu.addEventListener("click", () => {
-            evt.dispatch('url_change');
-        }, {once:true});
-        //TODO ADD LISTEN EVENT ON MONTHSELECTOR
-        let dateChoosed = document.querySelector("#monthSelector .active .dib").textContent.toLocaleLowerCase();
-        const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), dateChoosed.split(" "));
-        const preparedData = await chartData2.prepareData();
-        let categBlock = document.getElementsByClassName("categoryChart");
-        let canvasDiv = document.createElement('canvas');
-        if (categBlock.length != 0) {
-            categBlock[0].innerHTML = "";
-            categBlock[0].appendChild(canvasDiv);
+    } else if (location.href === "https://app2.bankin.com/categories") {
+        const menu = document.querySelector("#monthSelector");
+        if (menu) {
+            menu.addEventListener("click", () => {
+                evt.dispatch('url_change');
+            }, { once: true });
         }
-        const ctx = canvasDiv.getContext('2d');
 
-        //TODO use id in from to
-        //TODO add label to option
-        //TODO create object for prepareData configChart createChart and displayChart
+        const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
+        if (dateChoosedElem) {
+            const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
+            const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), dateChoosed.split(" "));
+            const preparedData = await chartData2.prepareData();
 
-        const myChart = new Chart(ctx, {
-            type: 'sankey',
-            data: {
-                datasets: [{
-                    label: 'My Dataset',
-                    data: preparedData,
-                    colorFrom: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
-                    colorTo: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
-                    colorMode: '', // or 'gradient' or 'from' or 'to'
-                }]
-            },
-            options: {
-                responsive: true,
+            let categBlock = document.getElementsByClassName("categoryChart");
+            if (categBlock && categBlock[0]) {
+                //categBlock[0].innerHTML = "";
+                let canvasDiv = document.getElementsByClassName("canvasDiv")
+                if (canvasDiv && canvasDiv.length > 0) {
+                    for (let item of canvasDiv) {
+                        item.remove()
+                    }
+                }
+                canvasDiv = createCanvasElement(categBlock[0]);
+                setTimeout(() => {
+                    let h100 = document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive")
+                    console.log(h100)
+                    for (let item of h100) {
+                        console.log("h100 remove")
+                        item.classList.remove("h100");
+                    }
+                }, 1000);
+
+                const ctx = canvasDiv.getContext('2d');
+                const myChart = new Chart(ctx, {
+                    type: 'sankey',
+                    data: {
+                        datasets: [{
+                            label: 'My Dataset',
+                            data: preparedData,
+                            colorFrom: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                            colorTo: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                            colorMode: '',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                    }
+                });
             }
-        });
-        //call object for setting up chart
-        // prepare chart data 
-        // prepare chart config
-        // build chart
-        //use all transac ? or call api ? 
-
+        }
     }
 }
 
 function loadingScreen() {
-    let rightBlock = document.getElementsByClassName("rightColumn")
-    let childBlock = rightBlock[0].children
+    const rightBlock = document.getElementsByClassName("rightColumn");
+    if (rightBlock && rightBlock[0]) {
+        const childBlock = rightBlock[0].children;
 
-    let imgdiv = document.createElement('img')
-    imgdiv.src = chrome.runtime.getURL("asset/Loading.gif")
-    imgdiv.style = "text-align: center;"
+        const imgdiv = document.createElement('img');
+        imgdiv.src = chrome.runtime.getURL("asset/Loading.gif");
+        imgdiv.style.textAlign = "center";
 
-    childBlock[0].innerHTML = ""
-    childBlock[0].appendChild(imgdiv)
+        childBlock[0].innerHTML = "";
+        childBlock[0].appendChild(imgdiv);
+    }
+    evt.dispatch('loading_sreen_display');
 }
 
 async function buildChart(formattedData) {
-    let chartJsConfig = await getChartJsConfig();
+    const chartJsConfig = await getChartJsConfig();
     chartJsConfig.data = formattedData;
-    const canvasDiv = createCanvasElement();
-    const ctx = canvasDiv.getContext('2d');
-    const myChart = new Chart(ctx, chartJsConfig);
+
+    const homeBlock = document.getElementsByClassName("homeBlock");
+    if (homeBlock && homeBlock[0]) {
+        homeBlock[0].innerHTML = "";
+        const canvasDiv = createCanvasElement(homeBlock[0]);
+        const ctx = canvasDiv.getContext('2d');
+
+        const myChart = new Chart(ctx, chartJsConfig);
+    }
 }
 
-function createCanvasElement() {
-    let homeBlock = document.getElementsByClassName("homeBlock");
-    let canvasDiv = document.createElement('canvas');
-    if (homeBlock.length != 0) {
-        homeBlock[0].innerHTML = "";
-        homeBlock[0].appendChild(canvasDiv);
+function createCanvasElement(parentElement) {
+    const canvasDiv = document.createElement('canvas');
+    canvasDiv.classList = "canvasDiv";
+
+    if (parentElement) {
+        parentElement.appendChild(canvasDiv);
     }
+
     return canvasDiv;
 }
 
-async function getChartJsConfig() {
-    let settings = await chrome.storage.local.get(['startDate', 'endDate'])
+const annotation = {
+    type: 'line',
+    borderColor: 'black',
+    borderDash: [6, 6],
+    borderDashOffset: 0,
+    borderWidth: 3,
+    label: {
+        enabled: true,
+        content: (ctx) => 'Average: ' + average(ctx).toFixed(2),
+        position: 'end'
+    },
+    scaleID: 'y',
+    value: (ctx) => average(ctx)
+};
 
-    const chartJsConfig = {
+function average(ctx) {
+    const values = ctx.chart.data.datasets[0].data;
+    return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+async function getChartJsConfig() {
+    const settings = await chrome.storage.local.get(['startDate', 'endDate']);
+
+    return {
         type: 'line',
         options: {
             responsive: true,
             plugins: {
+                annotation: {
+                    annotations: {
+                        annotation
+                    }
+                },
                 title: {
                     display: true,
-                    //TODO constant or other
                     text: "Depense sur " + monthDiff(settings.startDate, settings.endDate) + " mois"
                 },
                 legend: {
                     onClick: async function (evt, item) {
-                        let currentVal = await chrome.storage.local.get([item.text])
-                        await chrome.storage.local.set({ [item.text]: !currentVal[item.text] })
-                        // callback original event 
+                        const currentVal = await chrome.storage.local.get([item.text]);
+                        await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
+
                         Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
                     },
                 }
@@ -139,7 +192,6 @@ async function getChartJsConfig() {
             scales: {
                 x: {
                     type: 'time',
-
                     grid: {
                         color: "#e9f5f9",
                         borderColor: "#d3eaf2",
@@ -161,21 +213,23 @@ async function getChartJsConfig() {
                 }
             }
         },
-    }
-    return chartJsConfig;
+    };
 }
-//trick for get real color of category
+
 function parseColorCSS(strClass) {
-    let styleElement = document.createElement("div");
+    const styleElement = document.createElement("div");
     styleElement.className = strClass;
-    document.body.appendChild(styleElement)
-    let colorVal = window.getComputedStyle(styleElement).backgroundColor;
+    document.body.appendChild(styleElement);
+
+    const colorVal = window.getComputedStyle(styleElement).backgroundColor;
     styleElement.remove();
+
     return colorVal;
 }
 
 function monthDiff(dateFrom, dateTo) {
-    dateFrom = new Date(dateFrom)
-    dateTo = new Date(dateTo)
-    return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()))
+    dateFrom = new Date(dateFrom);
+    dateTo = new Date(dateTo);
+
+    return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
 }

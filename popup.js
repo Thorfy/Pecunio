@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     let endDate = document.querySelector('#endDate');
     let accounts = document.querySelector('#accounts');
     let csvExport = document.querySelector("#exportCsv");
+    let refresh = document.querySelector("#refresh");
     chrome.storage.local.get(['startDate', 'endDate'], function (data) {
         data.endDate
         if (data.endDate != null && data.startDate != null ) {
@@ -67,10 +68,16 @@ document.addEventListener('DOMContentLoaded', async function () {
             link.click(); // This will download the data file named "my_data.csv".
 
         })
-
-
-
     });
+
+    refresh.addEventListener('click', function () {
+        chrome.storage.local.set({ ["cache_data_transac"]: null });
+        chrome.storage.local.set({ ["cache_data_categ"]: null });
+        chrome.storage.local.get(['cache_data_transac', 'cache_data_categ'], function (data) {
+        console.log("data refresh",data.cache_data_transac, data.cache_data_categ)
+        evt.dispatch('url_change');
+        })
+    })
 
 
     function ConvertToCSV(objArray) {

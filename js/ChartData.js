@@ -24,14 +24,15 @@ class ChartData {
             let returned = []
             for (const transaction of this.transactions) {
                 let transactionDate = new Date(transaction.date);
+                transactionDate.setDate(1);
                 transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
+                transaction.date = transactionDate; 
                 let modifiedDate = transactionDate.toDateString()
                 if (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate))
                 {
                     returned.push(transaction)
                 }
             }
-            console.log(returned)
             resolve(returned)
         })
     }
@@ -81,7 +82,7 @@ class ChartData {
                 //period, account, cumulative
 
                 let dateObj = new Date(transaction.date);
-                dateObj.setMonth(dateObj.getMonth() + transaction.current_month)
+                //dateObj.setMonth(dateObj.getMonth() + transaction.current_month)
 
                 let month = `${dateObj.getMonth() + 1}`.padStart(2, "0"); //months from 1-12
                 let year = dateObj.getUTCFullYear();
