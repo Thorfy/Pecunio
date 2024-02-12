@@ -1,6 +1,6 @@
 class ChartData {
     constructor(transactions, categories, settings) {
-        console.log(transactions, categories)
+        //console.log(transactions, categories)
 
         this.transactions = transactions;
         this.categories = categories;
@@ -26,10 +26,9 @@ class ChartData {
                 let transactionDate = new Date(transaction.date);
                 transactionDate.setDate(1);
                 transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
-                transaction.date = transactionDate; 
+                transaction.date = transactionDate;
                 let modifiedDate = transactionDate.toDateString()
-                if (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate))
-                {
+                if (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate)) {
                     returned.push(transaction)
                 }
             }
@@ -115,7 +114,7 @@ class ChartData {
             let dataCategory = {
                 label: category.name,
                 data: dateValueObject,
-                borderColor: parseColorCSS("categoryColor_" + category.id),
+                borderColor: this.parseColorCSS("categoryColor_" + category.id),
                 fill: false,
                 tension: 0.3,
                 hidden: settings[category.name]
@@ -126,5 +125,94 @@ class ChartData {
 
         return data
 
+    }
+    
+    parseColorCSS(strClass) {
+        const styleElement = document.createElement("div");
+        styleElement.className = strClass;
+        document.body.appendChild(styleElement);
+    
+        const colorVal = window.getComputedStyle(styleElement).backgroundColor;
+        styleElement.remove();
+    
+        return colorVal;
+    }
+
+    async buildChart(formattedData) {
+        const chartJsConfig = await this.getChartJsConfig();
+        chartJsConfig.data = formattedData;
+
+        const homeBlock = document.getElementsByClassName("homeBlock");
+        if (homeBlock && homeBlock[0]) {
+            homeBlock[0].innerHTML = "";
+            const canvasDiv = createCanvasElement(homeBlock[0]);
+            const ctx = canvasDiv.getContext('2d');
+
+            const myChart = new Chart(ctx, chartJsConfig);
+        }
+    }
+
+
+    async getChartJsConfig() {
+        const settings = await chrome.storage.local.get(['startDate', 'endDate']);
+
+        return {
+            type: 'line',
+            options: {
+                responsive: true,
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            annotation
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: "Depense sur " + this.monthDiff(settings.startDate, settings.endDate) + " mois"
+                    },
+                    legend: {
+                        onClick: async function (evt, item) {
+                            const currentVal = await chrome.storage.local.get([item.text]);
+                            await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
+
+                            Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
+                        },
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        grid: {
+                            color: "#e9f5f9",
+                            borderColor: "#d3eaf2",
+                            tickColor: "#e9f5f9"
+                        },
+                        display: true,
+                        title: {
+                            color: "#92cbdf",
+                            display: false
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: {
+                            color: "#e9f5f9",
+                            borderColor: "#d3eaf2",
+                            tickColor: "#e9f5f9"
+                        },
+                    }
+                }
+            },
+        };
+    }
+
+    monthDiff(dateFrom, dateTo) {
+        dateFrom = new Date(dateFrom);
+        dateTo = new Date(dateTo);
+    
+        return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
     }
 }

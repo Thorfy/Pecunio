@@ -1,6 +1,3 @@
-// Ensure these classes/functions are imported or defined elsewhere
-// import { Evt, Settings, BankinData, Hidder, ChartData, ChartData2, Chart, getChartJsConfig } from 'path_to_definitions';
-
 const evt = new Evt();
 const settingClass = new Settings();
 const dataClass = new BankinData();
@@ -45,7 +42,7 @@ async function build() {
         setTimeout(() => { new Hidder() }, 500);
         const chartData = new ChartData(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), setting);
         const preparedData = await chartData.prepareData();
-        await buildChart(preparedData);
+        await chartData.buildChart(preparedData);
     } else if (location.href === "https://app2.bankin.com/categories") {
         const menu = document.querySelector("#monthSelector");
         if (menu) {
@@ -72,9 +69,7 @@ async function build() {
                 canvasDiv = createCanvasElement(categBlock[0]);
                 setTimeout(() => {
                     let h100 = document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive")
-                    console.log(h100)
                     for (let item of h100) {
-                        console.log("h100 remove")
                         item.classList.remove("h100");
                     }
                 }, 1000);
@@ -115,20 +110,6 @@ function loadingScreen() {
     evt.dispatch('loading_sreen_display');
 }
 
-async function buildChart(formattedData) {
-    const chartJsConfig = await getChartJsConfig();
-    chartJsConfig.data = formattedData;
-
-    const homeBlock = document.getElementsByClassName("homeBlock");
-    if (homeBlock && homeBlock[0]) {
-        homeBlock[0].innerHTML = "";
-        const canvasDiv = createCanvasElement(homeBlock[0]);
-        const ctx = canvasDiv.getContext('2d');
-
-        const myChart = new Chart(ctx, chartJsConfig);
-    }
-}
-
 function createCanvasElement(parentElement) {
     const canvasDiv = document.createElement('canvas');
     canvasDiv.classList = "canvasDiv";
@@ -158,63 +139,7 @@ const annotation = {
 function average(ctx) {
     const values = ctx.chart.data.datasets[0].data;
     return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-async function getChartJsConfig() {
-    const settings = await chrome.storage.local.get(['startDate', 'endDate']);
-
-    return {
-        type: 'line',
-        options: {
-            responsive: true,
-            plugins: {
-                annotation: {
-                    annotations: {
-                        annotation
-                    }
-                },
-                title: {
-                    display: true,
-                    text: "Depense sur " + monthDiff(settings.startDate, settings.endDate) + " mois"
-                },
-                legend: {
-                    onClick: async function (evt, item) {
-                        const currentVal = await chrome.storage.local.get([item.text]);
-                        await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
-
-                        Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
-                    },
-                }
-            },
-            interaction: {
-                intersect: false,
-            },
-            scales: {
-                x: {
-                    type: 'time',
-                    grid: {
-                        color: "#e9f5f9",
-                        borderColor: "#d3eaf2",
-                        tickColor: "#e9f5f9"
-                    },
-                    display: true,
-                    title: {
-                        color: "#92cbdf",
-                        display: false
-                    }
-                },
-                y: {
-                    display: true,
-                    grid: {
-                        color: "#e9f5f9",
-                        borderColor: "#d3eaf2",
-                        tickColor: "#e9f5f9"
-                    },
-                }
-            }
-        },
-    };
-}
+};
 
 function parseColorCSS(strClass) {
     const styleElement = document.createElement("div");
@@ -225,11 +150,4 @@ function parseColorCSS(strClass) {
     styleElement.remove();
 
     return colorVal;
-}
-
-function monthDiff(dateFrom, dateTo) {
-    dateFrom = new Date(dateFrom);
-    dateTo = new Date(dateTo);
-
-    return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
 }
