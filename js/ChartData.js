@@ -114,7 +114,7 @@ class ChartData {
             let dataCategory = {
                 label: category.name,
                 data: dateValueObject,
-                borderColor: this.parseColorCSS("categoryColor_" + category.id),
+                backgroundColor: this.parseColorCSS("categoryColor_" + category.id),
                 fill: false,
                 tension: 0.3,
                 hidden: settings[category.name]
@@ -157,7 +157,7 @@ class ChartData {
         const settings = await chrome.storage.local.get(['startDate', 'endDate']);
 
         return {
-            type: 'line',
+            type: 'bar',
             options: {
                 responsive: true,
                 plugins: {
@@ -190,14 +190,17 @@ class ChartData {
                             borderColor: "#d3eaf2",
                             tickColor: "#e9f5f9"
                         },
+                       
                         display: true,
+                        stacked: true,
                         title: {
                             color: "#92cbdf",
                             display: false
                         }
                     },
                     y: {
-                        display: true,
+                        display: true, 
+                        stacked: true,
                         grid: {
                             color: "#e9f5f9",
                             borderColor: "#d3eaf2",
