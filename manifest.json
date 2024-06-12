@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Bankin+",
-  "description": "Bankin unofficial premium addons",
-  "version": "0.1.10.4",
+  "name": "Pecunio",
+  "description": "Pecunio overload Bankin website",
+  "version": "0.1.10.5",
   "author": "Remy Lefebvre",
   "icons": {
     "64": "asset/icon.png"
