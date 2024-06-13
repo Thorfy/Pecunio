@@ -1,4 +1,7 @@
 # Pecunio
+  
+  ![pecunio](https://github.com/Thorfy/Pecunio/assets/19363319/1df62f2c-aa19-496b-b445-7ce038870ee3)
+
   Add boosted and enhanced feature for bankin.com with a chrome extension 
   https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github
 
