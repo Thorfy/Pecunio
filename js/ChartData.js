@@ -14,20 +14,15 @@ class ChartData {
     async applySettingOnData() {
         const startDate = Date.parse(settingClass.getSetting('startDate'));
         const endDate = Date.parse(settingClass.getSetting('endDate'));
-        const returned = [];
 
-        for (const transaction of this.transactions) {
+        return this.transactions.filter(transaction => {
             const transactionDate = new Date(transaction.date);
             transactionDate.setDate(1);
             transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
             transaction.date = transactionDate;
-
             const modifiedDate = transactionDate.toDateString();
-            if (!(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate)) {
-                returned.push(transaction);
-            }
-        }
-        return returned;
+            return !(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate);
+        });
     }
 
     mergeTransactionByCategory(allTransactions, allCategory) {
@@ -82,11 +77,13 @@ class ChartData {
                 }
             }
 
+            const color = this.parseColorCSS("categoryColor_" + category.id);
+
             data.datasets.push({
                 label: category.name,
                 data: dateValueObject,
-                backgroundColor: this.parseColorCSS("categoryColor_" + category.id),
-                borderColor: this.parseColorCSS("categoryColor_" + category.id),
+                backgroundColor: color,
+                borderColor: color,
                 fill: false,
                 tension: 0.3,
                 hidden: settings[category.name]
@@ -100,10 +97,8 @@ class ChartData {
         const styleElement = document.createElement("div");
         styleElement.className = strClass;
         document.body.appendChild(styleElement);
-
         const colorVal = window.getComputedStyle(styleElement).backgroundColor;
         styleElement.remove();
-
         return colorVal;
     }
 
@@ -188,16 +183,17 @@ class ChartData {
             },
             plugins: [{
                 id: 'toggleTypeChart',
-                beforeInit: async function (chart) {
-                     // Helper function to calculate the number of months between two dates
-                     function monthDiff(dateFrom, dateTo) {
+                beforeInit: function (chart) {
+                    // Helper function to calculate the number of months between two dates
+                    function monthDiff(dateFrom, dateTo) {
                         return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
                     }
-                     const minDate = new Date(Math.min(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
-                     const maxDate = new Date(Math.max(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
-                     const monthCount = monthDiff(minDate, maxDate);
- 
-                     chart.options.plugins.title.text = `Depense sur ${monthCount} mois`;
+
+                    const minDate = new Date(Math.min(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
+                    const maxDate = new Date(Math.max(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
+                    const monthCount = monthDiff(minDate, maxDate);
+
+                    chart.options.plugins.title.text = `Depense sur ${monthCount} mois`;
                 },
                 beforeDraw: function (chart) {
                     const canvas = chart.canvas;
@@ -231,5 +227,4 @@ class ChartData {
             }]
         };
     }
-
 }
