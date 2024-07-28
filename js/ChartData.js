@@ -86,6 +86,7 @@ class ChartData {
                 label: category.name,
                 data: dateValueObject,
                 backgroundColor: this.parseColorCSS("categoryColor_" + category.id),
+                borderColor: this.parseColorCSS("categoryColor_" + category.id),
                 fill: false,
                 tension: 0.3,
                 hidden: settings[category.name]
@@ -134,7 +135,7 @@ class ChartData {
                 },
                 title: {
                     display: true,
-                    text: "Depense sur " + this.monthDiff(settings.startDate, settings.endDate) + " mois"
+                    text: ""
                 },
                 legend: {
                     onClick: async function (evt, item) {
@@ -188,20 +189,15 @@ class ChartData {
             plugins: [{
                 id: 'toggleTypeChart',
                 beforeInit: async function (chart) {
-                    const newType = initialChartType;
-                    chart.config.type = newType;
-
-                    chart.data.datasets.forEach(dataset => {
-                        dataset.type = newType;
-                        if (newType === 'line') {
-                            dataset.borderColor = dataset.backgroundColor;
-                            dataset.fill = false;
-                            dataset.tension = 0.3;
-                        } else {
-                            dataset.borderColor = undefined;
-                            dataset.fill = true;
-                        }
-                    });
+                     // Helper function to calculate the number of months between two dates
+                     function monthDiff(dateFrom, dateTo) {
+                        return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
+                    }
+                     const minDate = new Date(Math.min(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
+                     const maxDate = new Date(Math.max(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
+                     const monthCount = monthDiff(minDate, maxDate);
+ 
+                     chart.options.plugins.title.text = `Depense sur ${monthCount} mois`;
                 },
                 beforeDraw: function (chart) {
                     const canvas = chart.canvas;
@@ -228,19 +224,6 @@ class ChartData {
                     if (withinLegendX && withinLegendY && event.type === 'click') {
                         const newType = chart.config.type === 'line' ? 'bar' : 'line';
                         chart.config.type = newType;
-
-                        chart.data.datasets.forEach(dataset => {
-                            dataset.type = newType;
-                            if (newType === 'line') {
-                                dataset.borderColor = dataset.backgroundColor;
-                                dataset.fill = false;
-                                dataset.tension = 0.3;
-                            } else {
-                                dataset.borderColor = undefined;
-                                dataset.fill = true;
-                            }
-                        });
-
                         await chrome.storage.local.set({ 'chartType': newType });
                         chart.update();
                     }
@@ -249,10 +232,4 @@ class ChartData {
         };
     }
 
-    monthDiff(dateFrom, dateTo) {
-        dateFrom = new Date(dateFrom);
-        dateTo = new Date(dateTo);
-
-        return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
-    }
 }
