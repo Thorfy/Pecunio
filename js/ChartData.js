@@ -126,15 +126,15 @@ class ChartData {
         return data
 
     }
-    
+
     parseColorCSS(strClass) {
         const styleElement = document.createElement("div");
         styleElement.className = strClass;
         document.body.appendChild(styleElement);
-    
+
         const colorVal = window.getComputedStyle(styleElement).backgroundColor;
         styleElement.remove();
-    
+
         return colorVal;
     }
 
@@ -154,68 +154,139 @@ class ChartData {
 
 
     async getChartJsConfig() {
-        const settings = await chrome.storage.local.get(['startDate', 'endDate']);
-
-        return {
-            type: 'bar',
-            options: {
-                responsive: true,
-                plugins: {
-                    annotation: {
-                        annotations: {
-                            annotation
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: "Depense sur " + this.monthDiff(settings.startDate, settings.endDate) + " mois"
-                    },
-                    legend: {
-                        onClick: async function (evt, item) {
-                            const currentVal = await chrome.storage.local.get([item.text]);
-                            await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
-
-                            Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
-                        },
+        const settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
+        const initialChartType = settings.chartType || 'bar'; // Default to 'bar' if not set
+    
+        const commonConfig = {
+            responsive: true,
+            plugins: {
+                annotation: {
+                    annotations: {
+                        annotation
                     }
                 },
-                interaction: {
-                    intersect: false,
+                title: {
+                    display: true,
+                    text: "Depense sur " + this.monthDiff(settings.startDate, settings.endDate) + " mois"
                 },
-                scales: {
-                    x: {
-                        type: 'time',
-                        grid: {
-                            color: "#e9f5f9",
-                            borderColor: "#d3eaf2",
-                            tickColor: "#e9f5f9"
-                        },
-                       
-                        display: true,
-                        stacked: true,
-                        title: {
-                            color: "#92cbdf",
-                            display: false
-                        }
+                legend: {
+                    onClick: async function (evt, item) {
+                        const currentVal = await chrome.storage.local.get([item.text]);
+                        await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
+                        Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
                     },
-                    y: {
-                        display: true, 
-                        stacked: true,
-                        grid: {
-                            color: "#e9f5f9",
-                            borderColor: "#d3eaf2",
-                            tickColor: "#e9f5f9"
-                        },
+                }
+            },
+            interaction: {
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    grid: {
+                        color: "#e9f5f9",
+                        borderColor: "#d3eaf2",
+                        tickColor: "#e9f5f9"
+                    },
+                    display: true,
+                    stacked: true,
+                    title: {
+                        color: "#92cbdf",
+                        display: false
+                    }
+                },
+                y: {
+                    display: true,
+                    stacked: true,
+                    grid: {
+                        color: "#e9f5f9",
+                        borderColor: "#d3eaf2",
+                        tickColor: "#e9f5f9"
+                    },
+                }
+            }
+        };
+    
+        return {
+            type: initialChartType,
+            options: {
+                ...commonConfig,
+                plugins: {
+                    ...commonConfig.plugins,
+                    toggleTypeChart: {
+                        display: true,
                     }
                 }
             },
+            plugins: [{
+                id: 'toggleTypeChart',
+                beforeInit: async function (chart) {
+                    // Set initial dataset properties based on chart type
+                    const newType = initialChartType;
+                    chart.config.type = newType;
+    
+                    chart.data.datasets.forEach(dataset => {
+                        dataset.type = newType;
+                        if (newType === 'line') {
+                            dataset.borderColor = dataset.backgroundColor;
+                            dataset.fill = false;
+                            dataset.tension = 0.3;
+                        } else {
+                            dataset.borderColor = undefined;
+                            dataset.fill = true;
+                        }
+                    });
+                },
+                beforeDraw: function (chart) {
+                    var canvas = chart.canvas;
+                    var ctx = canvas.getContext('2d');
+                    var legendWidth = 120;
+                    var legendHeight = 20;
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                    ctx.fillRect(10, 10, legendWidth, legendHeight);
+                    ctx.fillStyle = 'black';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('Toggle chart type', 10 + legendWidth / 2, 10 + legendHeight / 2);
+                    ctx.restore();
+                },
+                afterEvent: async function (chart, args) {
+                    var event = args.event;
+                    var legendWidth = 120;
+                    var legendHeight = 20;
+                    var withinLegendX = event.x >= 10 && event.x <= 10 + legendWidth;
+                    var withinLegendY = event.y >= 10 && event.y <= 10 + legendHeight;
+                    if (withinLegendX && withinLegendY && event.type === 'click') {
+                        const newType = chart.config.type === 'line' ? 'bar' : 'line';
+                        chart.config.type = newType;
+    
+                        // Ensure dataset properties are retained correctly
+                        chart.data.datasets.forEach(dataset => {
+                            dataset.type = newType;
+                            if (newType === 'line') {
+                                dataset.borderColor = dataset.backgroundColor;
+                                dataset.fill = false;
+                                dataset.tension = 0.3;
+                            } else {
+                                dataset.borderColor = undefined;
+                                dataset.fill = true;
+                            }
+                        });
+    
+                        await chrome.storage.local.set({ 'chartType': newType }); // Save the new chart type to settings
+                        chart.update();
+                    }
+                }
+            }]
         };
     }
 
     monthDiff(dateFrom, dateTo) {
         dateFrom = new Date(dateFrom);
         dateTo = new Date(dateTo);
-    
+
         return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
     }
 }
