@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Build
         run: zip -r chrome-extension-${{ github.sha }}.zip . -x .git
 
       - name: Archive chrome-extension artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: chrome-extension-${{ github.sha }}
           path: chrome-extension-${{ github.sha }}.zip
@@ -37,7 +37,7 @@ jobs:
       EXTENSION_ID: "jeomdpldhaigmdbjobamliaipijhmiie" 
 
     steps:
-      - uses: actions/setup-node@v2-beta
+      - uses: actions/setup-node@v3-beta
         with:
           node-version: "18"
 
