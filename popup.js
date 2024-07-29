@@ -195,11 +195,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     refresh.addEventListener('click', function () {
-        chrome.storage.local.set({ ["cache_data_transac"]: null });
-        chrome.storage.local.set({ ["cache_data_categ"]: null });
-        chrome.storage.local.get(['cache_data_transac', 'cache_data_categ'], function (data) {
-            console.log("data refresh", data.cache_data_transac, data.cache_data_categ);
-            evt.dispatch('url_change');
+        chrome.storage.local.clear(function () {
+            var error = chrome.runtime.lastError;
+            if (error) {
+                console.error(error);
+            } else {
+                console.log("data refresh");
+                evt.dispatch('url_change');
+            }
         });
     });
 });

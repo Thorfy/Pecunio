@@ -118,7 +118,8 @@ class ChartData {
 
     async getChartJsConfig() {
         const settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
-        const initialChartType = settings.chartType || 'bar';
+        const initialChartType = settings.chartType ?? 'bar';
+        const cummulative = initialChartType === "line" ? false : true;
 
         const commonConfig = {
             responsive: true,
@@ -160,7 +161,7 @@ class ChartData {
                 },
                 y: {
                     display: true,
-                    stacked: true,
+                    stacked: cummulative,
                     grid: {
                         color: "#e9f5f9",
                         borderColor: "#d3eaf2",
@@ -218,10 +219,8 @@ class ChartData {
                     const withinLegendY = event.y >= 10 && event.y <= 10 + legendHeight;
 
                     if (withinLegendX && withinLegendY && event.type === 'click') {
-                        const newType = chart.config.type === 'line' ? 'bar' : 'line';
-                        chart.config.type = newType;
-                        await chrome.storage.local.set({ 'chartType': newType });
-                        chart.update();
+                        await chrome.storage.local.set({ 'chartType': chart.config.type === 'line' ? 'bar' : 'line' });
+                        evt.dispatch('url_change');
                     }
                 }
             }]
