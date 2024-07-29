@@ -37,12 +37,12 @@ jobs:
       EXTENSION_ID: "jeomdpldhaigmdbjobamliaipijhmiie" 
 
     steps:
-      - uses: actions/setup-node@v3-beta
+      - uses: actions/setup-node@v2-beta
         with:
           node-version: "18"
 
       - name: Download bundle artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           name: chrome-extension-${{ github.sha }}
 
