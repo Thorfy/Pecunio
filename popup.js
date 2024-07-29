@@ -67,7 +67,11 @@ class DataMerger {
         let filteredTransactions = [];
         this.transactions.forEach(transaction => {
             let transactionDate = new Date(transaction.date);
-            transactionDate.setDate(1);  // Set to the first day of the month
+            if (transaction.current_month < 0) {
+                transactionDate.setDate(30);
+            } else if (transaction.current_month > 0) {
+                transactionDate.setDate(1);
+            }
             transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);  // Adjust month
 
             transaction.date = transactionDate;  // Update transaction date
