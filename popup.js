@@ -11,13 +11,14 @@ class Category {
 }
 
 class Transaction {
-    constructor(id, amount, date, description, categoryId, current_month) {
+    constructor(id, amount, date, description, categoryId, current_month, expense_type) {
         this.id = id;
         this.amount = amount;
         this.date = date;
         this.description = description;
         this.categoryId = categoryId;
         this.current_month = current_month;
+        this.expense_type = expense_type
     }
 
     static fromRaw(rawTransaction) {
@@ -27,7 +28,8 @@ class Transaction {
             rawTransaction.date,
             rawTransaction.description,
             rawTransaction.category.id,
-            rawTransaction.current_month
+            rawTransaction.current_month,
+            rawTransaction.expense_type
         );
     }
 }
@@ -93,7 +95,8 @@ class DataMerger {
                 categoryId: category.id || null,
                 categoryName: category.name || 'Uncategorized',
                 parentCategoryId: category.parentId || null,
-                parentCategoryName: category.parentId ? this.categoryMap.get(category.parentId).name : 'Uncategorized'
+                parentCategoryName: category.parentId ? this.categoryMap.get(category.parentId).name : 'Uncategorized',
+                expenseType: transaction.expense_type
             };
         });
 
@@ -105,7 +108,7 @@ class DataMerger {
 
     // Convert merged data to CSV format
     convertToCSV(data) {
-        const header = ["Transaction ID", "Date", "Amount", "Description", "Category ID", "Category Name", "Parent Category ID", "Parent Category Name"];
+        const header = ["Transaction ID", "Date", "Amount", "Description", "Category ID", "Category Name", "Parent Category ID", "Parent Category Name", "Expense Type"];
         const csvRows = [header.join(",")];
 
         data.forEach(row => {
@@ -117,7 +120,8 @@ class DataMerger {
                 row.categoryId,
                 `"${row.categoryName}"`,
                 row.parentCategoryId,
-                `"${row.parentCategoryName}"`
+                `"${row.parentCategoryName}"`,
+                row.expenseType
             ];
             csvRows.push(values.join(","));
         });
