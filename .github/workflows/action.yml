@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v3  # Updated to latest stable version
         with:
-          node-version: "18"  # Ensure this matches your Node.js requirements
+          node-version: "20"  # Ensure this matches your Node.js requirements
 
       - name: Download bundle artifact
         uses: actions/download-artifact@v3  # Updated to latest stable version

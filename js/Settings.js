@@ -4,10 +4,12 @@ class Settings {
         'startDate', 
         'endDate', 
         'accounts',
-        'cache_data_transac', 
-        'cache_time_transac', 
-        'cache_data_categ', 
-        'cache_time_categ',
+        'cache_data_transactions', 
+        'cache_time_transactions', 
+        'cache_data_categories', 
+        'cache_time_categories', 
+        'cache_data_accounts', 
+        'cache_time_accounts',
         'isBlurry'
     ];
 

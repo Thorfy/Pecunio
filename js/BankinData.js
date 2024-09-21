@@ -2,7 +2,8 @@ class BankinData {
     static requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
     static domain = "https://sync.bankin.com";
     static urlTransactions = "/v2/transactions?limit=500";
-    static urlCategory = "/v2/categories?limit=200";
+    static urlCategories = "/v2/categories?limit=200";
+    static urlAccounts = "/v2/accounts?limit=200";
 
     constructor() {
         this.port = chrome.runtime.connect();
@@ -22,12 +23,13 @@ class BankinData {
     }
 
     async reloadData() {
-        const [transac, categ] = await Promise.all([
-            this.loadCache(this.authHeader, BankinData.urlTransactions, "transac"), 
-            this.loadCache(this.authHeader, BankinData.urlCategory, "categ")
+        const [transactions, categories, accounts] = await Promise.all([
+            this.loadCache(this.authHeader, BankinData.urlTransactions, "transactions"), 
+            this.loadCache(this.authHeader, BankinData.urlCategories, "categories"),
+            this.loadCache(this.authHeader, BankinData.urlAccounts, "accounts")
         ]);
         
-        this.dataVal = { transaction: transac, category: categ };
+        this.dataVal = { transactions: transactions, categories: categories, accounts: accounts };
         //loadDataVal = this.dataVal;
         evt.dispatch('data_loaded');
     }

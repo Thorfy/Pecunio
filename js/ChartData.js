@@ -1,7 +1,8 @@
 class ChartData {
-    constructor(transactions, categories, settings) {
+    constructor(transactions, categories, accounts, settings) {
         this.transactions = transactions;
         this.categories = categories;
+        this.accounts = accounts;
         this.settings = settings;
     }
 

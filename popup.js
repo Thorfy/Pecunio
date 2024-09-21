@@ -194,10 +194,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Load data
-    chrome.storage.local.get(['cache_data_transac', 'cache_data_categ'], function (data) {
+    chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories'], function (data) {
         csvExport.addEventListener('click', function () {
             console.log(data, startDate.value, endDate.value)
-            const dataMerger = new DataMerger(data.cache_data_transac, data.cache_data_categ, startDate.value, endDate.value);
+            const dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, startDate.value, endDate.value);
             dataMerger.exportToCSV();
         });
     });

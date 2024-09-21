@@ -40,7 +40,7 @@ async function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen();
         setTimeout(() => { new Hidder() }, 500);
-        const chartData = new ChartData(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), setting);
+        const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'),settingClass.getSetting('cache_data_accounts'), setting);
         const preparedData = await chartData.prepareData();
         await chartData.buildChart(preparedData);
     } else if (location.href === "https://app2.bankin.com/categories") {
@@ -54,7 +54,7 @@ async function build() {
         const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
         if (dateChoosedElem) {
             const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
-            const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transac'), settingClass.getSetting('cache_data_categ'), dateChoosed.split(" "));
+            const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "));
             const preparedData = await chartData2.prepareData();
 
             let categBlock = document.getElementsByClassName("categoryChart");
