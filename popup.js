@@ -178,15 +178,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     chrome.storage.local.get(['cache_data_accounts', 'accountsSelected'], function (data) {
-        const { cache_data_accounts, accountsSelected } = data;
+        let { cache_data_accounts, accountsSelected } = data;
 
         if (cache_data_accounts) {
-            const accountsInput = document.getElementById('accountsInput');
+            if (!accountsSelected) {
+                accountsSelected = cache_data_accounts.map(account => account.id);
+                chrome.storage.local.set({ accountsSelected: accountsSelected });
+            }
 
             accountsInput.innerHTML = '';
             cache_data_accounts.forEach(account => {
-            console.log(accountsSelected,accountsSelected.includes(account.id.toString()) )
-                let checked = accountsSelected.includes(account.id.toString())
+                let checked = accountsSelected.includes(account.id)
                 const option = new Option(account.name, account.id, checked, checked);
 
                 accountsInput.add(option);
@@ -201,9 +203,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    document.getElementById('accountsInput').addEventListener('change', function () {
-        const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
-        console.log(selectedOptions);
+    accountsInput.addEventListener('change', function () {
+        const selectedOptions = Array.from(this.selectedOptions).map(option => parseInt(option.value));
         chrome.storage.local.set({ accountsSelected: selectedOptions });
     });
 
@@ -217,7 +218,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Load data
     chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories'], function (data) {
         csvExport.addEventListener('click', function () {
-            console.log(data, startDate.value, endDate.value)
             const dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, startDate.value, endDate.value);
             dataMerger.exportToCSV();
         });
