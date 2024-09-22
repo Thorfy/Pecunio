@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     let startDate = document.querySelector('#startDate');
     let endDate = document.querySelector('#endDate');
-    let accounts = document.querySelector('#accounts');
+    let accountsInput = document.querySelector('#accountsInput');
     let csvExport = document.querySelector("#exportCsv");
     let refresh = document.querySelector("#refresh");
 
@@ -177,16 +177,37 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    chrome.storage.local.get(['accountsList'], function (data) {
-        if (data.accountsList != null) {
-            for (const account of data.accountsList) {
-                let newOption = new Option(account, account);
-                accounts.add(newOption, undefined);
-            }
+    chrome.storage.local.get(['cache_data_accounts', 'accountsSelected'], function (data) {
+        const { cache_data_accounts, accountsSelected } = data;
+
+        if (cache_data_accounts) {
+            const accountsInput = document.getElementById('accountsInput');
+
+            accountsInput.innerHTML = '';
+            cache_data_accounts.forEach(account => {
+            console.log(accountsSelected,accountsSelected.includes(account.id.toString()) )
+                let checked = accountsSelected.includes(account.id.toString())
+                const option = new Option(account.name, account.id, checked, checked);
+
+                accountsInput.add(option);
+            });
+
+            const choices = new Choices(accountsInput, {
+                removeItemButton: true,   // Allows users to remove selected items
+                placeholder: false,        // Enable placeholder
+                searchEnabled: true,      // Enable search within the dropdown
+                shouldSort: true,        // Disable sorting of options
+            });
         }
     });
 
-    let inputs = [startDate, endDate, accounts];
+    document.getElementById('accountsInput').addEventListener('change', function () {
+        const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
+        console.log(selectedOptions);
+        chrome.storage.local.set({ accountsSelected: selectedOptions });
+    });
+
+    let inputs = [startDate, endDate];
     for (const input of inputs) {
         input.addEventListener('blur', function () {
             chrome.storage.local.set({ [this.id]: this.value });

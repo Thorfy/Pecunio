@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>CSV Exporter</title>
+    <link rel="stylesheet" href="libs/css/choices.min.css">
     <style>
         body {
             height: 100%;
@@ -39,6 +40,9 @@
             line-height: inherit;
             text-decoration: none;
         }
+        #selectContainer {
+            color: #00325b;
+        }
     </style>
 </head>
 
@@ -63,18 +67,16 @@
                 <input id="endDate" type="date">
             </div>
         </div>
-        <div style="display: none;">
+        <div>
             <div>
                 <h2>2 . Accounts</h2>
-                <div id="loadingAccount"><img src="Loading.gif" style="width: 30%;"></div>
-                <div id="inputAccount" style="display: none;">
-                    <p>Accounts</p>
-                    <select id="accounts" multiple></select>
+                <div id="selectContainer">
+                    <select id="accountsInput" multiple></select>
                 </div>
             </div>
         </div>
         <div>
-            <h2>2 . Download CSV </h2>
+            <h2>3 . Download CSV </h2>
             <div><button class="button w-button" id="exportCsv"
                     style="width: 100%; background-color:#00ce94; color: #fff;">export</button></div>
         </div>
@@ -87,7 +89,7 @@
 </body>
 
 </html>
-
+<script src="libs/js/choices.min.js"></script>
 <script src="js/Evt.js"></script>
 <script src="js/Settings.js"></script>
 <script src="popup.js"></script>

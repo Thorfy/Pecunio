@@ -3,7 +3,7 @@ class BankinData {
     static domain = "https://sync.bankin.com";
     static urlTransactions = "/v2/transactions?limit=500";
     static urlCategories = "/v2/categories?limit=200";
-    static urlAccounts = "/v2/accounts?limit=200";
+    static urlAccounts = "/v2/accounts?limit=500";
 
     constructor() {
         this.port = chrome.runtime.connect();
