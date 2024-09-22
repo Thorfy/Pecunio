@@ -10,6 +10,7 @@ class Settings {
         'cache_time_categories', 
         'cache_data_accounts', 
         'cache_time_accounts',
+        'accountsSelected',
         'isBlurry'
     ];
 

@@ -40,7 +40,7 @@ async function build() {
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen();
         setTimeout(() => { new Hidder() }, 500);
-        const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'),settingClass.getSetting('cache_data_accounts'), setting);
+        const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'),settingClass.getSetting('accountsSelected'), setting);
         const preparedData = await chartData.prepareData();
         await chartData.buildChart(preparedData);
     } else if (location.href === "https://app2.bankin.com/categories") {

@@ -10,10 +10,22 @@ class Category {
     }
 }
 
+class Account {
+    constructor(id, name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    static fromRaw(rawAccount) {
+        return new Category(rawAccount.id, rawAccount.name);
+    }
+}
+
 class Transaction {
-    constructor(id, amount, date, description, categoryId, current_month, expense_type) {
+    constructor(id, amount, accountId, date, description, categoryId, current_month, expense_type) {
         this.id = id;
         this.amount = amount;
+        this.accountId = accountId;
         this.date = date;
         this.description = description;
         this.categoryId = categoryId;
@@ -25,6 +37,7 @@ class Transaction {
         return new Transaction(
             rawTransaction.id,
             rawTransaction.amount,
+            parseInt(rawTransaction.account.id),
             rawTransaction.date,
             rawTransaction.description,
             rawTransaction.category.id,
@@ -35,12 +48,15 @@ class Transaction {
 }
 
 class DataMerger {
-    constructor(transactions, categorizations, startDate = null, endDate = null) {
+    constructor(transactions, categorizations, accounts, startDate = null, endDate = null, accountsSelected = null) {
         this.transactions = transactions.map(Transaction.fromRaw);
+        this.accounts = accounts.map(Account.fromRaw);
+        this.accountsMap = this.buildAccountMap();
         this.categorizations = this.flattenCategories(categorizations);
         this.categoryMap = this.buildCategoryMap();
         this.startDate = startDate ? new Date(startDate) : null;
         this.endDate = endDate ? new Date(endDate) : null;
+        this.accountsSelected = accountsSelected;
     }
 
     // Flatten and normalize the categorizations array
@@ -64,6 +80,15 @@ class DataMerger {
         return categoryMap;
     }
 
+    // Build a map of account for easy lookup
+    buildAccountMap() {
+        let accountsMap = new Map();
+        this.accounts.forEach(account => {
+            accountsMap.set(account.id, account);
+        });
+        return accountsMap;
+    }
+
     // Merge transactions with their corresponding categories
     mergeData() {
         let filteredTransactions = [];
@@ -79,19 +104,24 @@ class DataMerger {
             transaction.date = transactionDate;  // Update transaction date
             let modifiedDate = transactionDate.toDateString();
 
-            if (!(this.startDate && this.endDate) ||
-                (Date.parse(modifiedDate) >= this.startDate && Date.parse(modifiedDate) <= this.endDate)) {
+            if ((!(this.startDate && this.endDate)
+                || (Date.parse(modifiedDate) >= this.startDate && Date.parse(modifiedDate) <= this.endDate))
+                && ((this.accountsSelected && this.accountsSelected.includes(parseInt(transaction.accountId))) || (this.accountsSelected === null))
+            ) {
                 filteredTransactions.push(transaction);
             }
         });
 
         let mergedData = filteredTransactions.map(transaction => {
             const category = this.categoryMap.get(transaction.categoryId) || {};
+            const account = this.accountsMap.get(transaction.accountId) || {};
             return {
                 transactionId: transaction.id,
                 date: transaction.date.toISOString().split('T')[0],
                 amount: transaction.amount,
                 description: transaction.description,
+                accountId: account.id || null,
+                accountName: account.name || 'noname',
                 categoryId: category.id || null,
                 categoryName: category.name || 'Uncategorized',
                 parentCategoryId: category.parentId || null,
@@ -108,7 +138,7 @@ class DataMerger {
 
     // Convert merged data to CSV format
     convertToCSV(data) {
-        const header = ["Transaction ID", "Date", "Amount", "Description", "Category ID", "Category Name", "Parent Category ID", "Parent Category Name", "Expense Type"];
+        const header = ["Transaction ID", "Date", "Amount", "Description", "Account ID", "Account Name", "Category ID", "Category Name", "Parent Category ID", "Parent Category Name", "Expense Type"];
         const csvRows = [header.join(",")];
 
         data.forEach(row => {
@@ -117,6 +147,8 @@ class DataMerger {
                 row.date,
                 row.amount,
                 `"${row.description}"`,
+                row.accountId,
+                `"${row.accountName}"`,
                 row.categoryId,
                 `"${row.categoryName}"`,
                 row.parentCategoryId,
@@ -216,9 +248,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Load data
-    chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories'], function (data) {
-        csvExport.addEventListener('click', function () {
-            const dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, startDate.value, endDate.value);
+    csvExport.addEventListener('click', async function () {
+        chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories', 'cache_data_accounts', 'accountsSelected'], function (data) {
+            const dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, startDate.value, endDate.value, data.accountsSelected);
             dataMerger.exportToCSV();
         });
     });

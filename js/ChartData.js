@@ -1,8 +1,8 @@
 class ChartData {
-    constructor(transactions, categories, accounts, settings) {
+    constructor(transactions, categories, accountsSelected = null, settings) {
         this.transactions = transactions;
         this.categories = categories;
-        this.accounts = accounts;
+        this.accountsSelected = accountsSelected;
         this.settings = settings;
     }
 
@@ -15,14 +15,17 @@ class ChartData {
     async applySettingOnData() {
         const startDate = Date.parse(settingClass.getSetting('startDate'));
         const endDate = Date.parse(settingClass.getSetting('endDate'));
-
         return this.transactions.filter(transaction => {
             const transactionDate = new Date(transaction.date);
             transactionDate.setDate(1);
             transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
             transaction.date = transactionDate;
             const modifiedDate = transactionDate.toDateString();
-            return !(startDate && endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate);
+            return (
+                !(startDate && endDate) ||
+                (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate))
+                && ((this.accountsSelected && this.accountsSelected.includes(parseInt(transaction.account.id))) || (this.accountsSelected == null)
+                );
         });
     }
 
