@@ -86,10 +86,35 @@
         <div><img id="currentVersion"><a href="https://github.com/Thorfy/Bankin-/releases/latest" target="_blank"><img
                     src="https://img.shields.io/github/v/release/Thorfy/Bankin-" alt="Last release"></a></div>
     </div>
+    <hr>
+    <div>
+        <h2>Run Unit Tests</h2>
+        <button class="button w-button" id="runTestsButton" style="background-color:#ffc107; color: #000;">Run Tests</button>
+    </div>
 </body>
 
 </html>
 <script src="libs/js/choices.min.js"></script>
+<!-- Core Utilities -->
 <script src="js/Evt.js"></script>
-<script src="js/Settings.js"></script>
+
+<!-- Services -->
+<script src="js/SettingsService.js"></script>
+<script src="js/BankinData.js"></script> <!-- Depends on SettingsService (now passed in constructor) -->
+<script src="js/DataService.js"></script> <!-- Depends on SettingsService, BankinData -->
+
+<!-- UI Manager -->
+<script src="js/UIManager.js"></script>
+
+<!-- Chart Processing Abstraction & Factory -->
+<script src="js/AbstractChartProcessor.js"></script>
+<script src="js/LineBarChartProcessor.js"></script> <!-- Depends on AbstractChartProcessor, DataService, UIManager -->
+<script src="js/SankeyChartProcessor.js"></script> <!-- Depends on AbstractChartProcessor, DataService, UIManager -->
+<script src="js/DonutChartProcessor.js"></script> <!-- Depends on AbstractChartProcessor, DataService, UIManager -->
+<script src="js/ChartFactory.js"></script> <!-- Depends on Processor classes -->
+
+<!-- Test runner and tests -->
+<script src="js/tests.js"></script> <!-- Depends on all of the above for comprehensive testing -->
+
+<!-- Popup specific logic -->
 <script src="popup.js"></script>

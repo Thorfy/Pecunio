@@ -1,10 +1,16 @@
 const evt = new Evt();
-const settingClass = new Settings();
-const dataClass = new BankinData();
 
-let setting = settingClass.getAllSetting();
+// Instantiate new services
+const settingsService = new SettingsService();
+const bankinDataProvider = new BankinData(settingsService); // BankinData now takes settingsService
+const dataService = new DataService(settingsService, bankinDataProvider); // DataService takes both
+
+let currentSettings = settingsService.getAllSettings(); // Updated way to get all settings
 let currentUrl = location.href;
 
+// TODO: Review if 'data_loaded' from BankinData is still the primary trigger for 'build',
+// or if 'data_service_ready' from DataService should be used.
+// For now, keeping 'data_loaded' as BankinData dispatches it after its own loading.
 evt.listen('data_loaded', async () => {
     try {
         await build();
@@ -14,7 +20,16 @@ evt.listen('data_loaded', async () => {
 });
 
 evt.listen("settings_reloaded", () => {
-    setting = settingClass.getAllSetting();
+    currentSettings = settingsService.getAllSettings(); // Update currentSettings when settings are reloaded
+});
+
+evt.listen('data_service_ready', async () => { // Optional: Listen to data_service_ready if build depends on it
+    console.log("Data Service is ready, potentially trigger build or updates here.");
+    // If build() should only run once DataService has processed initial data from BankinData
+    // then this is a good place to call build() or a part of it.
+    // However, the original flow ties build() to 'data_loaded' from BankinData and 'url_change'.
+    // For minimal changes to flow, we'll let build() be triggered by those,
+    // and assume DataService is ready by then or ChartData classes will use DataService internally.
 });
 
 evt.listen('url_change', async () => {
@@ -35,10 +50,12 @@ setInterval(() => {
 async function build() {
     evt.dispatch('build called');
 
-    await settingClass.loadSettings();
+    // settingsService constructor already loads settings. Explicit call might be redundant unless forced refresh.
+    // await settingsService.loadSettings();
+    currentSettings = settingsService.getAllSettings(); // Ensure currentSettings is up-to-date
 
     if (location.href === "https://app2.bankin.com/accounts") {
-        loadingScreen();
+        UIManager.loadingScreen(document.getElementsByClassName("rightColumn")[0]); // UIManager
         setTimeout(() => { new Hidder() }, 500);
 
         const refreshIcon = document.querySelector(".refreshIcon");
@@ -49,16 +66,31 @@ async function build() {
             };
 
             setTimeout(async () => {
-                await settingClass.setSettings(cacheObject);
-                new BankinData()
+                await settingsService.setSettings(cacheObject); // Use settingsService
+                // new BankinData() // Old way; BankinData is now bankinDataProvider, already instantiated.
+                                 // If refresh is needed, bankinDataProvider should have a public method like reloadData().
+                                 // For now, setSettings will trigger cache update & BankinData might use new cache on next load.
+                                 // To force immediate data refresh in BankinData:
+                if (bankinDataProvider && typeof bankinDataProvider.reloadData === 'function') {
+                    await bankinDataProvider.reloadData();
+                }
             }, 1100);
         })
 
+        // TODO: ChartData and ChartDataYearlyDonuts will be refactored later to use DataService.
+        // For now, they still expect raw data and settings.
+        // We fetch this data using settingsService (which gets it from cache).
+        // const transactionsForChart = settingsService.getSetting('cache_data_transactions'); // Will be fetched by processor via DataService
+        // const categoriesForChart = settingsService.getSetting('cache_data_categories'); // Will be fetched by processor via DataService
+        // const accountsSelectedForChart = settingsService.getSetting('accountsSelected'); // Now obtained within UIManager methods or passed to factory
 
+        // For /accounts page (Line/Bar chart and Donuts)
+        const lineBarParams = { accountsSelected: settingsService.getSetting('accountsSelected') }; // accountsSelected still needed here for now
+        const lineBarProcessor = ChartFactory.createProcessor('lineBar', dataService, lineBarParams);
 
-        const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
-        const preparedData = await chartData.prepareData();
-        await chartData.buildChart(preparedData);
+        await UIManager.displayMainLineBarChart(lineBarProcessor, "homeBlock");
+        await UIManager.displayYearlyDonutCharts(dataService, ChartFactory, "homeBlock"); // Pass ChartFactory
+
     } else if (location.href === "https://app2.bankin.com/categories") {
         const menu = document.querySelector("#monthSelector");
         if (menu) {
@@ -69,101 +101,16 @@ async function build() {
 
         const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
         if (dateChoosedElem) {
-            const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
-            const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "));
-            const preparedData = await chartData2.prepareData();
+            const dateChoosedParams = dateChoosedElem.textContent.toLocaleLowerCase().split(" ");
 
-            let categBlock = document.getElementsByClassName("categoryChart");
-            if (categBlock && categBlock[0]) {
-                //categBlock[0].innerHTML = "";
-                let canvasDiv = document.getElementsByClassName("canvasDiv")
-                if (canvasDiv && canvasDiv.length > 0) {
-                    for (let item of canvasDiv) {
-                        item.remove()
-                    }
-                }
-                canvasDiv = createCanvasElement(categBlock[0]);
-                setTimeout(() => {
-                    let h100 = document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive")
-                    for (let item of h100) {
-                        item.classList.remove("h100");
-                    }
-                }, 1000);
+            const sankeyParams = { dateParams: dateChoosedParams };
+            const sankeyProcessor = ChartFactory.createProcessor('sankey', dataService, sankeyParams);
 
-                const ctx = canvasDiv.getContext('2d');
-                const myChart = new Chart(ctx, {
-                    type: 'sankey',
-                    data: {
-                        datasets: [{
-                            label: 'My Dataset',
-                            data: preparedData,
-                            colorFrom: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
-                            colorTo: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
-                            colorMode: '',
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                    }
-                });
-            }
+            await UIManager.displaySankeyChart(sankeyProcessor, "categoryChart");
         }
     }
+    // Hide loading screen once all processing for the current view is done
+    UIManager.hideLoadingScreen();
 }
 
-function loadingScreen() {
-    const rightBlock = document.getElementsByClassName("rightColumn");
-    if (rightBlock && rightBlock[0]) {
-        const childBlock = rightBlock[0].children;
-
-        const imgdiv = document.createElement('img');
-        imgdiv.src = chrome.runtime.getURL("asset/Loading.gif");
-        imgdiv.style.textAlign = "center";
-
-        childBlock[0].innerHTML = "";
-        childBlock[0].appendChild(imgdiv);
-    }
-    evt.dispatch('loading_sreen_display');
-}
-
-function createCanvasElement(parentElement) {
-    const canvasDiv = document.createElement('canvas');
-    canvasDiv.classList = "canvasDiv";
-
-    if (parentElement) {
-        parentElement.appendChild(canvasDiv);
-    }
-
-    return canvasDiv;
-}
-
-const annotation = {
-    type: 'line',
-    borderColor: 'black',
-    borderDash: [6, 6],
-    borderDashOffset: 0,
-    borderWidth: 3,
-    label: {
-        enabled: true,
-        content: (ctx) => 'Average: ' + average(ctx).toFixed(2),
-        position: 'end'
-    },
-    scaleID: 'y',
-    value: (ctx) => average(ctx)
-};
-
-function average(ctx) {
-    const values = ctx.chart.data.datasets[0].data;
-    return values.reduce((a, b) => a + b, 0) / values.length;
-};
-
-function parseColorCSS(strClass) {
-    const styleElement = document.createElement("div");
-    styleElement.className = strClass;
-    document.body.appendChild(styleElement);
-
-    const colorVal = window.getComputedStyle(styleElement).backgroundColor;
-    styleElement.remove();
-
-    return colorVal;
-}
+// annotation and average functions have been moved to LineBarChartProcessor.js

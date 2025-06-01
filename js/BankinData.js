@@ -5,7 +5,10 @@ class BankinData {
     static urlCategories = "/v2/categories?limit=200";
     static urlAccounts = "/v2/accounts?limit=500";
 
-    constructor() {
+    constructor(settingsService) { // Added settingsService dependency
+        this.settingsService = settingsService; // Store settingsService instance
+        this.dataVal = { transactions: [], categories: [], accounts: [] }; // Initialize dataVal
+
         this.port = chrome.runtime.connect();
         this.authRequest = new Promise((resolve, reject) => {
             this.port.onMessage.addListener(message => {
@@ -37,10 +40,11 @@ class BankinData {
     async loadCache(authHeader, url, type) {
         let dataReturn = [];
 
-        const cachedData = settingClass.getSetting('cache_data_' + type);
-        const cachedTime = settingClass.getSetting('cache_time_' + type);
+        // Use this.settingsService instead of global settingClass
+        const cachedData = this.settingsService.getSetting('cache_data_' + type);
+        const cachedTime = this.settingsService.getSetting('cache_time_' + type);
 
-        if (cachedData && cachedTime > Date.now() - 2000 * 60) {
+        if (cachedData && cachedTime && (cachedTime > Date.now() - 2000 * 60)) { // Added null check for cachedTime
             evt.dispatch("cache_data_" + type + "_loaded");
             dataReturn = cachedData;
         } else {
@@ -49,7 +53,8 @@ class BankinData {
                 ['cache_data_' + type]: dataReturn,
                 ['cache_time_' + type]: Date.now()
             };
-            await settingClass.setSettings(cacheObject);
+            // Use this.settingsService to set settings
+            await this.settingsService.setSettings(cacheObject);
         }
         return dataReturn;
     }

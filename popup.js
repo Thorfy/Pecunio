@@ -266,4 +266,16 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         });
     });
+
+    let runTestsButton = document.querySelector('#runTestsButton');
+    if (runTestsButton) {
+        runTestsButton.addEventListener('click', function() {
+            if (typeof runAllTests === 'function') {
+                console.log("Running tests from popup...");
+                runAllTests();
+            } else {
+                console.error("runAllTests function not found. Ensure tests.js is loaded correctly.");
+            }
+        });
+    }
 });
