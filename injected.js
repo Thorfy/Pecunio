@@ -178,38 +178,86 @@ class ChartDataBudget {
     // Main method to prepare data for charts
     async prepareData(selectedYear, selectedMonth) {
         console.log(`[ChartDataBudget] prepareData: For year ${selectedYear}, month ${selectedMonth}.`);
-        // The organization happens on ALL transactions passed to constructor, then methods query specific year/month.
-        let data1, data2;
-        let label1, label2;
-        const allCategories = new Set();
+
+        let primaryData = {};
+        let comparisonData = {};
+        let primaryLabel = '';
+        let comparisonLabel = '';
+        const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // For labels
+        const _getMonthName = (monthNumber) => monthNames[monthNumber] || '';
+
 
         if (selectedMonth === 'ALL') {
-            console.log('[ChartDataBudget] prepareData: "ALL" months selected. Calculating median monthly spending.');
-            data1 = this.getMedianMonthlySpendingForYear(selectedYear);
-            label1 = `Median Monthly Spending ${selectedYear}`;
-            data2 = this.getMedianMonthlySpendingForYear(selectedYear - 1);
-            label2 = `Median Monthly Spending ${selectedYear - 1}`;
+            console.log('[ChartDataBudget] prepareData: Mode: ALL months selected.');
+            primaryData = this.getMedianMonthlySpendingForYear(selectedYear);
+            primaryLabel = `Median ${selectedYear}`;
+            comparisonData = this.getMedianMonthlySpendingForYear(selectedYear - 1);
+            comparisonLabel = `Median ${selectedYear - 1}`;
         } else { // month is a number
-            console.log('[ChartDataBudget] prepareData: Specific month selected. Calculating actual and historical median.');
-            data1 = this.getActualSpendingForMonth(selectedYear, selectedMonth);
-            label1 = `Actual Spending ${selectedYear}/${String(selectedMonth).padStart(2, '0')}`;
-            data2 = this.getHistoricalMedianForMonth(selectedMonth, selectedYear);
-            label2 = `Historical Median for Month ${String(selectedMonth).padStart(2, '0')} (vs Prior Years)`;
+            console.log(`[ChartDataBudget] prepareData: Mode: Specific month ${selectedMonth}/${selectedYear}`);
+            primaryData = this.getActualSpendingForMonth(selectedYear, selectedMonth);
+            primaryLabel = `Actual ${_getMonthName(selectedMonth)} ${selectedYear}`;
+            comparisonData = this.getHistoricalMedianForMonth(selectedMonth, selectedYear);
+            comparisonLabel = `Hist. Median ${_getMonthName(selectedMonth)}`;
         }
 
-        Object.keys(data1).forEach(cat => allCategories.add(cat));
-        Object.keys(data2).forEach(cat => allCategories.add(cat));
+        const allCategoryNames = new Set();
+        Object.keys(primaryData).forEach(name => allCategoryNames.add(name));
+        Object.keys(comparisonData).forEach(name => allCategoryNames.add(name));
 
-        const sortedCategories = Array.from(allCategories).sort();
+        const categoryNamesArray = Array.from(allCategoryNames);
+        let visibilitySettings = {};
 
-        const dataset1Data = sortedCategories.map(cat => data1[cat] || 0);
-        const dataset2Data = sortedCategories.map(cat => data2[cat] || 0);
+        if (categoryNamesArray.length > 0 && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            try {
+                visibilitySettings = await new Promise((resolve, reject) => {
+                    chrome.storage.local.get(categoryNamesArray, (items) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('[ChartDataBudget] Error fetching visibility settings:', chrome.runtime.lastError.message);
+                            // Don't reject, just resolve with empty settings so chart can still render
+                            resolve({});
+                        } else {
+                            resolve(items);
+                        }
+                    });
+                });
+                console.log('[ChartDataBudget] prepareData: Fetched visibilitySettings:', visibilitySettings);
+            } catch (error) {
+                console.error('[ChartDataBudget] prepareData: Failed to fetch visibility settings from chrome.storage.local:', error);
+                // visibilitySettings remains {}
+            }
+        } else {
+            if (categoryNamesArray.length === 0) {
+                console.log('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
+            } else {
+                console.warn('[ChartDataBudget] prepareData: chrome.storage.local not available. Cannot fetch visibility settings.');
+            }
+        }
+
+        // For this subtask, filtering is NOT applied yet.
+        const finalLabels = [];
+        const primaryDatasetData = [];
+        const comparisonDatasetData = [];
+
+        categoryNamesArray.sort(); // Ensure consistent order
+
+        for (const name of categoryNamesArray) {
+            if (visibilitySettings[name] !== true) { // true means hidden, undefined or false means visible
+                finalLabels.push(name);
+                primaryDatasetData.push(primaryData[name] || 0);
+                comparisonDatasetData.push(comparisonData[name] || 0);
+            } else {
+                console.log(`[ChartDataBudget] prepareData: Filtering out hidden category: ${name}`);
+            }
+        }
+
+        console.log(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
 
         return {
-            labels: sortedCategories,
+            labels: finalLabels,
             datasets: [
-                { label: label1, data: dataset1Data, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
-                { label: label2, data: dataset2Data, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
+                { label: primaryLabel, data: primaryDatasetData, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
+                { label: comparisonLabel, data: comparisonDatasetData, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
             ]
         };
     }
@@ -579,6 +627,49 @@ async function build() {
             // Using a small timeout can help if elements are not immediately ready in some cases.
             // console.log('[InjectedJS] Scheduling initial call to updateMedianChartView.'); // Retained
             setTimeout(updateMedianChartView, 0);
+
+            // Extract known parent category names for the storage listener
+            let knownCategoryNamesForVisibility = [];
+            if (budgetChartDataInstance && budgetChartDataInstance.categories && Array.isArray(budgetChartDataInstance.categories)) {
+                budgetChartDataInstance.categories.forEach(parentCat => {
+                    if (parentCat && parentCat.name) {
+                        knownCategoryNamesForVisibility.push(parentCat.name);
+                    }
+                });
+                // console.log('[InjectedJS] Known parent category names for visibility checks:', knownCategoryNamesForVisibility);
+            } else {
+                console.warn('[InjectedJS] Could not retrieve known category names for storage listener setup from budgetChartDataInstance.categories.');
+            }
+            // Fallback or alternative: use categoryLookup keys if .categories isn't structured as expected or for broader coverage
+            if (knownCategoryNamesForVisibility.length === 0 && budgetChartDataInstance && budgetChartDataInstance.categoryLookup) {
+                 const uniqueNames = new Set(Array.from(budgetChartDataInstance.categoryLookup.values()));
+                 knownCategoryNamesForVisibility = Array.from(uniqueNames);
+                 // console.log('[InjectedJS] Using categoryLookup values for visibility checks:', knownCategoryNamesForVisibility);
+            }
+
+
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+                chrome.storage.onChanged.addListener((changes, areaName) => {
+                    if (areaName === 'local') {
+                        let relevantChangeDetected = false;
+                        for (const key in changes) {
+                            if (knownCategoryNamesForVisibility.includes(key)) {
+                                // console.log(`[InjectedJS] Storage change detected for category '${key}':`, changes[key].newValue);
+                                relevantChangeDetected = true;
+                                break;
+                            }
+                        }
+
+                        if (relevantChangeDetected) {
+                            console.log('[InjectedJS] Relevant category visibility changed in storage, calling updateMedianChartView.');
+                            updateMedianChartView();
+                        }
+                    }
+                });
+                console.log('[InjectedJS] Added chrome.storage.onChanged listener for category visibility.');
+            } else {
+                console.warn('[InjectedJS] chrome.storage.onChanged not available. Live updates on legend click will not work.');
+            }
 
         } else {
             console.error("[InjectedJS] homeBlock not found for account page charts."); // Added prefix for consistency
