@@ -7,6 +7,7 @@ class ChartDataBudget {
     }
 
     async prepareData(granularity = 'monthly') { // granularity can be 'monthly' or 'yearly'
+        console.log('[ChartDataBudget] prepareData: Granularity:', granularity);
         const filteredTransactions = await this.applySettingOnData();
         const budgets = this.extractBudgets(filteredTransactions);
         const aggregatedBudgets = this.aggregateBudgets(budgets, granularity);
@@ -14,42 +15,48 @@ class ChartDataBudget {
     }
 
     async applySettingOnData() {
-        // Similar to ChartData.js, filter transactions based on date range and selected accounts
-        // This might need adjustment if budget data is structured differently
-        const startDate = Date.parse(settingClass.getSetting('startDate'));
-        const endDate = Date.parse(settingClass.getSetting('endDate'));
+        console.log('[ChartDataBudget] applySettingOnData: Initial transactions length:', this.transactions ? this.transactions.length : 'null');
+        if (this.transactions && this.transactions.length > 0) console.log('[ChartDataBudget] applySettingOnData: Sample initial transaction:', this.transactions[0]);
 
-        return this.transactions.filter(transaction => {
+        const startDateSetting = settingClass.getSetting('startDate');
+        const endDateSetting = settingClass.getSetting('endDate');
+        const startDate = startDateSetting ? Date.parse(startDateSetting) : null;
+        const endDate = endDateSetting ? Date.parse(endDateSetting) : null;
+        console.log('[ChartDataBudget] applySettingOnData: startDateSetting:', startDateSetting, 'parsed startDate:', startDate, 'endDateSetting:', endDateSetting, 'parsed endDate:', endDate);
+
+        const filtered = this.transactions.filter(transaction => {
             const transactionDate = new Date(transaction.date);
-            // Assuming transaction.current_month is 0-indexed if it exists, otherwise adjust
-            // For now, directly use transaction.date
-            // if (transaction.hasOwnProperty('current_month')) {
-            //     transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
-            // }
             const modifiedDate = transactionDate.toDateString(); // Use toDateString for consistent date parsing
 
             const isDateInRange = (!startDate || !endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate);
-            const isAccountSelected = !this.accountsSelected || this.accountsSelected.includes(parseInt(transaction.account.id));
+
+            let isAccountSelected = true; // Default to true if no accounts are selected
+            if (this.accountsSelected && this.accountsSelected.length > 0) { // only filter if accountsSelected is not null and not empty
+                isAccountSelected = this.accountsSelected.includes(parseInt(transaction.account.id));
+            }
 
             return isDateInRange && isAccountSelected;
         });
+        console.log('[ChartDataBudget] applySettingOnData: Filtered transactions length:', filtered.length);
+        if (filtered.length > 0) console.log('[ChartDataBudget] applySettingOnData: Sample filtered transaction:', filtered[0]);
+        return filtered;
     }
 
     extractBudgets(transactions) {
-        // This is a placeholder. We need to determine how budgets are stored.
-        // For now, let's assume transactions have a 'budgetAmount' and 'budgetCategory' field.
-        // Or, if budgets are defined per category, we might need to link transactions to category budgets.
-        // This part will likely need significant changes based on actual data structure.
+        console.log('[ChartDataBudget] extractBudgets: Input transactions length:', transactions ? transactions.length : 'null');
+        if (transactions && transactions.length > 0) console.log('[ChartDataBudget] extractBudgets: Sample input transaction:', transactions[0]);
 
-        // Example: Grouping transactions by category and summing amounts
         const budgets = {};
-        transactions.forEach(transaction => {
-            if (transaction.category && transaction.category.name) {
-                const categoryName = transaction.category.name;
-                budgets[categoryName] = (budgets[categoryName] || 0) + Math.abs(transaction.amount); // Assuming budget is positive
-            }
-        });
-        return budgets; // This will be an object like { "Groceries": 500, "Transport": 150 }
+        if (transactions) {
+            transactions.forEach(transaction => {
+                if (transaction.category && transaction.category.name) {
+                    const categoryName = transaction.category.name;
+                    budgets[categoryName] = (budgets[categoryName] || 0) + Math.abs(transaction.amount); // Assuming budget is positive
+                }
+            });
+        }
+        console.log('[ChartDataBudget] extractBudgets: Resulting budgets:', JSON.stringify(budgets));
+        return budgets;
     }
 
     aggregateBudgets(budgets, granularity) {
@@ -63,12 +70,16 @@ class ChartDataBudget {
     }
 
     formatDataForDonutChart(aggregatedBudgets) {
+        console.log('[ChartDataBudget] formatDataForDonutChart: Input aggregatedBudgets:', JSON.stringify(aggregatedBudgets));
         const labels = Object.keys(aggregatedBudgets);
         const data = Object.values(aggregatedBudgets);
-
-        // Generate colors - can use a predefined palette or random generation
-        const backgroundColors = labels.map((_, i) => `hsl(${i * (360 / labels.length)}, 70%, 50%)`);
-
+        let backgroundColors = [];
+        if (labels.length > 0) {
+            backgroundColors = labels.map((_, i) => `hsl(${i * (360 / labels.length)}, 70%, 50%)`);
+        } else {
+            console.log('[ChartDataBudget] formatDataForDonutChart: No labels, resulting in empty data and colors.');
+        }
+        console.log('[ChartDataBudget] formatDataForDonutChart: Result - labels:', labels, 'data:', data, 'colors:', backgroundColors);
         return {
             labels: labels,
             datasets: [{
@@ -181,14 +192,26 @@ async function build() {
             const budgetCanvas = createCanvasElement(budgetChartBlock); // createCanvasElement appends canvas
             const budgetCtx = budgetCanvas.getContext('2d');
 
+            const rawTransactionsForBudget = settingClass.getSetting('cache_data_transactions');
+            console.log('[InjectedJS] build (accounts): Raw transactions for budget chart (length):', rawTransactionsForBudget ? rawTransactionsForBudget.length : 'null');
+            if (rawTransactionsForBudget && rawTransactionsForBudget.length > 0) console.log('[InjectedJS] build (accounts): Sample raw transaction for budget:', rawTransactionsForBudget[0]);
+
+            const categoriesForBudget = settingClass.getSetting('cache_data_categories');
+            console.log('[InjectedJS] build (accounts): Categories for budget chart (length):', categoriesForBudget ? categoriesForBudget.length : 'null');
+
+            const accountsSelectedForBudget = settingClass.getSetting('accountsSelected');
+            console.log('[InjectedJS] build (accounts): AccountsSelected for budget chart:', accountsSelectedForBudget);
+
+
             const budgetChartDataInstance = new ChartDataBudget(
-                settingClass.getSetting('cache_data_transactions'),
-                settingClass.getSetting('cache_data_categories'),
-                settingClass.getSetting('accountsSelected'),
+                rawTransactionsForBudget,
+                categoriesForBudget,
+                accountsSelectedForBudget,
                 setting
             );
 
             let currentBudgetData = await budgetChartDataInstance.prepareData('monthly');
+            console.log('[InjectedJS] build (accounts): Data for budget chart (initial monthly):', JSON.stringify(currentBudgetData));
             const budgetChart = new Chart(budgetCtx, {
                 type: 'doughnut',
                 data: currentBudgetData,
@@ -215,7 +238,9 @@ async function build() {
             monthlyButton.textContent = 'Monthly';
             monthlyButton.style.marginRight = '5px';
             monthlyButton.onclick = async () => {
+                console.log('[InjectedJS] build (accounts): Monthly button clicked');
                 currentBudgetData = await budgetChartDataInstance.prepareData('monthly');
+                console.log('[InjectedJS] build (accounts): Data for budget chart (monthly click):', JSON.stringify(currentBudgetData));
                 budgetChart.data = currentBudgetData;
                 budgetChart.update();
             };
@@ -223,7 +248,9 @@ async function build() {
             const yearlyButton = document.createElement('button');
             yearlyButton.textContent = 'Yearly';
             yearlyButton.onclick = async () => {
+                console.log('[InjectedJS] build (accounts): Yearly button clicked');
                 currentBudgetData = await budgetChartDataInstance.prepareData('yearly');
+                console.log('[InjectedJS] build (accounts): Data for budget chart (yearly click):', JSON.stringify(currentBudgetData));
                 budgetChart.data = currentBudgetData;
                 budgetChart.update();
             };
