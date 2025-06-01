@@ -1,74 +1,354 @@
 class ChartDataBudget {
     constructor(transactions, categories, accountsSelected = null, settings) {
-        this.transactions = transactions;
-        this.categories = categories; // Keep for now, might be useful for filtering
+        this.transactions = transactions || []; // Ensure transactions is an array
+        this.categories = categories;
         this.accountsSelected = accountsSelected;
-        this.settings = settings;
+        this.settings = settings; // Assuming settings object is passed for potential future use
+
+        this.categoryLookup = new Map();
+        if (this.categories && Array.isArray(this.categories)) {
+            this.categories.forEach(parentCategory => {
+                if (parentCategory && parentCategory.id != null && parentCategory.name) {
+                    this.categoryLookup.set(parentCategory.id, parentCategory.name);
+                    if (parentCategory.categories && Array.isArray(parentCategory.categories)) {
+                        parentCategory.categories.forEach(childCategory => {
+                            if (childCategory && childCategory.id != null) {
+                                this.categoryLookup.set(childCategory.id, parentCategory.name);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        console.log('[ChartDataBudget] Constructor: categoryLookup initialized. Size:', this.categoryLookup.size);
+        // console.log('[ChartDataBudget] Constructor: categoryLookup map:', this.categoryLookup); // Optional: for deep debugging
+
+        // Initialize organizedData
+        this.organizedData = {};
+        this._organizeTransactions();
+        // console.log('[ChartDataBudget] Constructor: organizedData initialized.'); // Can be removed if _organizeTransactions logs enough
     }
 
-    async prepareData(granularity = 'monthly') { // granularity can be 'monthly' or 'yearly'
-        const filteredTransactions = await this.applySettingOnData();
-        const budgets = this.extractBudgets(filteredTransactions);
-        const aggregatedBudgets = this.aggregateBudgets(budgets, granularity);
-        return this.formatDataForDonutChart(aggregatedBudgets);
+    static _calculateMedian(arr) {
+        if (!arr || arr.length === 0) return 0;
+        // Filter out non-numeric values or handle them as needed
+        const numericArr = arr.filter(val => typeof val === 'number' && !isNaN(val));
+        if (numericArr.length === 0) return 0;
+
+        const sortedArr = [...numericArr].sort((a, b) => a - b);
+        const mid = Math.floor(sortedArr.length / 2);
+        if (sortedArr.length % 2 === 0) {
+            return (sortedArr[mid - 1] + sortedArr[mid]) / 2;
+        } else {
+            return sortedArr[mid];
+        }
     }
+
+    _organizeTransactions() {
+        // console.log('[ChartDataBudget] _organizeTransactions: Starting with transactions count:', this.transactions.length);
+        this.organizedData = {}; // Reset or initialize
+
+        if (!this.transactions || this.transactions.length === 0) {
+            console.warn('[ChartDataBudget] _organizeTransactions: No transactions to organize.');
+            return;
+        }
+
+        // Apply account filtering if accountsSelected is provided
+        let transactionsToProcess = this.transactions;
+        if (this.accountsSelected && this.accountsSelected.length > 0) {
+            transactionsToProcess = this.transactions.filter(t =>
+                t.account && this.accountsSelected.includes(parseInt(t.account.id))
+            );
+            // console.log(`[ChartDataBudget] _organizeTransactions: Filtered by accounts ${this.accountsSelected}, count: ${transactionsToProcess.length}`);
+        }
+
+        transactionsToProcess.forEach(transaction => {
+            if (!transaction || !transaction.date || !transaction.category || transaction.category.id == null || transaction.amount == null) {
+                // console.warn('[ChartDataBudget] _organizeTransactions: Skipping transaction with missing critical fields:', transaction ? transaction.id : 'N/A');
+                return;
+            }
+
+            const date = new Date(transaction.date);
+            if (isNaN(date.getTime())) { // Check if date is valid
+                // console.warn('[ChartDataBudget] _organizeTransactions: Skipping transaction with invalid date:', transaction ? transaction.id : 'N/A', transaction.date);
+                return;
+            }
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1; // 1-12 for months
+            const categoryName = this.categoryLookup.get(transaction.category.id);
+
+            if (!categoryName) {
+                // console.warn(`[ChartDataBudget] _organizeTransactions: Category ID ${transaction.category.id} not found for transaction ${transaction.id || 'N/A'}.`);
+                return;
+            }
+
+            if (!this.organizedData[year]) {
+                this.organizedData[year] = {};
+            }
+            if (!this.organizedData[year][month]) {
+                this.organizedData[year][month] = {};
+            }
+            if (!this.organizedData[year][month][categoryName]) {
+                this.organizedData[year][month][categoryName] = [];
+            }
+            this.organizedData[year][month][categoryName].push(Math.abs(transaction.amount));
+        });
+        console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
+    }
+
+    getMedianMonthlySpendingForYear(year) {
+        console.log(`[ChartDataBudget] getMedianMonthlySpendingForYear: Called for year ${year}.`);
+        const result = {};
+        if (!this.organizedData[year]) {
+            console.warn(`[ChartDataBudget] getMedianMonthlySpendingForYear: No data found for year ${year}.`);
+            return result;
+        }
+
+        const categoriesInYear = new Set();
+        for (let month = 1; month <= 12; month++) {
+            if (this.organizedData[year][month]) {
+                Object.keys(this.organizedData[year][month]).forEach(cat => categoriesInYear.add(cat));
+            }
+        }
+
+        categoriesInYear.forEach(categoryName => {
+            const monthlyTotals = [];
+            for (let month = 1; month <= 12; month++) {
+                const amounts = this.organizedData[year][month]?.[categoryName] || [];
+                const totalForMonth = amounts.reduce((sum, val) => sum + val, 0);
+                if (totalForMonth > 0 || (this.organizedData[year][month] && this.organizedData[year][month][categoryName])) {
+                     monthlyTotals.push(totalForMonth);
+                }
+            }
+            if (monthlyTotals.length > 0) {
+                 result[categoryName] = ChartDataBudget._calculateMedian(monthlyTotals);
+            } else {
+                result[categoryName] = 0;
+            }
+        });
+        // console.log(`[ChartDataBudget] getMedianMonthlySpendingForYear: Result for ${year}:`, result); // Result can be large
+        return result;
+    }
+
+    getActualSpendingForMonth(year, month) {
+        console.log(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
+        const result = {};
+        if (!this.organizedData[year] || !this.organizedData[year][month]) {
+            console.warn(`[ChartDataBudget] getActualSpendingForMonth: No data found for year ${year}, month ${month}.`);
+        }
+
+        const allCategoryNames = new Set();
+        this.categoryLookup.forEach(name => allCategoryNames.add(name));
+
+        allCategoryNames.forEach(categoryName => {
+            const amounts = this.organizedData[year]?.[month]?.[categoryName] || [];
+            result[categoryName] = amounts.reduce((sum, val) => sum + val, 0);
+        });
+        // console.log(`[ChartDataBudget] getActualSpendingForMonth: Result for ${year}-${month}:`, result); // Result can be large
+        return result;
+    }
+
+    getHistoricalMedianForMonth(targetMonth, currentYear) {
+        console.log(`[ChartDataBudget] getHistoricalMedianForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}.`);
+        const result = {};
+        const historicalSpendingByCat = {};
+        const allCategoryNames = new Set();
+        this.categoryLookup.forEach(name => allCategoryNames.add(name));
+
+        allCategoryNames.forEach(categoryName => {
+            historicalSpendingByCat[categoryName] = [];
+            for (const year in this.organizedData) {
+                if (parseInt(year) < currentYear) {
+                    if (this.organizedData[year][targetMonth] && this.organizedData[year][targetMonth][categoryName]) {
+                        const monthlyTotal = this.organizedData[year][targetMonth][categoryName].reduce((sum, val) => sum + val, 0);
+                        historicalSpendingByCat[categoryName].push(monthlyTotal);
+                    } else {
+                        if(this.organizedData[year] && Object.values(this.organizedData[year]).some(m => m[categoryName])) {
+                             historicalSpendingByCat[categoryName].push(0);
+                        }
+                    }
+                }
+            }
+            result[categoryName] = ChartDataBudget._calculateMedian(historicalSpendingByCat[categoryName]);
+        });
+        // console.log(`[ChartDataBudget] getHistoricalMedianForMonth: Result for month ${targetMonth} (vs prior years):`, result); // Result can be large
+        return result;
+    }
+
+    // Main method to prepare data for charts
+    async prepareData(selectedYear, selectedMonth) {
+        console.log(`[ChartDataBudget] prepareData: For year ${selectedYear}, month ${selectedMonth}.`);
+
+        let primaryData = {};
+        let comparisonData = {};
+        let primaryLabel = '';
+        let comparisonLabel = '';
+        const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; // For labels
+        const _getMonthName = (monthNumber) => monthNames[monthNumber] || '';
+
+
+        if (selectedMonth === 'ALL') {
+            console.log('[ChartDataBudget] prepareData: Mode: ALL months selected.');
+            primaryData = this.getMedianMonthlySpendingForYear(selectedYear);
+            primaryLabel = `Median ${selectedYear}`;
+            comparisonData = this.getMedianMonthlySpendingForYear(selectedYear - 1);
+            comparisonLabel = `Median ${selectedYear - 1}`;
+        } else { // month is a number
+            console.log(`[ChartDataBudget] prepareData: Mode: Specific month ${selectedMonth}/${selectedYear}`);
+            primaryData = this.getActualSpendingForMonth(selectedYear, selectedMonth);
+            primaryLabel = `Actual ${_getMonthName(selectedMonth)} ${selectedYear}`;
+            comparisonData = this.getHistoricalMedianForMonth(selectedMonth, selectedYear);
+            comparisonLabel = `Hist. Median ${_getMonthName(selectedMonth)}`;
+        }
+
+        const allCategoryNames = new Set();
+        Object.keys(primaryData).forEach(name => allCategoryNames.add(name));
+        Object.keys(comparisonData).forEach(name => allCategoryNames.add(name));
+
+        const categoryNamesArray = Array.from(allCategoryNames);
+        let visibilitySettings = {};
+
+        if (categoryNamesArray.length > 0 && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            try {
+                visibilitySettings = await new Promise((resolve, reject) => {
+                    chrome.storage.local.get(categoryNamesArray, (items) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('[ChartDataBudget] Error fetching visibility settings:', chrome.runtime.lastError.message);
+                            // Don't reject, just resolve with empty settings so chart can still render
+                            resolve({});
+                        } else {
+                            resolve(items);
+                        }
+                    });
+                });
+                console.log('[ChartDataBudget] prepareData: Fetched visibilitySettings:', visibilitySettings);
+            } catch (error) {
+                console.error('[ChartDataBudget] prepareData: Failed to fetch visibility settings from chrome.storage.local:', error);
+                // visibilitySettings remains {}
+            }
+        } else {
+            if (categoryNamesArray.length === 0) {
+                console.log('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
+            } else {
+                console.warn('[ChartDataBudget] prepareData: chrome.storage.local not available. Cannot fetch visibility settings.');
+            }
+        }
+
+        // For this subtask, filtering is NOT applied yet.
+        const finalLabels = [];
+        const primaryDatasetData = [];
+        const comparisonDatasetData = [];
+
+        categoryNamesArray.sort(); // Ensure consistent order
+
+        for (const name of categoryNamesArray) {
+            if (visibilitySettings[name] !== true) { // true means hidden, undefined or false means visible
+                finalLabels.push(name);
+                primaryDatasetData.push(primaryData[name] || 0);
+                comparisonDatasetData.push(comparisonData[name] || 0);
+            } else {
+                console.log(`[ChartDataBudget] prepareData: Filtering out hidden category: ${name}`);
+            }
+        }
+
+        console.log(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
+
+        return {
+            labels: finalLabels,
+            datasets: [
+                { label: primaryLabel, data: primaryDatasetData, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
+                { label: comparisonLabel, data: comparisonDatasetData, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
+            ]
+        };
+    }
+
+
+    // --- Old methods below - to be evaluated for removal later ---
+    // For now, they are kept to avoid breaking existing donut chart if it's still somehow used.
+    // The main `build` function in `injected.js` will need to be updated to call the new `prepareData`
+    // and use a bar chart.
 
     async applySettingOnData() {
-        // Similar to ChartData.js, filter transactions based on date range and selected accounts
-        // This might need adjustment if budget data is structured differently
-        const startDate = Date.parse(settingClass.getSetting('startDate'));
-        const endDate = Date.parse(settingClass.getSetting('endDate'));
+        // This method was for the old prepareData and donut chart.
+        // Its logic for date range and account filtering is now partially in _organizeTransactions (account filtering)
+        // and date range filtering is implicitly handled by querying specific year/month from organizedData.
+        // If global date range filtering is needed on top of organizedData, it's more complex.
+        console.warn('[ChartDataBudget] applySettingOnData: This method is part of the old donut chart data flow and might be deprecated.');
 
-        return this.transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date);
-            // Assuming transaction.current_month is 0-indexed if it exists, otherwise adjust
-            // For now, directly use transaction.date
-            // if (transaction.hasOwnProperty('current_month')) {
-            //     transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
-            // }
-            const modifiedDate = transactionDate.toDateString(); // Use toDateString for consistent date parsing
+        // Fallback to original transactions if no specific date filtering is applied here.
+        // This is just to keep it from breaking if something old calls it.
+        let transactionsToFilter = this.transactions;
 
-            const isDateInRange = (!startDate || !endDate) || (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate);
-            const isAccountSelected = !this.accountsSelected || this.accountsSelected.includes(parseInt(transaction.account.id));
+        // Apply account filtering if accountsSelected is provided (similar to _organizeTransactions)
+        if (this.accountsSelected && this.accountsSelected.length > 0) {
+            transactionsToFilter = transactionsToFilter.filter(t =>
+                t.account && this.accountsSelected.includes(parseInt(t.account.id))
+            );
+        }
 
-            return isDateInRange && isAccountSelected;
-        });
+        // Apply date range filtering from settings (if startDate/endDate are set in settings)
+        const startDateSetting = settingClass.getSetting('startDate');
+        const endDateSetting = settingClass.getSetting('endDate');
+        const startDate = startDateSetting ? Date.parse(startDateSetting) : null;
+        const endDate = endDateSetting ? Date.parse(endDateSetting) : null;
+
+        if (startDate || endDate) {
+            transactionsToFilter = transactionsToFilter.filter(transaction => {
+                 if (!transaction || !transaction.date) return false;
+                 const transactionDate = new Date(transaction.date);
+                 const parsedTransactionDate = Date.parse(transactionDate.toDateString());
+                 if (isNaN(parsedTransactionDate)) return false;
+
+                 if (startDate && endDate) return parsedTransactionDate >= startDate && parsedTransactionDate <= endDate;
+                 if (startDate) return parsedTransactionDate >= startDate;
+                 if (endDate) return parsedTransactionDate <= endDate;
+                 return true;
+            });
+        }
+        // console.log('[ChartDataBudget] applySettingOnData (fallback): Filtered transactions length:', transactionsToFilter.length); // Can be removed
+        return transactionsToFilter;
     }
 
     extractBudgets(transactions) {
-        // This is a placeholder. We need to determine how budgets are stored.
-        // For now, let's assume transactions have a 'budgetAmount' and 'budgetCategory' field.
-        // Or, if budgets are defined per category, we might need to link transactions to category budgets.
-        // This part will likely need significant changes based on actual data structure.
+        console.warn('[ChartDataBudget] extractBudgets: This method is part of the old donut chart data flow and should ideally not be called.');
+        // console.log('[ChartDataBudget] extractBudgets: Input transactions length:', transactions ? transactions.length : 0); // Verbose
+        // if (transactions && transactions.length > 0) console.log('[ChartDataBudget] extractBudgets: Sample input transaction:', transactions[0]); // Verbose
 
-        // Example: Grouping transactions by category and summing amounts
         const budgets = {};
+        if (!transactions) {
+            return budgets;
+        }
+
         transactions.forEach(transaction => {
-            if (transaction.category && transaction.category.name) {
-                const categoryName = transaction.category.name;
-                budgets[categoryName] = (budgets[categoryName] || 0) + Math.abs(transaction.amount); // Assuming budget is positive
+            if (transaction && transaction.category && transaction.category.id != null && transaction.amount != null) {
+                const categoryId = transaction.category.id;
+                const categoryName = this.categoryLookup.get(categoryId) || `Unknown Category (${categoryId})`;
+                budgets[categoryName] = (budgets[categoryName] || 0) + Math.abs(transaction.amount);
             }
         });
-        return budgets; // This will be an object like { "Groceries": 500, "Transport": 150 }
+        // console.log('[ChartDataBudget] extractBudgets: Resulting budgets:', JSON.stringify(budgets)); // Verbose
+        return budgets;
     }
 
     aggregateBudgets(budgets, granularity) {
-        // This method will further aggregate if needed (e.g., if budgets are monthly and we need yearly)
-        // For now, extractBudgets is doing a simple sum, so this might not be complex.
-        // If budgets were time-series (e.g., monthly budgets over a year), then aggregation here would be key.
-
-        // For a simple donut chart of category totals, this might just return the budgets object.
-        // If we were to show budget progression (e.g. budget used vs. total budget), this would be different.
+        console.warn('[ChartDataBudget] aggregateBudgets: This method is part of the old donut chart data flow and should ideally not be called.');
+        // console.log('[ChartDataBudget] aggregateBudgets: Input budgets:', JSON.stringify(budgets), 'Granularity:', granularity); // Verbose
         return budgets;
     }
 
     formatDataForDonutChart(aggregatedBudgets) {
+        console.warn('[ChartDataBudget] formatDataForDonutChart: This method is part of the old donut chart data flow and should ideally not be called.');
+        // console.log('[ChartDataBudget] formatDataForDonutChart: Input aggregatedBudgets:', JSON.stringify(aggregatedBudgets)); // Verbose
         const labels = Object.keys(aggregatedBudgets);
         const data = Object.values(aggregatedBudgets);
+        let backgroundColors = [];
 
-        // Generate colors - can use a predefined palette or random generation
-        const backgroundColors = labels.map((_, i) => `hsl(${i * (360 / labels.length)}, 70%, 50%)`);
-
+        if (labels.length > 0) {
+            backgroundColors = labels.map((_, i) => `hsl(${i * (360 / labels.length)}, 70%, 50%)`);
+        } else {
+            // console.log('[ChartDataBudget] formatDataForDonutChart: No labels, resulting in empty data and colors.'); // Not critical
+        }
+        // console.log('[ChartDataBudget] formatDataForDonutChart: Result - labels:', labels, 'data:', data, 'colors:', backgroundColors); // Verbose
         return {
             labels: labels,
             datasets: [{
@@ -80,7 +360,7 @@ class ChartDataBudget {
         };
     }
 
-    // Helper function to parse colors if needed (can reuse from injected.js or ChartData.js)
+    // parseColorCSS can remain as it's a general utility
     parseColorCSS(strClass) {
         const styleElement = document.createElement("div");
         styleElement.className = strClass;
