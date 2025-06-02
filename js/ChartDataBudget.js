@@ -64,7 +64,7 @@ class ChartDataBudget {
             const month = date.getMonth() + 1;
             const categoryName = this.categoryLookup.get(transaction.category.id);
             if (!categoryName) {
-                 // console.warn(`[ChartDataBudget] _organizeTransactions: Cat ID ${transaction.category.id} not in lookup for tr ${transaction.id || 'N/A'}`);
+                 console.warn(`[ChartDataBudget] _organizeTransactions: Cat ID ${transaction.category.id} not in lookup for tr ${transaction.id || 'N/A'}`);
                 return;
             }
             if (!this.organizedData[year]) this.organizedData[year] = {};
@@ -83,16 +83,21 @@ class ChartDataBudget {
     getCalculatedMonthlyValueForYear(year, calculationType = 'median') {
         console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
         const result = {};
-        if (!this.organizedData[year]) {
-            // Populate with all known categories from categoryLookup, ensuring 0 if no data
-            this.categoryLookup.forEach(name => { if (!result[name]) result[name] = 0; });
-            console.warn(`[ChartDataBudget] getCalculatedMonthlyValueForYear: No data found for year ${year}. Returning zeros for all categories.`);
-            return result;
+        // Initialize all known categories to 0
+        if (this.categoryLookup && this.categoryLookup.size > 0) {
+            this.categoryLookup.forEach(name => { result[name] = 0; });
+        } else {
+            console.warn('[ChartDataBudget] categoryLookup is empty or not available in getCalculatedMonthlyValueForYear.');
+            // No categories known, so result will remain empty unless data for a category is found below.
         }
-        const categoriesInYear = new Set();
-        this.categoryLookup.forEach(name => categoriesInYear.add(name)); // Start with all known categories
 
-        categoriesInYear.forEach(categoryName => {
+        if (!this.organizedData[year]) {
+            console.warn(`[ChartDataBudget] getCalculatedMonthlyValueForYear: No data found for year ${year}. Returning zeros for all known categories.`);
+            return result; // result already contains all known categories initialized to 0
+        }
+
+        // Iterate over all known category names to ensure all are processed
+        this.categoryLookup.forEach(categoryName => {
             const monthlyTotals = [];
             let categoryHadDataInYear = false;
             for (let m = 1; m <= 12; m++) {
@@ -128,18 +133,40 @@ class ChartDataBudget {
     getActualSpendingForMonth(year, month) {
         console.log(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
         const result = {};
-        const allCategoryNames = new Set(this.categoryLookup.values());
-        allCategoryNames.forEach(categoryName => {
-            const amounts = this.organizedData[year]?.[month]?.[categoryName] || [];
-            result[categoryName] = amounts.reduce((sum, val) => sum + val, 0);
-        });
+        // Initialize all known categories to 0
+        if (this.categoryLookup && this.categoryLookup.size > 0) {
+            this.categoryLookup.forEach(name => { result[name] = 0; });
+        } else {
+            console.warn('[ChartDataBudget] categoryLookup is empty or not available in getActualSpendingForMonth.');
+        }
+
+        // Proceed to fill with actual data if present
+        if (this.organizedData[year] && this.organizedData[year][month]) {
+            // Iterate over the categories present in the specific month's data
+            Object.keys(this.organizedData[year][month]).forEach(categoryName => {
+                // Ensure this category is a known one, though organizedData should only contain known ones
+                if (Array.from(this.categoryLookup.values()).includes(categoryName)) {
+                    const amounts = this.organizedData[year][month][categoryName] || [];
+                    result[categoryName] = amounts.reduce((sum, val) => sum + val, 0);
+                }
+            });
+        } else {
+            console.warn(`[ChartDataBudget] getActualSpendingForMonth: No data found for year ${year}, month ${month}. Returning zeros for all known categories.`);
+        }
         return result;
     }
 
     getHistoricalCalculatedValueForMonth(targetMonth, currentYear, calculationType = 'median') {
         console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
         const result = {};
-        const allCategoryNames = new Set(this.categoryLookup.values());
+        // Initialize all known categories to 0
+        if (this.categoryLookup && this.categoryLookup.size > 0) {
+            this.categoryLookup.forEach(name => { result[name] = 0; });
+        } else {
+            console.warn('[ChartDataBudget] categoryLookup is empty or not available in getHistoricalCalculatedValueForMonth.');
+        }
+        
+        const allCategoryNames = new Set(this.categoryLookup.values()); // Still useful for iterating
 
         allCategoryNames.forEach(categoryName => {
             const historicalMonthlyTotals = [];
