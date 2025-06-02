@@ -61,12 +61,16 @@ async function build() {
         const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
         const preparedData = await chartData.prepareData();
         
-        // Modification: Create separate containers for charts
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
+        var style = document.createElement('style');
+        style.innerHTML = `
+            .homeBlock > div {
+                max-width: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+
         if (homeBlock) {
-            console.log(`[InjectedJS] homeBlock clientWidth: ${homeBlock.clientWidth}px, offsetWidth: ${homeBlock.offsetWidth}px`);
-            // const homeBlockStyles = window.getComputedStyle(homeBlock);
-            // console.log(`[InjectedJS] homeBlock computed width: ${homeBlockStyles.width}, padding: ${homeBlockStyles.paddingLeft}/${homeBlockStyles.paddingRight}`);
             homeBlock.innerHTML = ""; // Clear existing content
 
             // Container for the original chart
@@ -82,9 +86,7 @@ async function build() {
             // Container for the new budget donut chart
             const budgetChartBlock = document.createElement('div');
             budgetChartBlock.id = "budgetChartBlock";
-            budgetChartBlock.style.marginTop = "20px"; // Add some space
             budgetChartBlock.style.height = "500px"; // Explicit height for the container
-            budgetChartBlock.style.width = '100%';    // NEW
             budgetChartBlock.style.display = 'block'; // NEW
             homeBlock.appendChild(budgetChartBlock);
             
@@ -166,10 +168,6 @@ async function build() {
             }
 
             const budgetCanvas = createCanvasElement(budgetChartBlock); // createCanvasElement appends canvas
-            console.log(`[InjectedJS] budgetChartBlock clientWidth: ${budgetChartBlock.clientWidth}px, offsetWidth: ${budgetChartBlock.offsetWidth}px`);
-            if (budgetCanvas) { // budgetCanvas is the canvas element itself
-                console.log(`[InjectedJS] budgetCanvas clientWidth: ${budgetCanvas.clientWidth}px, offsetWidth: ${budgetCanvas.offsetWidth}px, styled width: ${budgetCanvas.style.width}, styled height: ${budgetCanvas.style.height}`);
-            }
             const budgetCtx = budgetCanvas.getContext('2d');
 
             const rawTransactionsForBudget = settingClass.getSetting('cache_data_transactions');
