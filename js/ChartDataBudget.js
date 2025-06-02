@@ -35,6 +35,15 @@ class ChartDataBudget {
         return sortedArr.length % 2 === 0 ? (sortedArr[mid - 1] + sortedArr[mid]) / 2 : sortedArr[mid];
     }
 
+    static _calculateAverage(arr) {
+        if (!arr || arr.length === 0) return 0;
+        const numericArr = arr.filter(val => typeof val === 'number' && !isNaN(val));
+        if (numericArr.length === 0) return 0;
+    
+        const sum = numericArr.reduce((acc, val) => acc + val, 0);
+        return sum / numericArr.length;
+    }
+
     _organizeTransactions() {
         this.organizedData = {};
         if (!this.transactions || this.transactions.length === 0) {
@@ -43,7 +52,7 @@ class ChartDataBudget {
         }
         let transactionsToProcess = this.transactions;
         if (this.accountsSelected && this.accountsSelected.length > 0) {
-            transactionsToProcess = this.transactions.filter(t =>
+            transactionsToProcess = this.transactions.filter(t => 
                 t.account && t.account.id != null && this.accountsSelected.includes(parseInt(t.account.id))
             );
         }
@@ -71,12 +80,13 @@ class ChartDataBudget {
         return monthNames[monthNumber] || '';
     }
 
-    getMedianMonthlySpendingForYear(year) {
-        console.log(`[ChartDataBudget] getMedianMonthlySpendingForYear: Called for year ${year}.`);
+    getCalculatedMonthlyValueForYear(year, calculationType = 'median') {
+        console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
         const result = {};
         if (!this.organizedData[year]) {
             // Populate with all known categories from categoryLookup, ensuring 0 if no data
             this.categoryLookup.forEach(name => { if (!result[name]) result[name] = 0; });
+            console.warn(`[ChartDataBudget] getCalculatedMonthlyValueForYear: No data found for year ${year}. Returning zeros for all categories.`);
             return result;
         }
         const categoriesInYear = new Set();
@@ -93,15 +103,25 @@ class ChartDataBudget {
                     monthlyTotals.push(totalForMonth);
                     categoryHadDataInYear = true;
                 } else {
-                    // If category generally exists in the year but not this month, count month as 0 for median
+                    // If category generally exists in the year (i.e., has data in other months), count this month as 0.
                      if (Object.values(this.organizedData[year]).some(dataForMonth => dataForMonth.hasOwnProperty(categoryName))) {
                         monthlyTotals.push(0);
-                        categoryHadDataInYear = true;
+                        categoryHadDataInYear = true; // Mark that category has data within the year
                      }
                 }
             }
-            result[categoryName] = categoryHadDataInYear ? ChartDataBudget._calculateMedian(monthlyTotals) : 0;
+
+            if (categoryHadDataInYear) {
+                if (calculationType === 'average') {
+                    result[categoryName] = ChartDataBudget._calculateAverage(monthlyTotals);
+                } else { // Default to median
+                    result[categoryName] = ChartDataBudget._calculateMedian(monthlyTotals);
+                }
+            } else {
+                result[categoryName] = 0; // No data for this category in the entire year
+            }
         });
+        // console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Result for ${year}, type ${calculationType}:`, result); // Verbose
         return result;
     }
 
@@ -116,8 +136,8 @@ class ChartDataBudget {
         return result;
     }
 
-    getHistoricalMedianForMonth(targetMonth, currentYear) {
-        console.log(`[ChartDataBudget] getHistoricalMedianForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}.`);
+    getHistoricalCalculatedValueForMonth(targetMonth, currentYear, calculationType = 'median') {
+        console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
         const result = {};
         const allCategoryNames = new Set(this.categoryLookup.values());
 
@@ -125,45 +145,53 @@ class ChartDataBudget {
             const historicalMonthlyTotals = [];
             for (const yearStr in this.organizedData) {
                 const year = parseInt(yearStr);
-                if (year < currentYear) {
-                    // Check if the category existed in this month for this year
+                if (year < currentYear) { // Only consider years before the currentYear for historical data
+                    // Check if the category existed in this month for this historical year
                     if (this.organizedData[year][targetMonth] && this.organizedData[year][targetMonth].hasOwnProperty(categoryName)) {
                         const amounts = this.organizedData[year][targetMonth][categoryName] || [];
                         historicalMonthlyTotals.push(amounts.reduce((sum, val) => sum + val, 0));
                     } else if (this.organizedData[year] && Object.values(this.organizedData[year]).some(dataForMonth => dataForMonth.hasOwnProperty(categoryName))) {
-                        // If category exists in other months of that year, consider this month as 0 for historical median
+                        // If category exists in other months of that historical year, consider this targetMonth as 0 for that year
                         historicalMonthlyTotals.push(0);
                     }
+                    // If category didn't exist at all in that historical year, it's implicitly excluded from historicalMonthlyTotals
                 }
             }
-            result[categoryName] = ChartDataBudget._calculateMedian(historicalMonthlyTotals);
+
+            if (calculationType === 'average') {
+                result[categoryName] = ChartDataBudget._calculateAverage(historicalMonthlyTotals);
+            } else { // Default to median
+                result[categoryName] = ChartDataBudget._calculateMedian(historicalMonthlyTotals);
+            }
         });
+        // console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Result for month ${targetMonth}, type ${calculationType}:`, result); // Verbose
         return result;
     }
 
-    async prepareData(selectedYear, selectedMonth) {
-        console.log(`[ChartDataBudget] prepareData: For year ${selectedYear}, month ${selectedMonth}.`);
+    async prepareData(selectedYear, selectedMonth, calculationType = 'median') { // Added calculationType parameter
+        console.log(`[ChartDataBudget] prepareData: For year ${selectedYear}, month ${selectedMonth}, type: ${calculationType}.`);
         let primaryData = {}, comparisonData = {}, primaryLabel = '', comparisonLabel = '';
+        const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
 
         if (selectedMonth === 'ALL') {
             console.log('[ChartDataBudget] prepareData: Mode: ALL months selected.');
-            primaryData = this.getMedianMonthlySpendingForYear(selectedYear);
-            primaryLabel = `Median ${selectedYear}`;
-            comparisonData = this.getMedianMonthlySpendingForYear(selectedYear - 1);
-            comparisonLabel = `Median ${selectedYear - 1}`;
+            primaryData = this.getCalculatedMonthlyValueForYear(selectedYear, calculationType); 
+            primaryLabel = `${calcTypeString} ${selectedYear}`;
+            comparisonData = this.getCalculatedMonthlyValueForYear(selectedYear - 1, calculationType);
+            comparisonLabel = `${calcTypeString} ${selectedYear - 1}`;
         } else {
             console.log(`[ChartDataBudget] prepareData: Mode: Specific month ${selectedMonth}/${selectedYear}`);
-            primaryData = this.getActualSpendingForMonth(selectedYear, selectedMonth);
+            primaryData = this.getActualSpendingForMonth(selectedYear, selectedMonth); // Actual spending is always sum
             primaryLabel = `Actual ${this._getMonthName(selectedMonth)} ${selectedYear}`;
-            comparisonData = this.getHistoricalMedianForMonth(selectedMonth, selectedYear);
-            comparisonLabel = `Hist. Median ${this._getMonthName(selectedMonth)}`;
+            comparisonData = this.getHistoricalCalculatedValueForMonth(selectedMonth, selectedYear, calculationType);
+            comparisonLabel = `Hist. ${calcTypeString} ${this._getMonthName(selectedMonth)}`;
         }
 
         const allCategoryNames = new Set();
         Object.keys(primaryData).forEach(name => allCategoryNames.add(name));
         Object.keys(comparisonData).forEach(name => allCategoryNames.add(name));
         const categoryNamesArray = Array.from(allCategoryNames).sort();
-
+        
         let visibilitySettings = {};
         if (categoryNamesArray.length > 0 && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
             try {
@@ -186,7 +214,7 @@ class ChartDataBudget {
         } else {
              console.warn('[ChartDataBudget] prepareData: chrome.storage.local not available.');
         }
-
+        
         const finalLabels = [], primaryDatasetData = [], comparisonDatasetData = [];
         for (const name of categoryNamesArray) {
             if (visibilitySettings[name] !== true) { // true means hidden
@@ -208,22 +236,22 @@ class ChartDataBudget {
     }
 
     // --- Old methods (kept with warnings) ---
-    async applySettingOnData() {
+    async applySettingOnData() { 
         console.warn('[ChartDataBudget] applySettingOnData: OLD METHOD. Part of donut chart flow.');
         return this.transactions || []; // Simplified fallback
     }
-    extractBudgets(transactionsInput) {
+    extractBudgets(transactionsInput) { 
         console.warn('[ChartDataBudget] extractBudgets: OLD METHOD. Part of donut chart flow.');
         const budgets = {};
         const tr = transactionsInput || [];
         tr.forEach(t => { /* simplified logic */ });
         return budgets;
     }
-    aggregateBudgets(budgets, granularity) {
+    aggregateBudgets(budgets, granularity) { 
         console.warn('[ChartDataBudget] aggregateBudgets: OLD METHOD. Part of donut chart flow.');
         return budgets;
     }
-    formatDataForDonutChart(aggregatedBudgets) {
+    formatDataForDonutChart(aggregatedBudgets) { 
         console.warn('[ChartDataBudget] formatDataForDonutChart: OLD METHOD. Part of donut chart flow.');
         return { labels: [], datasets: [{ data: [] }] };
     }

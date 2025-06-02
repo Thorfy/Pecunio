@@ -60,7 +60,7 @@ async function build() {
         // Existing chart logic
         const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
         const preparedData = await chartData.prepareData();
-
+        
         // Modification: Create separate containers for charts
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
         if (homeBlock) {
@@ -81,7 +81,7 @@ async function build() {
             budgetChartBlock.id = "budgetChartBlock";
             budgetChartBlock.style.marginTop = "20px"; // Add some space
             homeBlock.appendChild(budgetChartBlock);
-
+            
             const budgetTitle = document.createElement('h3');
             budgetTitle.textContent = "Median Budget Comparison"; // New Title
             budgetChartBlock.appendChild(budgetTitle);
@@ -127,10 +127,33 @@ async function build() {
             });
             monthSelector.value = "ALL"; // Default
             selectorContainer.appendChild(monthSelector);
+
+            // Calculation Type Selector
+            const calcLabel = document.createElement('label');
+            calcLabel.textContent = 'Calculation: ';
+            calcLabel.htmlFor = 'calculationTypeSelector';
+            calcLabel.style.marginLeft = '10px'; // Add some spacing
+            selectorContainer.appendChild(calcLabel);
+
+            const calcTypeSelector = document.createElement('select');
+            calcTypeSelector.id = 'calculationTypeSelector';
+            
+            const optionMedian = document.createElement('option');
+            optionMedian.value = 'median';
+            optionMedian.textContent = 'Median';
+            optionMedian.selected = true; // Default
+            calcTypeSelector.appendChild(optionMedian);
+
+            const optionAverage = document.createElement('option');
+            optionAverage.value = 'average';
+            optionAverage.textContent = 'Average';
+            calcTypeSelector.appendChild(optionAverage);
+            
+            selectorContainer.appendChild(calcTypeSelector);
             // --- NEW SELECTORS END ---
 
             // Remove old donut chart buttons if they were in budgetChartBlock
-            const oldButtonContainer = budgetChartBlock.querySelector('div[style*="text-align: center"]');
+            const oldButtonContainer = budgetChartBlock.querySelector('div[style*="text-align: center"]'); 
             if (oldButtonContainer) {
                 console.log('[InjectedJS] Removing old button container for donut chart.')
                 oldButtonContainer.remove();
@@ -142,7 +165,7 @@ async function build() {
             const rawTransactionsForBudget = settingClass.getSetting('cache_data_transactions');
             console.log('[InjectedJS] build (accounts): Raw transactions for budget chart (length):', rawTransactionsForBudget ? rawTransactionsForBudget.length : 'null');
             // if (rawTransactionsForBudget && rawTransactionsForBudget.length > 0) console.log('[InjectedJS] build (accounts): Sample raw transaction for budget:', rawTransactionsForBudget[0]); // Verbose
-
+            
             const categoriesForBudget = settingClass.getSetting('cache_data_categories');
             // console.log('[InjectedJS] build (accounts): Categories for budget chart (length):', categoriesForBudget ? categoriesForBudget.length : 'null'); // Verbose
 
@@ -162,15 +185,16 @@ async function build() {
                 const selectedYear = parseInt(yearSelector.value);
                 const monthValue = monthSelector.value;
                 const selectedMonth = (monthValue === "ALL") ? "ALL" : parseInt(monthValue);
-
-                console.log(`[InjectedJS] updateMedianChartView. Year: ${selectedYear}, Month: ${selectedMonth}`);
-
+                const selectedCalcType = document.getElementById('calculationTypeSelector').value;
+                
+                console.log(`[InjectedJS] updateMedianChartView. Year: ${selectedYear}, Month: ${selectedMonth}, CalcType: ${selectedCalcType}`);
+                
                 if (!budgetChartDataInstance || typeof budgetChartDataInstance.prepareData !== 'function') {
                     console.error('[InjectedJS] budgetChartDataInstance is not ready or prepareData is missing.');
                     return;
                 }
-
-                const newChartData = await budgetChartDataInstance.prepareData(selectedYear, selectedMonth);
+                
+                const newChartData = await budgetChartDataInstance.prepareData(selectedYear, selectedMonth, selectedCalcType);
                 // console.log('[InjectedJS] Data prepared for median bar chart:', JSON.stringify(newChartData)); // REMOVED - Too verbose
 
                 if (!newChartData || !newChartData.labels || !newChartData.datasets || !Array.isArray(newChartData.datasets)) {
@@ -197,7 +221,7 @@ async function build() {
                 if (budgetChart) {
                     // console.log('[InjectedJS] Updating existing median bar chart.'); // Retained, but less critical
                     budgetChart.data = newChartData;
-                    budgetChart.options.plugins.title.text = `Comparison: ${selectedYear} ${monthValue === "ALL" ? "All Months (Median)" : months[parseInt(monthValue)]}`;
+                    budgetChart.options.plugins.title.text = `Comparison: ${selectedYear} ${monthValue === "ALL" ? "All Months" : months[parseInt(monthValue)]} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`;
                     budgetChart.update();
                     // console.log('[InjectedJS] Median bar chart updated.'); // Retained, but less critical
                 } else {
@@ -208,18 +232,18 @@ async function build() {
                             data: newChartData,
                             options: {
                                 responsive: true,
-                                maintainAspectRatio: true,
+                                maintainAspectRatio: false, // **** CHANGED TO FALSE ****
                                 scales: {
                                     y: {
                                         beginAtZero: true,
-                                        title: {
+                                        title: { 
                                             display: true,
-                                            text: 'Amount (€)'
+                                            text: 'Amount (€)' 
                                         }
                                     },
                                     x: {
                                         title: {
-                                            display: false,
+                                            display: false, 
                                             text: 'Categories'
                                         }
                                     }
@@ -234,7 +258,7 @@ async function build() {
                                     },
                                     title: { // Add dynamic title to chart options
                                         display: true,
-                                        text: `Comparison: ${selectedYear} ${monthValue === "ALL" ? "All Months (Median)" : months[parseInt(monthValue)]}`
+                                        text: `Comparison: ${selectedYear} ${monthValue === "ALL" ? "All Months" : months[parseInt(monthValue)]} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`
                                     }
                                 }
                             }
@@ -249,12 +273,13 @@ async function build() {
 
             yearSelector.addEventListener('change', updateMedianChartView);
             monthSelector.addEventListener('change', updateMedianChartView);
+            calcTypeSelector.addEventListener('change', updateMedianChartView);
 
             // Initial call to load the chart with default selector values
             // Ensure this runs after the main DOM elements are presumably available.
             // Using a small timeout can help if elements are not immediately ready in some cases.
             // console.log('[InjectedJS] Scheduling initial call to updateMedianChartView.'); // Retained
-            setTimeout(updateMedianChartView, 0);
+            setTimeout(updateMedianChartView, 0); 
 
             // Extract known parent category names for the storage listener
             let knownCategoryNamesForVisibility = [];
@@ -284,7 +309,7 @@ async function build() {
                             if (knownCategoryNamesForVisibility.includes(key)) {
                                 // console.log(`[InjectedJS] Storage change detected for category '${key}':`, changes[key].newValue);
                                 relevantChangeDetected = true;
-                                break;
+                                break; 
                             }
                         }
 
@@ -376,8 +401,9 @@ function loadingScreen() {
 
 function createCanvasElement(parentElement) {
     const canvasDiv = document.createElement('canvas');
-    canvasDiv.classList = "canvasDiv";
-
+    canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
+    canvasDiv.style.width = '100%';   // Ensure canvas tries to use full width of parent
+    canvasDiv.style.height = '400px';  // Set a default height
     if (parentElement) {
         parentElement.appendChild(canvasDiv);
     }
