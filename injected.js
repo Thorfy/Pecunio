@@ -64,6 +64,9 @@ async function build() {
         // Modification: Create separate containers for charts
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
         if (homeBlock) {
+            console.log(`[InjectedJS] homeBlock clientWidth: ${homeBlock.clientWidth}px, offsetWidth: ${homeBlock.offsetWidth}px`);
+            // const homeBlockStyles = window.getComputedStyle(homeBlock);
+            // console.log(`[InjectedJS] homeBlock computed width: ${homeBlockStyles.width}, padding: ${homeBlockStyles.paddingLeft}/${homeBlockStyles.paddingRight}`);
             homeBlock.innerHTML = ""; // Clear existing content
 
             // Container for the original chart
@@ -80,6 +83,9 @@ async function build() {
             const budgetChartBlock = document.createElement('div');
             budgetChartBlock.id = "budgetChartBlock";
             budgetChartBlock.style.marginTop = "20px"; // Add some space
+            budgetChartBlock.style.height = "500px"; // Explicit height for the container
+            budgetChartBlock.style.width = '100%';    // NEW
+            budgetChartBlock.style.display = 'block'; // NEW
             homeBlock.appendChild(budgetChartBlock);
             
             const budgetTitle = document.createElement('h3');
@@ -160,6 +166,10 @@ async function build() {
             }
 
             const budgetCanvas = createCanvasElement(budgetChartBlock); // createCanvasElement appends canvas
+            console.log(`[InjectedJS] budgetChartBlock clientWidth: ${budgetChartBlock.clientWidth}px, offsetWidth: ${budgetChartBlock.offsetWidth}px`);
+            if (budgetCanvas) { // budgetCanvas is the canvas element itself
+                console.log(`[InjectedJS] budgetCanvas clientWidth: ${budgetCanvas.clientWidth}px, offsetWidth: ${budgetCanvas.offsetWidth}px, styled width: ${budgetCanvas.style.width}, styled height: ${budgetCanvas.style.height}`);
+            }
             const budgetCtx = budgetCanvas.getContext('2d');
 
             const rawTransactionsForBudget = settingClass.getSetting('cache_data_transactions');
@@ -226,6 +236,10 @@ async function build() {
                     // console.log('[InjectedJS] Median bar chart updated.'); // Retained, but less critical
                 } else {
                     // console.log('[InjectedJS] Creating new median bar chart.'); // Retained
+                    if (budgetChart) { // Defensive check
+                       console.warn('[InjectedJS] budgetChart was not null before creation, destroying old instance.');
+                       budgetChart.destroy(); 
+                    }
                     try {
                         budgetChart = new Chart(budgetCtx, {
                             type: 'bar',
