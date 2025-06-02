@@ -88,42 +88,52 @@ class ChartDataBudget {
             this.categoryLookup.forEach(name => { result[name] = 0; });
         } else {
             console.warn('[ChartDataBudget] categoryLookup is empty or not available in getCalculatedMonthlyValueForYear.');
-            // No categories known, so result will remain empty unless data for a category is found below.
         }
 
         if (!this.organizedData[year]) {
             console.warn(`[ChartDataBudget] getCalculatedMonthlyValueForYear: No data found for year ${year}. Returning zeros for all known categories.`);
-            return result; // result already contains all known categories initialized to 0
+            return result; // All known categories are already initialized to 0
         }
 
-        // Iterate over all known category names to ensure all are processed
-        this.categoryLookup.forEach(categoryName => {
+        const now = new Date();
+        const currentSystemYear = now.getFullYear();
+        const currentSystemMonth = now.getMonth() + 1; 
+
+        this.categoryLookup.forEach(categoryName => { // Iterate over all known category names
             const monthlyTotals = [];
-            let categoryHadDataInYear = false;
-            for (let m = 1; m <= 12; m++) {
-                const amounts = this.organizedData[year][m]?.[categoryName] || [];
-                const totalForMonth = amounts.reduce((sum, val) => sum + val, 0);
-                // Only push if the category existed in that month, even if total is 0
+            // Determine the last month to process for this year
+            const lastMonthToProcess = (parseInt(year) === currentSystemYear) ? currentSystemMonth : 12;
+            let categoryActiveInProcessedPeriod = false;
+
+            // First, check if this category is active in the processed period for the given year
+            for (let m = 1; m <= lastMonthToProcess; m++) {
                 if (this.organizedData[year][m] && this.organizedData[year][m].hasOwnProperty(categoryName)) {
-                    monthlyTotals.push(totalForMonth);
-                    categoryHadDataInYear = true;
-                } else {
-                    // If category generally exists in the year (i.e., has data in other months), count this month as 0.
-                     if (Object.values(this.organizedData[year]).some(dataForMonth => dataForMonth.hasOwnProperty(categoryName))) {
-                        monthlyTotals.push(0);
-                        categoryHadDataInYear = true; // Mark that category has data within the year
-                     }
+                    categoryActiveInProcessedPeriod = true;
+                    break;
                 }
             }
 
-            if (categoryHadDataInYear) {
-                if (calculationType === 'average') {
-                    result[categoryName] = ChartDataBudget._calculateAverage(monthlyTotals);
-                } else { // Default to median
-                    result[categoryName] = ChartDataBudget._calculateMedian(monthlyTotals);
+            if (categoryActiveInProcessedPeriod) {
+                for (let m = 1; m <= lastMonthToProcess; m++) {
+                    const amounts = this.organizedData[year][m]?.[categoryName] || [];
+                    monthlyTotals.push(amounts.reduce((sum, val) => sum + val, 0));
+                }
+                
+                // Ensure monthlyTotals is not empty before calculation, though categoryActiveInProcessedPeriod should imply this.
+                if (monthlyTotals.length > 0) { 
+                    if (calculationType === 'average') {
+                        result[categoryName] = ChartDataBudget._calculateAverage(monthlyTotals);
+                    } else { 
+                        result[categoryName] = ChartDataBudget._calculateMedian(monthlyTotals);
+                    }
+                } else {
+                    // This case should ideally not be hit if categoryActiveInProcessedPeriod is true
+                    // but as a fallback, it remains 0.
+                    result[categoryName] = 0;
                 }
             } else {
-                result[categoryName] = 0; // No data for this category in the entire year
+                // If category was not active in the processed period, it remains 0 from initialization.
+                result[categoryName] = 0;
             }
         });
         // console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Result for ${year}, type ${calculationType}:`, result); // Verbose
