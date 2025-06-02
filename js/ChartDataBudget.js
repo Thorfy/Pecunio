@@ -70,7 +70,7 @@ class ChartDataBudget {
             if (!this.organizedData[year]) this.organizedData[year] = {};
             if (!this.organizedData[year][month]) this.organizedData[year][month] = {};
             if (!this.organizedData[year][month][categoryName]) this.organizedData[year][month][categoryName] = [];
-            this.organizedData[year][month][categoryName].push(Math.abs(transaction.amount));
+            this.organizedData[year][month][categoryName].push(transaction.amount);
         });
         console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
     }
