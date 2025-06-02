@@ -65,6 +65,14 @@ async function build() {
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
         if (homeBlock) {
             console.log(`[InjectedJS] homeBlock clientWidth: ${homeBlock.clientWidth}px, offsetWidth: ${homeBlock.offsetWidth}px`);
+            var style = document.createElement('style');
+            style.innerHTML = `
+                .homeBlock > div {
+                    max-width: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+            console.log('[InjectedJS] Applied user CSS override for .homeBlock > div max-width.');
             // const homeBlockStyles = window.getComputedStyle(homeBlock);
             // console.log(`[InjectedJS] homeBlock computed width: ${homeBlockStyles.width}, padding: ${homeBlockStyles.paddingLeft}/${homeBlockStyles.paddingRight}`);
             homeBlock.innerHTML = ""; // Clear existing content
