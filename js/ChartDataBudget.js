@@ -22,8 +22,15 @@ class ChartDataBudget {
         }
         console.log('[ChartDataBudget] Constructor: categoryLookup initialized. Size:', this.categoryLookup.size);
 
-        this.organizedData = {};
-        this._organizeTransactions();
+        this.organizedData = {}; // Initialize as empty
+        this.initializationPromise = this._initializeData(); // Start async initialization
+    }
+
+    async _initializeData() {
+        console.log('[ChartDataBudget] _initializeData: Starting data organization.');
+        await this._organizeTransactions(); // This is now async
+        console.log('[ChartDataBudget] _initializeData: Data organization complete.');
+        // Any other async setup can go here
     }
 
     static _calculateMedian(arr) {
@@ -44,19 +51,21 @@ class ChartDataBudget {
         return sum / numericArr.length;
     }
 
-    _organizeTransactions() {
-        this.organizedData = {};
-        if (!this.transactions || this.transactions.length === 0) {
-            console.warn('[ChartDataBudget] _organizeTransactions: No transactions to organize.');
+    async _organizeTransactions() {
+        this.organizedData = {}; // Reset or initialize
+        console.log('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
+
+        const filteredTransactions = await this.applySettingOnData();
+        console.log('[ChartDataBudget] _organizeTransactions: Transactions count after applySettingOnData:', filteredTransactions ? filteredTransactions.length : 0);
+
+        if (!filteredTransactions || filteredTransactions.length === 0) {
+            console.warn('[ChartDataBudget] _organizeTransactions: No transactions to organize after filtering.');
+            // Keep this.organizedData = {} (already set)
+            console.log(`[ChartDataBudget] _organizeTransactions: Completed (no data). Organized data for 0 years.`); // Update completion log
             return;
         }
-        let transactionsToProcess = this.transactions;
-        if (this.accountsSelected && this.accountsSelected.length > 0) {
-            transactionsToProcess = this.transactions.filter(t => 
-                t.account && t.account.id != null && this.accountsSelected.includes(parseInt(t.account.id))
-            );
-        }
-        transactionsToProcess.forEach(transaction => {
+
+        filteredTransactions.forEach(transaction => {
             if (!transaction || !transaction.date || !transaction.category || transaction.category.id == null || transaction.amount == null) return;
             const date = new Date(transaction.date);
             if (isNaN(date.getTime())) return;
@@ -73,6 +82,53 @@ class ChartDataBudget {
             this.organizedData[year][month][categoryName].push(transaction.amount);
         });
         console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
+    }
+
+    async applySettingOnData() {
+        // Ensure this.transactions is an array
+        if (!this.transactions || !Array.isArray(this.transactions)) {
+            console.warn('[ChartDataBudget] applySettingOnData: No transactions to process or not an array.');
+            return [];
+        }
+
+        const startDateSetting = settingClass.getSetting('startDate'); // settingClass is globally available
+        const endDateSetting = settingClass.getSetting('endDate');
+        const startDate = startDateSetting ? Date.parse(startDateSetting) : null;
+        const endDate = endDateSetting ? Date.parse(endDateSetting) : null;
+
+        console.log(`[ChartDataBudget] applySettingOnData: Filtering with global startDate: ${startDateSetting}, endDate: ${endDateSetting}`);
+
+        return this.transactions.filter(transaction => {
+            if (!transaction || !transaction.date || !transaction.account || transaction.account.id == null) {
+                 // console.warn('[ChartDataBudget] applySettingOnData: Skipping transaction with missing fields for date/account processing.', transaction);
+                 return false;
+            }
+            
+            let transactionDate = new Date(transaction.date); 
+
+            if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
+                transactionDate.setDate(1); 
+                transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
+            }
+            
+            const modifiedDateForComparison = transactionDate.toDateString(); 
+
+            let dateFilterPassed = true;
+            if (startDate && endDate) {
+                dateFilterPassed = Date.parse(modifiedDateForComparison) >= startDate && Date.parse(modifiedDateForComparison) <= endDate;
+            } else if (startDate) {
+                dateFilterPassed = Date.parse(modifiedDateForComparison) >= startDate;
+            } else if (endDate) {
+                dateFilterPassed = Date.parse(modifiedDateForComparison) <= endDate;
+            }
+
+            let accountFilterPassed = true;
+            if (this.accountsSelected && this.accountsSelected.length > 0) {
+                accountFilterPassed = this.accountsSelected.includes(parseInt(transaction.account.id));
+            }
+            
+            return dateFilterPassed && accountFilterPassed;
+        });
     }
 
     _getMonthName(monthNumber) {
@@ -205,7 +261,8 @@ class ChartDataBudget {
         return result;
     }
 
-    async prepareData(selectedYear, selectedMonth, calculationType = 'median') { // Added calculationType parameter
+    async prepareData(selectedYear, selectedMonth, calculationType = 'median') { 
+        await this.initializationPromise; // Ensure data is organized
         console.log(`[ChartDataBudget] prepareData: For year ${selectedYear}, month ${selectedMonth}, type: ${calculationType}.`);
         let primaryData = {}, comparisonData = {}, primaryLabel = '', comparisonLabel = '';
         const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
