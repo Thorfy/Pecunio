@@ -243,9 +243,6 @@ class ChartDataBudget {
                     if (this.organizedData[year][targetMonth] && this.organizedData[year][targetMonth].hasOwnProperty(categoryName)) {
                         const amounts = this.organizedData[year][targetMonth][categoryName] || [];
                         historicalMonthlyTotals.push(amounts.reduce((sum, val) => sum + val, 0));
-                    } else if (this.organizedData[year] && Object.values(this.organizedData[year]).some(dataForMonth => dataForMonth.hasOwnProperty(categoryName))) {
-                        // If category exists in other months of that historical year, consider this targetMonth as 0 for that year
-                        historicalMonthlyTotals.push(0);
                     }
                     // If category didn't exist at all in that historical year, it's implicitly excluded from historicalMonthlyTotals
                 }
