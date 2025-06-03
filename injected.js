@@ -269,7 +269,7 @@ async function build() {
                 const selectedYearRight = parseInt(yearSelectorRightElem.value);
                 const monthValueRight = monthSelectorRightElem.value;
                 const selectedMonthRight = (monthValueRight === "ALL") ? "ALL" : parseInt(monthValueRight);
-                
+
                 const selectedCalcType = calculationTypeSelectorElem.value;
 
                 console.log(`[InjectedJS] updateMedianChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
@@ -365,9 +365,6 @@ async function build() {
                         console.error('[InjectedJS] Error creating new median bar chart:', error);
                         budgetChart = null; // Ensure budgetChart is null if creation failed
                     }
-                }
-            }
-
                 }
             }
 
