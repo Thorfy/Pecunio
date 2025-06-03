@@ -91,7 +91,7 @@ async function build() {
             const budgetChartBlock = document.createElement('div');
             budgetChartBlock.id = "budgetChartBlock";
             budgetChartBlock.style.marginTop = "20px";
-            budgetChartBlock.style.height = "auto"; // Let content define height
+            budgetChartBlock.style.height = "500px";
             budgetChartBlock.style.width = '100%';
             budgetChartBlock.style.display = 'block';
             homeBlock.appendChild(budgetChartBlock);
