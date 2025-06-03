@@ -260,6 +260,7 @@ class ChartDataBudget {
     }
 
     async _organizeTransactions() {
+        const exceptionCat = [326, 282];
         this.organizedData = {};
         // console.log('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
 
@@ -274,6 +275,10 @@ class ChartDataBudget {
 
         filteredTransactions.forEach(transaction => {
             if (!transaction || !transaction.date || !transaction.category || transaction.category.id == null || transaction.amount == null) return;
+
+            if (transaction.category && exceptionCat.includes(transaction.category.id)) {
+                return; // Skip this transaction
+            }
             const date = new Date(transaction.date);
             if (isNaN(date.getTime())) return;
             const year = date.getFullYear();
@@ -310,14 +315,17 @@ class ChartDataBudget {
                  return false;
             }
             
-            let transactionDate = new Date(transaction.date); 
+            // let originalTransactionDate = new Date(transaction.date); // Keep original for reference if needed, or just use transaction.date
+            let dateForProcessing = new Date(transaction.date); // Date to be modified
 
             if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
-                transactionDate.setDate(1); 
-                transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
+                dateForProcessing.setDate(1);
+                dateForProcessing.setMonth(dateForProcessing.getMonth() + transaction.current_month);
+                transaction.date = dateForProcessing; // Persist the adjusted date onto the transaction object
             }
             
-            const modifiedDateForComparison = transactionDate.toDateString(); 
+            // Use the (potentially) modified transaction.date for filtering
+            const modifiedDateForComparison = new Date(transaction.date).toDateString();
 
             let dateFilterPassed = true;
             if (startDate && endDate) {
