@@ -75,31 +75,15 @@ class ChartDataBudget {
         yearLabelLeft.textContent = 'Year: ';
         yearLabelLeft.htmlFor = 'yearSelectorLeft';
         leftColumnDiv.appendChild(yearLabelLeft);
-        this.yearSelectorLeft = document.createElement('select');
-        this.yearSelectorLeft.id = 'yearSelectorLeft';
-        this.yearSelectorLeft.style.marginRight = '10px';
-        for (let y = currentYear + 1; y >= 2015; y--) {
-            const option = document.createElement('option');
-            option.value = y;
-            option.textContent = y;
-            if (y === currentYear) option.selected = true;
-            this.yearSelectorLeft.appendChild(option);
-        }
+        this.yearSelectorLeft = this._createYearSelect('yearSelectorLeft', currentYear, currentYear);
+        this.yearSelectorLeft.style.marginRight = '10px'; // Apply style after creation
         leftColumnDiv.appendChild(this.yearSelectorLeft);
 
         const monthLabelLeft = document.createElement('label');
         monthLabelLeft.textContent = 'Month: ';
         monthLabelLeft.htmlFor = 'monthSelectorLeft';
         leftColumnDiv.appendChild(monthLabelLeft);
-        this.monthSelectorLeft = document.createElement('select');
-        this.monthSelectorLeft.id = 'monthSelectorLeft';
-        this.monthsArray.forEach((monthName, index) => {
-            const option = document.createElement('option');
-            option.value = (index === 0) ? "ALL" : index;
-            option.textContent = monthName;
-            this.monthSelectorLeft.appendChild(option);
-        });
-        this.monthSelectorLeft.value = "ALL";
+        this.monthSelectorLeft = this._createMonthSelect('monthSelectorLeft', "ALL");
         leftColumnDiv.appendChild(this.monthSelectorLeft);
         selectorContainer.appendChild(leftColumnDiv);
 
@@ -117,31 +101,15 @@ class ChartDataBudget {
         yearLabelRight.textContent = 'Year: ';
         yearLabelRight.htmlFor = 'yearSelectorRight';
         rightColumnDiv.appendChild(yearLabelRight);
-        this.yearSelectorRight = document.createElement('select');
-        this.yearSelectorRight.id = 'yearSelectorRight';
-        this.yearSelectorRight.style.marginRight = '10px';
-        for (let y = currentYear + 1; y >= 2015; y--) {
-            const option = document.createElement('option');
-            option.value = y;
-            option.textContent = y;
-            if (y === currentYear - 1) option.selected = true;
-            this.yearSelectorRight.appendChild(option);
-        }
+        this.yearSelectorRight = this._createYearSelect('yearSelectorRight', currentYear - 1, currentYear);
+        this.yearSelectorRight.style.marginRight = '10px'; // Apply style after creation
         rightColumnDiv.appendChild(this.yearSelectorRight);
 
         const monthLabelRight = document.createElement('label');
         monthLabelRight.textContent = 'Month: ';
         monthLabelRight.htmlFor = 'monthSelectorRight';
         rightColumnDiv.appendChild(monthLabelRight);
-        this.monthSelectorRight = document.createElement('select');
-        this.monthSelectorRight.id = 'monthSelectorRight';
-        this.monthsArray.forEach((monthName, index) => {
-            const option = document.createElement('option');
-            option.value = (index === 0) ? "ALL" : index;
-            option.textContent = monthName;
-            this.monthSelectorRight.appendChild(option);
-        });
-        this.monthSelectorRight.value = "ALL";
+        this.monthSelectorRight = this._createMonthSelect('monthSelectorRight', "ALL");
         rightColumnDiv.appendChild(this.monthSelectorRight);
         selectorContainer.appendChild(rightColumnDiv);
 
@@ -644,6 +612,34 @@ class ChartDataBudget {
         }
     }
 
+    _createYearSelect(id, defaultSelectedYear, currentYear) {
+        const selectEl = document.createElement('select');
+        selectEl.id = id;
+        for (let y = currentYear + 1; y >= 2015; y--) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === defaultSelectedYear) {
+                option.selected = true;
+            }
+            selectEl.appendChild(option);
+        }
+        return selectEl;
+    }
+
+    _createMonthSelect(id, defaultMonthValue) {
+        const selectEl = document.createElement('select');
+        selectEl.id = id;
+        this.monthsArray.forEach((monthName, index) => {
+            const option = document.createElement('option');
+            option.value = (index === 0) ? "ALL" : index.toString(); // Ensure value is string
+            option.textContent = monthName;
+            selectEl.appendChild(option);
+        });
+        selectEl.value = defaultMonthValue.toString(); // Ensure value matches option.value type
+        return selectEl;
+    }
+
     _createCanvasElement(parentElement) {
         const canvasDiv = document.createElement('canvas');
         canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
@@ -655,32 +651,4 @@ class ChartDataBudget {
         return canvasDiv;
     }
 
-    // --- Old methods (kept with warnings) ---
-    async applySettingOnData() { 
-        console.warn('[ChartDataBudget] applySettingOnData: OLD METHOD. Part of donut chart flow.');
-        return this.transactions || []; // Simplified fallback
-    }
-    extractBudgets(transactionsInput) { 
-        console.warn('[ChartDataBudget] extractBudgets: OLD METHOD. Part of donut chart flow.');
-        const budgets = {};
-        const tr = transactionsInput || [];
-        tr.forEach(t => { /* simplified logic */ });
-        return budgets;
-    }
-    aggregateBudgets(budgets, granularity) { 
-        console.warn('[ChartDataBudget] aggregateBudgets: OLD METHOD. Part of donut chart flow.');
-        return budgets;
-    }
-    formatDataForDonutChart(aggregatedBudgets) { 
-        console.warn('[ChartDataBudget] formatDataForDonutChart: OLD METHOD. Part of donut chart flow.');
-        return { labels: [], datasets: [{ data: [] }] };
-    }
-    parseColorCSS(strClass) { // Utility, can stay
-        const styleElement = document.createElement("div");
-        styleElement.className = strClass;
-        document.body.appendChild(styleElement);
-        const colorVal = window.getComputedStyle(styleElement).backgroundColor;
-        styleElement.remove();
-        return colorVal;
-    }
 }
