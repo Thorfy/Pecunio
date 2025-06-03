@@ -51,15 +51,20 @@ class ChartDataBudget {
 
         const selectorContainer = document.createElement('div');
         selectorContainer.id = 'medianChartSelectors';
-        selectorContainer.style.marginBottom = '15px';
-        selectorContainer.style.marginTop = '10px';
+        selectorContainer.style.display = 'flex';
+        selectorContainer.style.flexWrap = 'wrap';
+        selectorContainer.style.alignItems = 'baseline';
+        selectorContainer.style.justifyContent = 'flex-start';
+        selectorContainer.style.gap = '15px';
+        selectorContainer.style.marginBottom = '15px'; // Keep existing
+        selectorContainer.style.marginTop = '10px';    // Keep existing
         this.containerElement.appendChild(selectorContainer);
 
         const currentYr = new Date().getFullYear();
 
         // Left Column (Primary)
         const leftColumnDiv = document.createElement('div');
-        leftColumnDiv.style.marginBottom = '10px';
+        // leftColumnDiv.style.marginBottom = '10px'; // REMOVED for flex gap
 
         const leftColumnTitle = document.createElement('strong');
         leftColumnTitle.textContent = 'Left Column (Primary)';
@@ -100,8 +105,8 @@ class ChartDataBudget {
 
         // Right Column (Comparison)
         const rightColumnDiv = document.createElement('div');
-        rightColumnDiv.style.marginTop = '10px';
-        rightColumnDiv.style.marginBottom = '10px';
+        // rightColumnDiv.style.marginTop = '10px'; // REMOVED for flex gap
+        // rightColumnDiv.style.marginBottom = '10px'; // REMOVED for flex gap
 
         const rightColumnTitle = document.createElement('strong');
         rightColumnTitle.textContent = 'Right Column (Comparison)';
@@ -142,7 +147,7 @@ class ChartDataBudget {
 
         // Calculation Type Selector
         const calcDiv = document.createElement('div');
-        calcDiv.style.marginTop = '10px';
+        // calcDiv.style.marginTop = '10px'; // REMOVED for flex gap
 
         const calcLabel = document.createElement('label');
         calcLabel.textContent = 'Calculation: ';
