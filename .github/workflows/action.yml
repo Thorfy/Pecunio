@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3  # Latest stable version
+        uses: actions/checkout@v4  # Latest stable version
 
       - name: Build
         run: zip -r chrome-extension-${{ github.sha }}.zip . -x .git
 
       - name: Archive chrome-extension artifact
-        uses: actions/upload-artifact@v3  # Latest stable version
+        uses: actions/upload-artifact@v4  # Latest stable version
         with:
           name: chrome-extension-${{ github.sha }}
           path: chrome-extension-${{ github.sha }}.zip
@@ -41,7 +41,7 @@ jobs:
           node-version: "20"  # Ensure this matches your Node.js requirements
 
       - name: Download bundle artifact
-        uses: actions/download-artifact@v3  # Updated to latest stable version
+        uses: actions/download-artifact@v4  # Updated to latest stable version
         with:
           name: chrome-extension-${{ github.sha }}
 
