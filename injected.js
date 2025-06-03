@@ -102,52 +102,106 @@ async function build() {
 
             // --- NEW SELECTORS START ---
             const selectorContainer = document.createElement('div');
-            selectorContainer.id = 'medianChartSelectors';
+            selectorContainer.id = 'medianChartSelectors'; // Keep main container ID for now
             selectorContainer.style.marginBottom = '15px';
-            selectorContainer.style.marginTop = '10px'; // Added for spacing
+            selectorContainer.style.marginTop = '10px';
             budgetChartBlock.appendChild(selectorContainer);
 
-            // Year Selector
-            const yearLabel = document.createElement('label');
-            yearLabel.textContent = 'Year: ';
-            yearLabel.htmlFor = 'yearSelectorMedian';
-            selectorContainer.appendChild(yearLabel);
-            const yearSelector = document.createElement('select');
-            yearSelector.id = 'yearSelectorMedian';
-            yearSelector.style.marginRight = '10px';
             const currentYr = new Date().getFullYear();
+            const months = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+            // Left Column (Primary)
+            const leftColumnDiv = document.createElement('div');
+            leftColumnDiv.style.marginBottom = '10px'; // Space between left and right columns
+
+            const leftColumnTitle = document.createElement('strong');
+            leftColumnTitle.textContent = 'Left Column (Primary)';
+            leftColumnDiv.appendChild(leftColumnTitle);
+            leftColumnDiv.appendChild(document.createElement('br'));
+
+            const yearLabelLeft = document.createElement('label');
+            yearLabelLeft.textContent = 'Year: ';
+            yearLabelLeft.htmlFor = 'yearSelectorLeft';
+            leftColumnDiv.appendChild(yearLabelLeft);
+            const yearSelectorLeft = document.createElement('select');
+            yearSelectorLeft.id = 'yearSelectorLeft';
+            yearSelectorLeft.style.marginRight = '10px';
             for (let y = currentYr + 1; y >= 2015; y--) {
                 const option = document.createElement('option');
                 option.value = y;
                 option.textContent = y;
                 if (y === currentYr) option.selected = true;
-                yearSelector.appendChild(option);
+                yearSelectorLeft.appendChild(option);
             }
-            selectorContainer.appendChild(yearSelector);
+            leftColumnDiv.appendChild(yearSelectorLeft);
 
-            // Month Selector
-            const monthLabel = document.createElement('label');
-            monthLabel.textContent = 'Month: ';
-            monthLabel.htmlFor = 'monthSelectorMedian';
-            selectorContainer.appendChild(monthLabel);
-            const monthSelector = document.createElement('select');
-            monthSelector.id = 'monthSelectorMedian';
-            const months = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const monthLabelLeft = document.createElement('label');
+            monthLabelLeft.textContent = 'Month: ';
+            monthLabelLeft.htmlFor = 'monthSelectorLeft';
+            leftColumnDiv.appendChild(monthLabelLeft);
+            const monthSelectorLeft = document.createElement('select');
+            monthSelectorLeft.id = 'monthSelectorLeft';
             months.forEach((monthName, index) => {
                 const option = document.createElement('option');
-                option.value = (index === 0) ? "ALL" : index; // "ALL" or 1-12
+                option.value = (index === 0) ? "ALL" : index;
                 option.textContent = monthName;
-                monthSelector.appendChild(option);
+                monthSelectorLeft.appendChild(option);
             });
-            monthSelector.value = "ALL"; // Default
-            selectorContainer.appendChild(monthSelector);
+            monthSelectorLeft.value = "ALL"; // Default
+            leftColumnDiv.appendChild(monthSelectorLeft);
+            selectorContainer.appendChild(leftColumnDiv);
+
+            // Right Column (Comparison)
+            const rightColumnDiv = document.createElement('div');
+            rightColumnDiv.style.marginTop = '10px'; // Matches example
+            rightColumnDiv.style.marginBottom = '10px'; // Space before calc type
+
+            const rightColumnTitle = document.createElement('strong');
+            rightColumnTitle.textContent = 'Right Column (Comparison)';
+            rightColumnDiv.appendChild(rightColumnTitle);
+            rightColumnDiv.appendChild(document.createElement('br'));
+
+            const yearLabelRight = document.createElement('label');
+            yearLabelRight.textContent = 'Year: ';
+            yearLabelRight.htmlFor = 'yearSelectorRight';
+            rightColumnDiv.appendChild(yearLabelRight);
+            const yearSelectorRight = document.createElement('select');
+            yearSelectorRight.id = 'yearSelectorRight';
+            yearSelectorRight.style.marginRight = '10px';
+            for (let y = currentYr + 1; y >= 2015; y--) {
+                const option = document.createElement('option');
+                option.value = y;
+                option.textContent = y;
+                if (y === currentYr - 1) option.selected = true; // Default to previous year
+                yearSelectorRight.appendChild(option);
+            }
+            rightColumnDiv.appendChild(yearSelectorRight);
+
+            const monthLabelRight = document.createElement('label');
+            monthLabelRight.textContent = 'Month: ';
+            monthLabelRight.htmlFor = 'monthSelectorRight';
+            rightColumnDiv.appendChild(monthLabelRight);
+            const monthSelectorRight = document.createElement('select');
+            monthSelectorRight.id = 'monthSelectorRight';
+            months.forEach((monthName, index) => {
+                const option = document.createElement('option');
+                option.value = (index === 0) ? "ALL" : index;
+                option.textContent = monthName;
+                monthSelectorRight.appendChild(option);
+            });
+            monthSelectorRight.value = "ALL"; // Default
+            rightColumnDiv.appendChild(monthSelectorRight);
+            selectorContainer.appendChild(rightColumnDiv);
 
             // Calculation Type Selector
+            const calcDiv = document.createElement('div');
+            calcDiv.style.marginTop = '10px'; // Matches example
+
             const calcLabel = document.createElement('label');
             calcLabel.textContent = 'Calculation: ';
             calcLabel.htmlFor = 'calculationTypeSelector';
-            calcLabel.style.marginLeft = '10px'; // Add some spacing
-            selectorContainer.appendChild(calcLabel);
+            // calcLabel.style.marginLeft = '10px'; // Removed as it's on its own line now
+            calcDiv.appendChild(calcLabel);
 
             const calcTypeSelector = document.createElement('select');
             calcTypeSelector.id = 'calculationTypeSelector';
@@ -163,7 +217,8 @@ async function build() {
             optionAverage.textContent = 'Average';
             calcTypeSelector.appendChild(optionAverage);
             
-            selectorContainer.appendChild(calcTypeSelector);
+            calcDiv.appendChild(calcTypeSelector);
+            selectorContainer.appendChild(calcDiv);
             // --- NEW SELECTORS END ---
 
             // Remove old donut chart buttons if they were in budgetChartBlock
@@ -200,19 +255,32 @@ async function build() {
             let budgetChart = null; // Declare budgetChart here
 
             async function updateMedianChartView() {
-                const selectedYear = parseInt(yearSelector.value);
-                const monthValue = monthSelector.value;
-                const selectedMonth = (monthValue === "ALL") ? "ALL" : parseInt(monthValue);
-                const selectedCalcType = document.getElementById('calculationTypeSelector').value;
+                // Get new selector values
+                const yearSelectorLeftElem = document.getElementById('yearSelectorLeft');
+                const monthSelectorLeftElem = document.getElementById('monthSelectorLeft');
+                const yearSelectorRightElem = document.getElementById('yearSelectorRight');
+                const monthSelectorRightElem = document.getElementById('monthSelectorRight');
+                const calculationTypeSelectorElem = document.getElementById('calculationTypeSelector');
+
+                const selectedYearLeft = parseInt(yearSelectorLeftElem.value);
+                const monthValueLeft = monthSelectorLeftElem.value;
+                const selectedMonthLeft = (monthValueLeft === "ALL") ? "ALL" : parseInt(monthValueLeft);
+
+                const selectedYearRight = parseInt(yearSelectorRightElem.value);
+                const monthValueRight = monthSelectorRightElem.value;
+                const selectedMonthRight = (monthValueRight === "ALL") ? "ALL" : parseInt(monthValueRight);
                 
-                console.log(`[InjectedJS] updateMedianChartView. Year: ${selectedYear}, Month: ${selectedMonth}, CalcType: ${selectedCalcType}`);
+                const selectedCalcType = calculationTypeSelectorElem.value;
+
+                console.log(`[InjectedJS] updateMedianChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
                 
                 if (!budgetChartDataInstance || typeof budgetChartDataInstance.prepareData !== 'function') {
                     console.error('[InjectedJS] budgetChartDataInstance is not ready or prepareData is missing.');
                     return;
                 }
                 
-                const newChartData = await budgetChartDataInstance.prepareData(selectedYear, selectedMonth, selectedCalcType);
+                // Update prepareData call
+                const newChartData = await budgetChartDataInstance.prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, selectedCalcType);
                 // console.log('[InjectedJS] Data prepared for median bar chart:', JSON.stringify(newChartData)); // REMOVED - Too verbose
 
                 if (!newChartData || !newChartData.labels || !newChartData.datasets || !Array.isArray(newChartData.datasets)) {
@@ -239,7 +307,10 @@ async function build() {
                 if (budgetChart) {
                     // console.log('[InjectedJS] Updating existing median bar chart.'); // Retained, but less critical
                     budgetChart.data = newChartData;
-                    budgetChart.options.plugins.title.text = `Comparison: ${selectedYear} ${monthValue === "ALL" ? "All Months" : months[parseInt(monthValue)]} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`;
+                    // Update Chart Title Logic
+                    const titleLeft = `${selectedYearLeft} ${monthValueLeft === "ALL" ? "All Months" : months[parseInt(monthValueLeft)]}`;
+                    const titleRight = `${selectedYearRight} ${monthValueRight === "ALL" ? "All Months" : months[parseInt(monthValueRight)]}`;
+                    budgetChart.options.plugins.title.text = `Budget: ${titleLeft} vs ${titleRight} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`;
                     budgetChart.update();
                     // console.log('[InjectedJS] Median bar chart updated.'); // Retained, but less critical
                 } else {
@@ -248,6 +319,10 @@ async function build() {
                        console.warn('[InjectedJS] budgetChart was not null before creation, destroying old instance.');
                        budgetChart.destroy(); 
                     }
+                    // Update Chart Title Logic for new chart
+                    const titleLeft = `${selectedYearLeft} ${monthValueLeft === "ALL" ? "All Months" : months[parseInt(monthValueLeft)]}`;
+                    const titleRight = `${selectedYearRight} ${monthValueRight === "ALL" ? "All Months" : months[parseInt(monthValueRight)]}`;
+                    const dynamicTitle = `Budget: ${titleLeft} vs ${titleRight} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`;
                     try {
                         budgetChart = new Chart(budgetCtx, {
                             type: 'bar',
@@ -280,7 +355,7 @@ async function build() {
                                     },
                                     title: { // Add dynamic title to chart options
                                         display: true,
-                                        text: `Comparison: ${selectedYear} ${monthValue === "ALL" ? "All Months" : months[parseInt(monthValue)]} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`
+                                        text: dynamicTitle // Use the new dynamic title
                                     }
                                 }
                             }
@@ -293,8 +368,15 @@ async function build() {
                 }
             }
 
-            yearSelector.addEventListener('change', updateMedianChartView);
-            monthSelector.addEventListener('change', updateMedianChartView);
+                }
+            }
+
+            // Add new listeners
+            document.getElementById('yearSelectorLeft').addEventListener('change', updateMedianChartView);
+            document.getElementById('monthSelectorLeft').addEventListener('change', updateMedianChartView);
+            document.getElementById('yearSelectorRight').addEventListener('change', updateMedianChartView);
+            document.getElementById('monthSelectorRight').addEventListener('change', updateMedianChartView);
+            // The variable 'calcTypeSelector' from the DOM creation part is in scope and holds the correct element.
             calcTypeSelector.addEventListener('change', updateMedianChartView);
 
             // Initial call to load the chart with default selector values

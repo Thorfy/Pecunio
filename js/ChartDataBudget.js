@@ -258,24 +258,29 @@ class ChartDataBudget {
         return result;
     }
 
-    async prepareData(selectedYear, selectedMonth, calculationType = 'median') { 
+    async prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType = 'median') {
         await this.initializationPromise; // Ensure data is organized
-        console.log(`[ChartDataBudget] prepareData: For year ${selectedYear}, month ${selectedMonth}, type: ${calculationType}.`);
+        console.log(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
+
         let primaryData = {}, comparisonData = {}, primaryLabel = '', comparisonLabel = '';
         const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
 
-        if (selectedMonth === 'ALL') {
-            console.log('[ChartDataBudget] prepareData: Mode: ALL months selected.');
-            primaryData = this.getCalculatedMonthlyValueForYear(selectedYear, calculationType); 
-            primaryLabel = `${calcTypeString} ${selectedYear}`;
-            comparisonData = this.getCalculatedMonthlyValueForYear(selectedYear - 1, calculationType);
-            comparisonLabel = `${calcTypeString} ${selectedYear - 1}`;
+        // Primary Data (Left Column)
+        if (selectedMonthLeft === 'ALL') {
+            primaryData = this.getCalculatedMonthlyValueForYear(selectedYearLeft, calculationType);
+            primaryLabel = `${calcTypeString} ${selectedYearLeft}`;
         } else {
-            console.log(`[ChartDataBudget] prepareData: Mode: Specific month ${selectedMonth}/${selectedYear}`);
-            primaryData = this.getActualSpendingForMonth(selectedYear, selectedMonth); // Actual spending is always sum
-            primaryLabel = `Actual ${this._getMonthName(selectedMonth)} ${selectedYear}`;
-            comparisonData = this.getHistoricalCalculatedValueForMonth(selectedMonth, selectedYear, calculationType);
-            comparisonLabel = `Hist. ${calcTypeString} ${this._getMonthName(selectedMonth)}`;
+            primaryData = this.getActualSpendingForMonth(selectedYearLeft, selectedMonthLeft);
+            primaryLabel = `Actual ${this._getMonthName(selectedMonthLeft)} ${selectedYearLeft}`;
+        }
+
+        // Comparison Data (Right Column)
+        if (selectedMonthRight === 'ALL') {
+            comparisonData = this.getCalculatedMonthlyValueForYear(selectedYearRight, calculationType);
+            comparisonLabel = `${calcTypeString} ${selectedYearRight}`;
+        } else {
+            comparisonData = this.getActualSpendingForMonth(selectedYearRight, selectedMonthRight);
+            comparisonLabel = `Actual ${this._getMonthName(selectedMonthRight)} ${selectedYearRight}`;
         }
 
         const allCategoryNames = new Set();
