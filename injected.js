@@ -1,3 +1,4 @@
+
 const evt = new Evt();
 const settingClass = new Settings();
 const dataClass = new BankinData();
@@ -38,27 +39,71 @@ async function build() {
     await settingClass.loadSettings();
 
     if (location.href === "https://app2.bankin.com/accounts") {
-        loadingScreen();
+        loadingScreen(); // This might clear the space needed for the new chart if not handled
         setTimeout(() => { new Hidder() }, 500);
 
         const refreshIcon = document.querySelector(".refreshIcon");
-        refreshIcon.addEventListener("click", () => {
-            let cacheObject = {
-                ['cache_data_transactions']: "",
-                ['cache_time_transactions']: ""
-            };
-
-            setTimeout(async () => {
-                await settingClass.setSettings(cacheObject);
-                new BankinData()
-            }, 1100);
-        })
-
-
+        if (refreshIcon) {
+            refreshIcon.addEventListener("click", () => {
+                let cacheObject = {
+                    ['cache_data_transactions']: "",
+                    ['cache_time_transactions']: ""
+                };
+                setTimeout(async () => {
+                    await settingClass.setSettings(cacheObject);
+                    new BankinData(); // This reloads data, might need to reload budget chart too
+                }, 1100);
+            });
+        }
 
         const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
         const preparedData = await chartData.prepareData();
-        await chartData.buildChart(preparedData);
+        
+        const homeBlock = document.getElementsByClassName("homeBlock")[0];
+        if (homeBlock) {
+            var style = document.createElement('style');
+            style.innerHTML = `
+                .homeBlock > div {
+                    max-width: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+            homeBlock.innerHTML = ""; // Clear existing content
+
+            const originalChartContainer = document.createElement('div');
+            originalChartContainer.id = "originalChartContainer";
+            homeBlock.appendChild(originalChartContainer);
+            const canvasOriginal = createCanvasElement(originalChartContainer);
+            const chartJsConfig = await chartData.getChartJsConfig();
+            chartJsConfig.data = preparedData;
+            new Chart(canvasOriginal.getContext('2d'), chartJsConfig);
+
+
+            // Container for the new budget chart
+            const budgetChartBlock = document.createElement('div');
+            budgetChartBlock.id = "budgetChartBlock";
+            budgetChartBlock.style.marginTop = "20px";
+            budgetChartBlock.style.height = "500px";
+            budgetChartBlock.style.width = '100%';
+            budgetChartBlock.style.display = 'block';
+            homeBlock.appendChild(budgetChartBlock);
+
+            const rawTransactionsForBudget = settingClass.getSetting('cache_data_transactions');
+            const categoriesForBudget = settingClass.getSetting('cache_data_categories');
+            const accountsSelectedForBudget = settingClass.getSetting('accountsSelected');
+
+            const budgetChartDataInstance = new ChartDataBudget(
+                rawTransactionsForBudget,
+                categoriesForBudget,
+                accountsSelectedForBudget,
+                setting // Assuming 'setting' is still relevant for ChartDataBudget constructor
+            );
+            budgetChartDataInstance.createUI(budgetChartBlock.id);
+
+        } else {
+            console.error("[InjectedJS] homeBlock not found for account page charts.");
+        }
+
     } else if (location.href === "https://app2.bankin.com/categories") {
         const menu = document.querySelector("#monthSelector");
         if (menu) {
@@ -75,7 +120,6 @@ async function build() {
 
             let categBlock = document.getElementsByClassName("categoryChart");
             if (categBlock && categBlock[0]) {
-                //categBlock[0].innerHTML = "";
                 let canvasDiv = document.getElementsByClassName("canvasDiv")
                 if (canvasDiv && canvasDiv.length > 0) {
                     for (let item of canvasDiv) {
@@ -120,16 +164,21 @@ function loadingScreen() {
         imgdiv.src = chrome.runtime.getURL("asset/Loading.gif");
         imgdiv.style.textAlign = "center";
 
-        childBlock[0].innerHTML = "";
-        childBlock[0].appendChild(imgdiv);
+        if (childBlock && childBlock[0]) { // Check if childBlock[0] exists
+            childBlock[0].innerHTML = "";
+            childBlock[0].appendChild(imgdiv);
+        } else {
+            console.error("childBlock[0] not found in loadingScreen");
+        }
     }
     evt.dispatch('loading_sreen_display');
 }
 
 function createCanvasElement(parentElement) {
     const canvasDiv = document.createElement('canvas');
-    canvasDiv.classList = "canvasDiv";
-
+    canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
+    canvasDiv.style.width = '100%';
+    canvasDiv.style.height = '400px';
     if (parentElement) {
         parentElement.appendChild(canvasDiv);
     }
