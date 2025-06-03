@@ -24,6 +24,210 @@ class ChartDataBudget {
 
         this.organizedData = {}; // Initialize as empty
         this.initializationPromise = this._initializeData(); // Start async initialization
+
+        // UI related instance properties
+        this.containerElement = null;
+        this.yearSelectorLeft = null;
+        this.monthSelectorLeft = null;
+        this.yearSelectorRight = null;
+        this.monthSelectorRight = null;
+        this.calcTypeSelector = null;
+        this.budgetCtx = null;
+        this.budgetChart = null;
+        this.monthsArray = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    }
+
+    createUI(containerElementId) {
+        this.containerElement = document.getElementById(containerElementId);
+        if (!this.containerElement) {
+            console.error(`[ChartDataBudget] createUI: Container element with ID '${containerElementId}' not found.`);
+            return;
+        }
+        this.containerElement.innerHTML = ''; // Clear the container
+
+        const budgetTitle = document.createElement('h3');
+        budgetTitle.textContent = "Median Budget Comparison";
+        this.containerElement.appendChild(budgetTitle);
+
+        const selectorContainer = document.createElement('div');
+        selectorContainer.id = 'medianChartSelectors';
+        selectorContainer.style.marginBottom = '15px';
+        selectorContainer.style.marginTop = '10px';
+        this.containerElement.appendChild(selectorContainer);
+
+        const currentYr = new Date().getFullYear();
+
+        // Left Column (Primary)
+        const leftColumnDiv = document.createElement('div');
+        leftColumnDiv.style.marginBottom = '10px';
+
+        const leftColumnTitle = document.createElement('strong');
+        leftColumnTitle.textContent = 'Left Column (Primary)';
+        leftColumnDiv.appendChild(leftColumnTitle);
+        leftColumnDiv.appendChild(document.createElement('br'));
+
+        const yearLabelLeft = document.createElement('label');
+        yearLabelLeft.textContent = 'Year: ';
+        yearLabelLeft.htmlFor = 'yearSelectorLeft';
+        leftColumnDiv.appendChild(yearLabelLeft);
+        this.yearSelectorLeft = document.createElement('select');
+        this.yearSelectorLeft.id = 'yearSelectorLeft';
+        this.yearSelectorLeft.style.marginRight = '10px';
+        for (let y = currentYr + 1; y >= 2015; y--) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYr) option.selected = true;
+            this.yearSelectorLeft.appendChild(option);
+        }
+        leftColumnDiv.appendChild(this.yearSelectorLeft);
+
+        const monthLabelLeft = document.createElement('label');
+        monthLabelLeft.textContent = 'Month: ';
+        monthLabelLeft.htmlFor = 'monthSelectorLeft';
+        leftColumnDiv.appendChild(monthLabelLeft);
+        this.monthSelectorLeft = document.createElement('select');
+        this.monthSelectorLeft.id = 'monthSelectorLeft';
+        this.monthsArray.forEach((monthName, index) => {
+            const option = document.createElement('option');
+            option.value = (index === 0) ? "ALL" : index;
+            option.textContent = monthName;
+            this.monthSelectorLeft.appendChild(option);
+        });
+        this.monthSelectorLeft.value = "ALL";
+        leftColumnDiv.appendChild(this.monthSelectorLeft);
+        selectorContainer.appendChild(leftColumnDiv);
+
+        // Right Column (Comparison)
+        const rightColumnDiv = document.createElement('div');
+        rightColumnDiv.style.marginTop = '10px';
+        rightColumnDiv.style.marginBottom = '10px';
+
+        const rightColumnTitle = document.createElement('strong');
+        rightColumnTitle.textContent = 'Right Column (Comparison)';
+        rightColumnDiv.appendChild(rightColumnTitle);
+        rightColumnDiv.appendChild(document.createElement('br'));
+
+        const yearLabelRight = document.createElement('label');
+        yearLabelRight.textContent = 'Year: ';
+        yearLabelRight.htmlFor = 'yearSelectorRight';
+        rightColumnDiv.appendChild(yearLabelRight);
+        this.yearSelectorRight = document.createElement('select');
+        this.yearSelectorRight.id = 'yearSelectorRight';
+        this.yearSelectorRight.style.marginRight = '10px';
+        for (let y = currentYr + 1; y >= 2015; y--) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYr - 1) option.selected = true;
+            this.yearSelectorRight.appendChild(option);
+        }
+        rightColumnDiv.appendChild(this.yearSelectorRight);
+
+        const monthLabelRight = document.createElement('label');
+        monthLabelRight.textContent = 'Month: ';
+        monthLabelRight.htmlFor = 'monthSelectorRight';
+        rightColumnDiv.appendChild(monthLabelRight);
+        this.monthSelectorRight = document.createElement('select');
+        this.monthSelectorRight.id = 'monthSelectorRight';
+        this.monthsArray.forEach((monthName, index) => {
+            const option = document.createElement('option');
+            option.value = (index === 0) ? "ALL" : index;
+            option.textContent = monthName;
+            this.monthSelectorRight.appendChild(option);
+        });
+        this.monthSelectorRight.value = "ALL";
+        rightColumnDiv.appendChild(this.monthSelectorRight);
+        selectorContainer.appendChild(rightColumnDiv);
+
+        // Calculation Type Selector
+        const calcDiv = document.createElement('div');
+        calcDiv.style.marginTop = '10px';
+
+        const calcLabel = document.createElement('label');
+        calcLabel.textContent = 'Calculation: ';
+        calcLabel.htmlFor = 'calculationTypeSelector';
+        calcDiv.appendChild(calcLabel);
+
+        this.calcTypeSelector = document.createElement('select');
+        this.calcTypeSelector.id = 'calculationTypeSelector';
+
+        const optionMedian = document.createElement('option');
+        optionMedian.value = 'median';
+        optionMedian.textContent = 'Median';
+        optionMedian.selected = true;
+        this.calcTypeSelector.appendChild(optionMedian);
+
+        const optionAverage = document.createElement('option');
+        optionAverage.value = 'average';
+        optionAverage.textContent = 'Average';
+        this.calcTypeSelector.appendChild(optionAverage);
+
+        calcDiv.appendChild(this.calcTypeSelector);
+        selectorContainer.appendChild(calcDiv);
+
+        // Canvas Creation
+        const budgetCanvas = this._createCanvasElement(this.containerElement);
+        if (budgetCanvas) {
+            this.budgetCtx = budgetCanvas.getContext('2d');
+        } else {
+            console.error("[ChartDataBudget] createUI: Failed to create canvas element.");
+            return;
+        }
+
+        // Attach Event Listeners
+        this.yearSelectorLeft.addEventListener('change', this._updateChartView.bind(this));
+        this.monthSelectorLeft.addEventListener('change', this._updateChartView.bind(this));
+        this.yearSelectorRight.addEventListener('change', this._updateChartView.bind(this));
+        this.monthSelectorRight.addEventListener('change', this._updateChartView.bind(this));
+        this.calcTypeSelector.addEventListener('change', this._updateChartView.bind(this));
+
+        // Initial Chart Load (after awaiting initializationPromise)
+        this.initializationPromise.then(() => {
+             // Ensure data is loaded before first draw, especially categoryLookup for storage listener
+            this._setupStorageListener();
+            this._updateChartView();
+        }).catch(error => {
+            console.error("[ChartDataBudget] createUI: Error during initial data load for chart view:", error);
+        });
+    }
+
+    _setupStorageListener() {
+        // Extract known parent category names for the storage listener
+        let knownCategoryNamesForVisibility = [];
+        if (this.categoryLookup && this.categoryLookup.size > 0) {
+            const uniqueNames = new Set(Array.from(this.categoryLookup.values()));
+            knownCategoryNamesForVisibility = Array.from(uniqueNames);
+        } else if (this.categories && Array.isArray(this.categories)) { // Fallback if lookup not populated but categories exist
+             this.categories.forEach(parentCat => {
+                if (parentCat && parentCat.name) {
+                    knownCategoryNamesForVisibility.push(parentCat.name);
+                }
+            });
+        } else {
+            console.warn('[ChartDataBudget] _setupStorageListener: Could not retrieve known category names for visibility checks.');
+        }
+
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+            chrome.storage.onChanged.addListener((changes, areaName) => {
+                if (areaName === 'local') {
+                    let relevantChangeDetected = false;
+                    for (const key in changes) {
+                        if (knownCategoryNamesForVisibility.includes(key)) {
+                            relevantChangeDetected = true;
+                            break;
+                        }
+                    }
+                    if (relevantChangeDetected) {
+                        console.log('[ChartDataBudget] _setupStorageListener: Relevant category visibility changed, calling _updateChartView.');
+                        this._updateChartView();
+                    }
+                }
+            });
+            console.log('[ChartDataBudget] _setupStorageListener: Added chrome.storage.onChanged listener.');
+        } else {
+            console.warn('[ChartDataBudget] _setupStorageListener: chrome.storage.onChanged not available.');
+        }
     }
 
     async _initializeData() {
@@ -329,6 +533,117 @@ class ChartDataBudget {
                 { label: comparisonLabel, data: comparisonDatasetData, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
             ]
         };
+    }
+
+    async _updateChartView() {
+        // Get new selector values
+        const selectedYearLeft = parseInt(this.yearSelectorLeft.value);
+        const monthValueLeft = this.monthSelectorLeft.value;
+        const selectedMonthLeft = (monthValueLeft === "ALL") ? "ALL" : parseInt(monthValueLeft);
+
+        const selectedYearRight = parseInt(this.yearSelectorRight.value);
+        const monthValueRight = this.monthSelectorRight.value;
+        const selectedMonthRight = (monthValueRight === "ALL") ? "ALL" : parseInt(monthValueRight);
+
+        const selectedCalcType = this.calcTypeSelector.value;
+
+        console.log(`[ChartDataBudget] _updateChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
+
+        if (!this || typeof this.prepareData !== 'function') { // Check instance and method
+            console.error('[ChartDataBudget] _updateChartView: instance is not ready or prepareData is missing.');
+            return;
+        }
+
+        const newChartData = await this.prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, selectedCalcType);
+
+        if (!newChartData || !newChartData.labels || !newChartData.datasets || !Array.isArray(newChartData.datasets)) {
+            console.error('[ChartDataBudget] _updateChartView: Invalid data structure received from prepareData. Data:', newChartData);
+            if(this.budgetChart) {
+                this.budgetChart.data.labels = [];
+                this.budgetChart.data.datasets = [];
+                this.budgetChart.update();
+            }
+            return;
+        }
+        for(const dataset of newChartData.datasets) {
+            if (!Array.isArray(dataset.data)) {
+                console.error('[ChartDataBudget] _updateChartView: Invalid dataset structure, missing data array:', dataset);
+                if(this.budgetChart) {
+                   this.budgetChart.data.labels = [];
+                   this.budgetChart.data.datasets = [];
+                   this.budgetChart.update();
+                }
+                return;
+            }
+        }
+
+        const titleLeft = `${selectedYearLeft} ${monthValueLeft === "ALL" ? "All Months" : this.monthsArray[parseInt(monthValueLeft)]}`;
+        const titleRight = `${selectedYearRight} ${monthValueRight === "ALL" ? "All Months" : this.monthsArray[parseInt(monthValueRight)]}`;
+        const dynamicTitle = `Budget: ${titleLeft} vs ${titleRight} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`;
+
+        if (this.budgetChart) {
+            this.budgetChart.data = newChartData;
+            this.budgetChart.options.plugins.title.text = dynamicTitle;
+            this.budgetChart.update();
+        } else {
+            if (this.budgetChart) {
+               console.warn('[ChartDataBudget] _updateChartView: budgetChart was not null before creation, destroying old instance.');
+               this.budgetChart.destroy();
+            }
+            try {
+                this.budgetChart = new Chart(this.budgetCtx, { // Assumes Chart is global
+                    type: 'bar',
+                    data: newChartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Amount (€)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: false,
+                                    text: 'Categories'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            title: {
+                                display: true,
+                                text: dynamicTitle
+                            }
+                        }
+                    }
+                });
+                console.log('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
+            } catch (error) {
+                console.error('[ChartDataBudget] _updateChartView: Error creating new budget bar chart:', error);
+                this.budgetChart = null;
+            }
+        }
+    }
+
+    _createCanvasElement(parentElement) {
+        const canvasDiv = document.createElement('canvas');
+        canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
+        canvasDiv.style.width = '100%';   // Ensure canvas tries to use full width of parent
+        canvasDiv.style.height = '400px';  // Set a default height
+        if (parentElement) {
+            parentElement.appendChild(canvasDiv);
+        }
+        return canvasDiv;
     }
 
     // --- Old methods (kept with warnings) ---
