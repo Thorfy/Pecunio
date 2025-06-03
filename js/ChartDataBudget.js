@@ -1,6 +1,6 @@
 class ChartDataBudget {
     constructor(transactions, categories, accountsSelected = null, settings) {
-        this.transactions = transactions || []; // Ensure transactions is an array
+        this.transactions = transactions || [];
         this.categories = categories;
         this.accountsSelected = accountsSelected;
         this.settings = settings; // Assuming settings object is passed for potential future use
@@ -20,10 +20,10 @@ class ChartDataBudget {
                 }
             });
         }
-        console.log('[ChartDataBudget] Constructor: categoryLookup initialized. Size:', this.categoryLookup.size);
+        // console.log('[ChartDataBudget] Constructor: categoryLookup initialized. Size:', this.categoryLookup.size);
 
-        this.organizedData = {}; // Initialize as empty
-        this.initializationPromise = this._initializeData(); // Start async initialization
+        this.organizedData = {};
+        this.initializationPromise = this._initializeData();
 
         // UI related instance properties
         this.containerElement = null;
@@ -60,7 +60,7 @@ class ChartDataBudget {
         selectorContainer.style.marginTop = '10px';    // Keep existing
         this.containerElement.appendChild(selectorContainer);
 
-        const currentYr = new Date().getFullYear();
+        const currentYear = new Date().getFullYear();
 
         // Left Column (Primary)
         const leftColumnDiv = document.createElement('div');
@@ -78,11 +78,11 @@ class ChartDataBudget {
         this.yearSelectorLeft = document.createElement('select');
         this.yearSelectorLeft.id = 'yearSelectorLeft';
         this.yearSelectorLeft.style.marginRight = '10px';
-        for (let y = currentYr + 1; y >= 2015; y--) {
+        for (let y = currentYear + 1; y >= 2015; y--) {
             const option = document.createElement('option');
             option.value = y;
             option.textContent = y;
-            if (y === currentYr) option.selected = true;
+            if (y === currentYear) option.selected = true;
             this.yearSelectorLeft.appendChild(option);
         }
         leftColumnDiv.appendChild(this.yearSelectorLeft);
@@ -120,11 +120,11 @@ class ChartDataBudget {
         this.yearSelectorRight = document.createElement('select');
         this.yearSelectorRight.id = 'yearSelectorRight';
         this.yearSelectorRight.style.marginRight = '10px';
-        for (let y = currentYr + 1; y >= 2015; y--) {
+        for (let y = currentYear + 1; y >= 2015; y--) {
             const option = document.createElement('option');
             option.value = y;
             option.textContent = y;
-            if (y === currentYr - 1) option.selected = true;
+            if (y === currentYear - 1) option.selected = true;
             this.yearSelectorRight.appendChild(option);
         }
         rightColumnDiv.appendChild(this.yearSelectorRight);
@@ -229,17 +229,16 @@ class ChartDataBudget {
                     }
                 }
             });
-            console.log('[ChartDataBudget] _setupStorageListener: Added chrome.storage.onChanged listener.');
+            // console.log('[ChartDataBudget] _setupStorageListener: Added chrome.storage.onChanged listener.');
         } else {
             console.warn('[ChartDataBudget] _setupStorageListener: chrome.storage.onChanged not available.');
         }
     }
 
     async _initializeData() {
-        console.log('[ChartDataBudget] _initializeData: Starting data organization.');
-        await this._organizeTransactions(); // This is now async
-        console.log('[ChartDataBudget] _initializeData: Data organization complete.');
-        // Any other async setup can go here
+        // console.log('[ChartDataBudget] _initializeData: Starting data organization.');
+        await this._organizeTransactions();
+        // console.log('[ChartDataBudget] _initializeData: Data organization complete.');
     }
 
     static _calculateMedian(arr) {
@@ -261,16 +260,15 @@ class ChartDataBudget {
     }
 
     async _organizeTransactions() {
-        this.organizedData = {}; // Reset or initialize
-        console.log('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
+        this.organizedData = {};
+        // console.log('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
 
         const filteredTransactions = await this.applySettingOnData();
-        console.log('[ChartDataBudget] _organizeTransactions: Transactions count after applySettingOnData:', filteredTransactions ? filteredTransactions.length : 0);
+        // console.log('[ChartDataBudget] _organizeTransactions: Transactions count after applySettingOnData:', filteredTransactions ? filteredTransactions.length : 0);
 
         if (!filteredTransactions || filteredTransactions.length === 0) {
             console.warn('[ChartDataBudget] _organizeTransactions: No transactions to organize after filtering.');
-            // Keep this.organizedData = {} (already set)
-            console.log(`[ChartDataBudget] _organizeTransactions: Completed (no data). Organized data for 0 years.`); // Update completion log
+            // console.log(`[ChartDataBudget] _organizeTransactions: Completed (no data). Organized data for 0 years.`);
             return;
         }
 
@@ -290,11 +288,10 @@ class ChartDataBudget {
             if (!this.organizedData[year][month][categoryName]) this.organizedData[year][month][categoryName] = [];
             this.organizedData[year][month][categoryName].push(transaction.amount);
         });
-        console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
+        // console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
     }
 
     async applySettingOnData() {
-        // Ensure this.transactions is an array
         if (!this.transactions || !Array.isArray(this.transactions)) {
             console.warn('[ChartDataBudget] applySettingOnData: No transactions to process or not an array.');
             return [];
@@ -305,7 +302,7 @@ class ChartDataBudget {
         const startDate = startDateSetting ? Date.parse(startDateSetting) : null;
         const endDate = endDateSetting ? Date.parse(endDateSetting) : null;
 
-        console.log(`[ChartDataBudget] applySettingOnData: Filtering with global startDate: ${startDateSetting}, endDate: ${endDateSetting}`);
+        // console.log(`[ChartDataBudget] applySettingOnData: Filtering with global startDate: ${startDateSetting}, endDate: ${endDateSetting}`);
 
         return this.transactions.filter(transaction => {
             if (!transaction || !transaction.date || !transaction.account || transaction.account.id == null) {
@@ -346,7 +343,7 @@ class ChartDataBudget {
     }
 
     getCalculatedMonthlyValueForYear(year, calculationType = 'median') {
-        console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
+        // console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -406,7 +403,7 @@ class ChartDataBudget {
     }
 
     getActualSpendingForMonth(year, month) {
-        console.log(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
+        // console.log(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -415,7 +412,6 @@ class ChartDataBudget {
             console.warn('[ChartDataBudget] categoryLookup is empty or not available in getActualSpendingForMonth.');
         }
 
-        // Proceed to fill with actual data if present
         if (this.organizedData[year] && this.organizedData[year][month]) {
             // Iterate over the categories present in the specific month's data
             Object.keys(this.organizedData[year][month]).forEach(categoryName => {
@@ -432,7 +428,7 @@ class ChartDataBudget {
     }
 
     getHistoricalCalculatedValueForMonth(targetMonth, currentYear, calculationType = 'median') {
-        console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
+        // console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -441,7 +437,7 @@ class ChartDataBudget {
             console.warn('[ChartDataBudget] categoryLookup is empty or not available in getHistoricalCalculatedValueForMonth.');
         }
         
-        const allCategoryNames = new Set(this.categoryLookup.values()); // Still useful for iterating
+        const allCategoryNames = new Set(this.categoryLookup.values());
 
         allCategoryNames.forEach(categoryName => {
             const historicalMonthlyTotals = [];
@@ -468,8 +464,8 @@ class ChartDataBudget {
     }
 
     async prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType = 'median') {
-        await this.initializationPromise; // Ensure data is organized
-        console.log(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
+        await this.initializationPromise;
+        // console.log(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
 
         let primaryData = {}, comparisonData = {}, primaryLabel = '', comparisonLabel = '';
         const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
@@ -515,7 +511,7 @@ class ChartDataBudget {
                 console.error('[ChartDataBudget] prepareData: Exception fetching visibility settings:', error);
             }
         } else if (categoryNamesArray.length === 0) {
-             console.log('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
+             // console.log('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
         } else {
              console.warn('[ChartDataBudget] prepareData: chrome.storage.local not available.');
         }
@@ -530,7 +526,7 @@ class ChartDataBudget {
                 // console.log(`[ChartDataBudget] prepareData: Filtering out hidden category: ${name}`); // Verbose
             }
         }
-        console.log(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
+        // console.log(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
         return {
             labels: finalLabels,
             datasets: [
@@ -552,7 +548,7 @@ class ChartDataBudget {
 
         const selectedCalcType = this.calcTypeSelector.value;
 
-        console.log(`[ChartDataBudget] _updateChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
+        // console.log(`[ChartDataBudget] _updateChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
 
         if (!this || typeof this.prepareData !== 'function') { // Check instance and method
             console.error('[ChartDataBudget] _updateChartView: instance is not ready or prepareData is missing.');
@@ -592,7 +588,7 @@ class ChartDataBudget {
             this.budgetChart.update();
         } else {
             if (this.budgetChart) {
-               console.warn('[ChartDataBudget] _updateChartView: budgetChart was not null before creation, destroying old instance.');
+               // console.warn('[ChartDataBudget] _updateChartView: budgetChart was not null before creation, destroying old instance.');
                this.budgetChart.destroy();
             }
             try {
@@ -632,7 +628,7 @@ class ChartDataBudget {
                         }
                     }
                 });
-                console.log('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
+                // console.log('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
             } catch (error) {
                 console.error('[ChartDataBudget] _updateChartView: Error creating new budget bar chart:', error);
                 this.budgetChart = null;

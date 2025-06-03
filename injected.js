@@ -1,5 +1,4 @@
 
-// Original injected.js content starts here
 const evt = new Evt();
 const settingClass = new Settings();
 const dataClass = new BankinData();
@@ -44,7 +43,7 @@ async function build() {
         setTimeout(() => { new Hidder() }, 500);
 
         const refreshIcon = document.querySelector(".refreshIcon");
-        if (refreshIcon) { // Ensure refreshIcon exists
+        if (refreshIcon) {
             refreshIcon.addEventListener("click", () => {
                 let cacheObject = {
                     ['cache_data_transactions']: "",
@@ -57,14 +56,11 @@ async function build() {
             });
         }
 
-        // Existing chart logic
         const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
         const preparedData = await chartData.prepareData();
         
-        // Modification: Create separate containers for charts
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
         if (homeBlock) {
-            console.log(`[InjectedJS] homeBlock clientWidth: ${homeBlock.clientWidth}px, offsetWidth: ${homeBlock.offsetWidth}px`);
             var style = document.createElement('style');
             style.innerHTML = `
                 .homeBlock > div {
@@ -72,16 +68,12 @@ async function build() {
                 }
             `;
             document.head.appendChild(style);
-            console.log('[InjectedJS] Applied user CSS override for .homeBlock > div max-width.');
-            // const homeBlockStyles = window.getComputedStyle(homeBlock);
-            // console.log(`[InjectedJS] homeBlock computed width: ${homeBlockStyles.width}, padding: ${homeBlockStyles.paddingLeft}/${homeBlockStyles.paddingRight}`);
             homeBlock.innerHTML = ""; // Clear existing content
 
-            // Container for the original chart
             const originalChartContainer = document.createElement('div');
             originalChartContainer.id = "originalChartContainer";
             homeBlock.appendChild(originalChartContainer);
-            const canvasOriginal = createCanvasElement(originalChartContainer); // createCanvasElement appends canvas
+            const canvasOriginal = createCanvasElement(originalChartContainer);
             const chartJsConfig = await chartData.getChartJsConfig();
             chartJsConfig.data = preparedData;
             new Chart(canvasOriginal.getContext('2d'), chartJsConfig);
@@ -106,10 +98,10 @@ async function build() {
                 accountsSelectedForBudget,
                 setting // Assuming 'setting' is still relevant for ChartDataBudget constructor
             );
-            budgetChartDataInstance.createUI(budgetChartBlock.id); // New call
+            budgetChartDataInstance.createUI(budgetChartBlock.id);
 
         } else {
-            console.error("[InjectedJS] homeBlock not found for account page charts."); // Added prefix for consistency
+            console.error("[InjectedJS] homeBlock not found for account page charts.");
         }
 
     } else if (location.href === "https://app2.bankin.com/categories") {
@@ -128,7 +120,6 @@ async function build() {
 
             let categBlock = document.getElementsByClassName("categoryChart");
             if (categBlock && categBlock[0]) {
-                //categBlock[0].innerHTML = "";
                 let canvasDiv = document.getElementsByClassName("canvasDiv")
                 if (canvasDiv && canvasDiv.length > 0) {
                     for (let item of canvasDiv) {
@@ -186,8 +177,8 @@ function loadingScreen() {
 function createCanvasElement(parentElement) {
     const canvasDiv = document.createElement('canvas');
     canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
-    canvasDiv.style.width = '100%';   // Ensure canvas tries to use full width of parent
-    canvasDiv.style.height = '400px';  // Set a default height
+    canvasDiv.style.width = '100%';
+    canvasDiv.style.height = '400px';
     if (parentElement) {
         parentElement.appendChild(canvasDiv);
     }
