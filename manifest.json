@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Pecunio",
   "description": "Pecunio overload Bankin website",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "author": "Remy Lefebvre",
   "icons": {
     "64": "asset/icon.png"

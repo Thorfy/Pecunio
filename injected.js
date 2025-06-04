@@ -178,7 +178,7 @@ function createCanvasElement(parentElement) {
     const canvasDiv = document.createElement('canvas');
     canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
     canvasDiv.style.width = '100%';
-    canvasDiv.style.height = '400px';
+    canvasDiv.style.height = '600px';
     if (parentElement) {
         parentElement.appendChild(canvasDiv);
     }
