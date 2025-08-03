@@ -1,58 +1,15 @@
-class ChartData2 {
+class SankeyChart extends BaseChartData {
     constructor(transactions, categories, params) {
-        this.transactions = transactions;
-        this.categories = categories;
+        super(transactions, categories);
         this.params = params;
     }
 
     async prepareData() {
-        let filteredTransactions = this.applySettingOnData();
+        let filteredTransactions = this.applySettingOnDataByMonth(this.params[0], this.params[1]);
         let transactionByCategory = this.mergeTransactionByCategory(filteredTransactions, this.categories);
         let formattedData = this.getDataFormated(this.categories, transactionByCategory, true);
         let sankeyData = this.convertDataToSankeyFormat(formattedData);
         return sankeyData;
-    }
-
-    applySettingOnData() {
-        let returned = []
-        for (const transaction of this.transactions) {
-            let transactionDate = new Date(transaction.date);
-            //attention invalide date if no verif on day
-            transactionDate.setDate(1)
-            transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month)
-            if ((transactionDate.toLocaleString('default', { month: 'long' }) === this.params[0]) && (transactionDate.getUTCFullYear() === parseInt(this.params[1]))) {
-                returned.push(transaction)
-            }
-        }
-        return returned;
-    }
-
-    mergeTransactionByCategory(allTransactions, allCategory) {
-        let preparedData = new Map();
-        //TODO CONSTANT
-        let exceptionCat = [326, 282]
-        allTransactions.forEach(transaction => {
-            allCategory.forEach(category => {
-                if (!preparedData.has(category.id))
-                    preparedData.set(category.id, []);
-
-                if (transaction.category.id === category.id && !exceptionCat.includes(transaction.category.id)) {
-                    preparedData.get(category.id).push(transaction);
-                } else {
-                    category.categories.forEach(childCategory => {
-                        if (!preparedData.has(childCategory.id))
-                            preparedData.set(childCategory.id, []);
-
-                        if (transaction.category.id === childCategory.id && !exceptionCat.includes(transaction.category.id)) {
-                            preparedData.get(category.id).push(transaction);
-                            preparedData.get(childCategory.id).push(transaction);
-                        }
-                    })
-                }
-            })
-
-        })
-        return preparedData;
     }
 
     getDataFormated(categoryData, transactionByCategory, isCumulative = false) {

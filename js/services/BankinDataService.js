@@ -1,4 +1,4 @@
-class BankinData {
+class BankinDataService {
     static requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
     static domain = "https://sync.bankin.com";
     static urlTransactions = "/v2/transactions?limit=500";
@@ -12,7 +12,7 @@ class BankinData {
                 if (Object.keys(message.data).length === 0)
                     return false;
                 for (const property in message.data) {
-                    if (!BankinData.requiredHeader.includes(property))
+                    if (!BankinDataService.requiredHeader.includes(property))
                         return false;
                 }
                 this.authHeader = message.data;
@@ -24,9 +24,9 @@ class BankinData {
 
     async reloadData() {
         const [transactions, categories, accounts] = await Promise.all([
-            this.loadCache(this.authHeader, BankinData.urlTransactions, "transactions"), 
-            this.loadCache(this.authHeader, BankinData.urlCategories, "categories"),
-            this.loadCache(this.authHeader, BankinData.urlAccounts, "accounts")
+            this.loadCache(this.authHeader, BankinDataService.urlTransactions, "transactions"), 
+            this.loadCache(this.authHeader, BankinDataService.urlCategories, "categories"),
+            this.loadCache(this.authHeader, BankinDataService.urlAccounts, "accounts")
         ]);
         
         this.dataVal = { transactions: transactions, categories: categories, accounts: accounts };
@@ -63,7 +63,7 @@ class BankinData {
         };
 
         try {
-            const res = await fetch((BankinData.domain + url), myInit);
+            const res = await fetch((BankinDataService.domain + url), myInit);
             const data = await res.json();
 
             if (data.resources && data.resources.length) {

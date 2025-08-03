@@ -1,95 +1,375 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>CSV Exporter</title>
+    <title>Pecunio - Export CSV</title>
     <link rel="stylesheet" href="libs/css/choices.min.css">
     <style>
-        body {
-            height: 100%;
-            width: 300px;
-            font-family: 'Gotham book', sans-serif;
-            color: #fff;
-            text-align: center;
-            background-image: linear-gradient(149deg, #02c1ff, #29abff 27%, #751ff6), linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .button {
-            position: static;
-            display: inline-block;
-            overflow: visible;
-            padding: 18px 20px;
-            clear: none;
-            border-style: solid;
-            border-width: 2px;
-            border-color: hsla(0, 0%, 100%, 0.19);
-            border-radius: 90px;
-            background-color: #fff;
-            background-image: none;
-            box-shadow: 0 21px 35px 1px rgb(62 71 182 / 19%);
-            font-family: 'Gotham book', sans-serif;
-            color: #00325b;
-            font-size: 16px;
+        body {
+            width: 380px;
+            min-height: 500px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .container {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            margin: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
             text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 24px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f0f0f0;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input:disabled {
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
             cursor: pointer;
         }
 
-        .w-button {
-            border: 0;
-            line-height: inherit;
-            text-decoration: none;
+        .checkbox-label {
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
         }
-        #selectContainer {
-            color: #00325b;
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #e1e5e9;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .version-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .version-badge {
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .bankin-link {
+            font-size: 14px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .bankin-link:hover {
+            text-decoration: underline;
+        }
+
+        .github-badges {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .github-badges img {
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        /* Styles pour Choices.js */
+        .choices {
+            margin-bottom: 0;
+        }
+
+        .choices__inner {
+            background: #fff;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            min-height: 48px;
+            padding: 8px 12px;
+        }
+
+        .choices__list--multiple .choices__item {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 13px;
+            padding: 4px 8px;
+        }
+
+        .choices__list--dropdown {
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .choices__list--dropdown .choices__item--selectable {
+            padding: 10px 12px;
+        }
+
+        .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .section:nth-child(2) { animation-delay: 0.1s; }
+        .section:nth-child(3) { animation-delay: 0.2s; }
+        .section:nth-child(4) { animation-delay: 0.3s; }
+
+        /* Responsive */
+        @media (max-width: 400px) {
+            .container {
+                margin: 5px;
+                padding: 15px;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div>
-        <a href="https://app2.bankin.com/signin" target="_blank" rel="noopener noreferrer" class="button w-button"> Go
-            to Bankin
-        </a>
-    </div>
-    <div>
-        <h1>Settings</h2>
-    </div>
-    <div>
-        <div>
-            <h2>1 . Dates</h2>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">Pecunio</div>
+            <div class="subtitle">Export intelligent de vos données bancaires</div>
         </div>
-        <div>
-            <div>Start date<br>
-                <input id="startDate" type="date">
-            </div>
-            <div>End date<br>
-                <input id="endDate" type="date">
-            </div>
-        </div>
-        <div>
-            <div>
-                <h2>2 . Accounts</h2>
-                <div id="selectContainer">
-                    <select id="accountsInput" multiple></select>
-                </div>
-            </div>
-        </div>
-        <div>
-            <h2>3 . Download CSV </h2>
-            <div><button class="button w-button" id="exportCsv"
-                    style="width: 100%; background-color:#00ce94; color: #fff;">export</button></div>
-        </div>
-        <div>
-            <div><button id="refresh">Refresh data & settings</button></div>
-        </div>
-        <div><img id="currentVersion"><a href="https://github.com/Thorfy/Bankin-/releases/latest" target="_blank"><img
-                    src="https://img.shields.io/github/v/release/Thorfy/Bankin-" alt="Last release"></a></div>
-    </div>
-</body>
 
+        <!-- Section Dates -->
+        <div class="section">
+            <div class="section-title">📅 Période d'export</div>
+            
+            <div class="form-group">
+                <label class="form-label">Date de début</label>
+                <input type="date" id="startDate" class="form-input">
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="noEndDate" class="checkbox">
+                <label for="noEndDate" class="checkbox-label">Jusqu'à aujourd'hui (pas de limite)</label>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Date de fin</label>
+                <input type="date" id="endDate" class="form-input">
+            </div>
+        </div>
+
+        <!-- Section Comptes -->
+        <div class="section">
+            <div class="section-title">🏦 Comptes à inclure</div>
+            <div class="form-group">
+                <label class="form-label">Sélectionnez vos comptes</label>
+                <select id="accountsInput" multiple class="form-input"></select>
+            </div>
+        </div>
+
+        <!-- Section Actions -->
+        <div class="section">
+            <div class="section-title">📊 Export des données</div>
+            
+            <div class="form-group">
+                <button id="exportCsv" class="btn btn-success">
+                    📥 Exporter en CSV
+                </button>
+            </div>
+
+            <div class="form-group">
+                <button id="refresh" class="btn btn-secondary">
+                    🔄 Actualiser les données
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="version-info">
+                <span class="version-badge">v<span id="currentVersion"></span></span>
+                <a href="https://github.com/Thorfy/Bankin-/releases/latest" target="_blank" class="bankin-link">
+                    Voir les nouveautés
+                </a>
+            </div>
+            
+            <div class="github-badges">
+                <img id="currentVersionBadge" alt="Version installée">
+                <a href="https://github.com/Thorfy/Bankin-/releases/latest" target="_blank">
+                    <img src="https://img.shields.io/github/v/release/Thorfy/Bankin-" alt="Dernière version">
+                </a>
+            </div>
+            
+            <a href="https://app2.bankin.com/signin" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                🔗 Aller sur Bankin
+            </a>
+        </div>
+    </div>
+
+    <script src="libs/js/choices.min.js"></script>
+            <script src="js/core/Config.js"></script>
+        <script src="js/core/Evt.js"></script>
+        <script src="js/core/Settings.js"></script>
+    <script src="js/models/Category.js"></script>
+    <script src="js/models/Account.js"></script>
+    <script src="js/models/Transaction.js"></script>
+    <script src="js/services/DataMerger.js"></script>
+    <script src="popup.js"></script>
+</body>
 </html>
-<script src="libs/js/choices.min.js"></script>
-<script src="js/Evt.js"></script>
-<script src="js/Settings.js"></script>
-<script src="popup.js"></script>

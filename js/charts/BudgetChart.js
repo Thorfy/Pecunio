@@ -1,27 +1,7 @@
-class ChartDataBudget {
+class BudgetChart extends BaseChartData {
     constructor(transactions, categories, accountsSelected = null, settings) {
-        this.transactions = transactions || [];
-        this.categories = categories;
-        this.accountsSelected = accountsSelected;
-        this.settings = settings; // Assuming settings object is passed for potential future use
-
-        this.categoryLookup = new Map();
-        if (this.categories && Array.isArray(this.categories)) {
-            this.categories.forEach(parentCategory => {
-                if (parentCategory && parentCategory.id != null && parentCategory.name) {
-                    this.categoryLookup.set(parentCategory.id, parentCategory.name);
-                    if (parentCategory.categories && Array.isArray(parentCategory.categories)) {
-                        parentCategory.categories.forEach(childCategory => {
-                            if (childCategory && childCategory.id != null) {
-                                this.categoryLookup.set(childCategory.id, parentCategory.name);
-                            }
-                        });
-                    }
-                }
-            });
-        }
-        // console.log('[ChartDataBudget] Constructor: categoryLookup initialized. Size:', this.categoryLookup.size);
-
+        super(transactions, categories, accountsSelected, settings);
+        
         this.organizedData = {};
         this.initializationPromise = this._initializeData();
 
@@ -43,104 +23,94 @@ class ChartDataBudget {
             console.error(`[ChartDataBudget] createUI: Container element with ID '${containerElementId}' not found.`);
             return;
         }
+        
+        // Injecter les styles Pecunio
+        InjectedStyles.inject();
+        
         this.containerElement.innerHTML = ''; // Clear the container
+        
+        // Appliquer les classes Pecunio au conteneur
+        InjectedStyles.applyContainerClasses(this.containerElement);
 
-        const budgetTitle = document.createElement('h3');
-        budgetTitle.textContent = "Median Budget Comparison";
+        const budgetTitle = InjectedStyles.createTitle("📊 Comparaison Budget Médian");
         this.containerElement.appendChild(budgetTitle);
 
         const selectorContainer = document.createElement('div');
         selectorContainer.id = 'medianChartSelectors';
-        selectorContainer.style.display = 'flex';
-        selectorContainer.style.flexWrap = 'wrap';
-        selectorContainer.style.alignItems = 'baseline';
-        selectorContainer.style.justifyContent = 'flex-start';
-        selectorContainer.style.gap = '15px';
-        selectorContainer.style.marginBottom = '15px'; // Keep existing
-        selectorContainer.style.marginTop = '10px';    // Keep existing
+        selectorContainer.classList.add('pecunio-controls');
         this.containerElement.appendChild(selectorContainer);
 
         const currentYear = new Date().getFullYear();
 
         // Left Column (Primary)
-        const leftColumnDiv = document.createElement('div');
-        // leftColumnDiv.style.marginBottom = '10px'; // REMOVED for flex gap
+        const leftColumnDiv = InjectedStyles.createControlGroup();
 
         const leftColumnTitle = document.createElement('strong');
-        leftColumnTitle.textContent = 'Left Column (Primary)';
+        leftColumnTitle.textContent = 'Colonne Gauche (Principale)';
+        leftColumnTitle.style.fontSize = '13px';
+        leftColumnTitle.style.color = '#333';
         leftColumnDiv.appendChild(leftColumnTitle);
-        leftColumnDiv.appendChild(document.createElement('br'));
 
-        const yearLabelLeft = document.createElement('label');
-        yearLabelLeft.textContent = 'Year: ';
-        yearLabelLeft.htmlFor = 'yearSelectorLeft';
+        const yearLabelLeft = InjectedStyles.createLabel('Année:', 'yearSelectorLeft');
         leftColumnDiv.appendChild(yearLabelLeft);
         this.yearSelectorLeft = this._createYearSelect('yearSelectorLeft', currentYear, currentYear);
-        this.yearSelectorLeft.style.marginRight = '10px'; // Apply style after creation
         leftColumnDiv.appendChild(this.yearSelectorLeft);
 
-        const monthLabelLeft = document.createElement('label');
-        monthLabelLeft.textContent = 'Month: ';
-        monthLabelLeft.htmlFor = 'monthSelectorLeft';
+        const monthLabelLeft = InjectedStyles.createLabel('Mois:', 'monthSelectorLeft');
         leftColumnDiv.appendChild(monthLabelLeft);
         this.monthSelectorLeft = this._createMonthSelect('monthSelectorLeft', "ALL");
         leftColumnDiv.appendChild(this.monthSelectorLeft);
         selectorContainer.appendChild(leftColumnDiv);
 
         // Right Column (Comparison)
-        const rightColumnDiv = document.createElement('div');
-        // rightColumnDiv.style.marginTop = '10px'; // REMOVED for flex gap
-        // rightColumnDiv.style.marginBottom = '10px'; // REMOVED for flex gap
+        const rightColumnDiv = InjectedStyles.createControlGroup();
 
         const rightColumnTitle = document.createElement('strong');
-        rightColumnTitle.textContent = 'Right Column (Comparison)';
+        rightColumnTitle.textContent = 'Colonne Droite (Comparaison)';
+        rightColumnTitle.style.fontSize = '13px';
+        rightColumnTitle.style.color = '#333';
         rightColumnDiv.appendChild(rightColumnTitle);
-        rightColumnDiv.appendChild(document.createElement('br'));
 
-        const yearLabelRight = document.createElement('label');
-        yearLabelRight.textContent = 'Year: ';
-        yearLabelRight.htmlFor = 'yearSelectorRight';
+        const yearLabelRight = InjectedStyles.createLabel('Année:', 'yearSelectorRight');
         rightColumnDiv.appendChild(yearLabelRight);
         this.yearSelectorRight = this._createYearSelect('yearSelectorRight', currentYear - 1, currentYear);
-        this.yearSelectorRight.style.marginRight = '10px'; // Apply style after creation
         rightColumnDiv.appendChild(this.yearSelectorRight);
 
-        const monthLabelRight = document.createElement('label');
-        monthLabelRight.textContent = 'Month: ';
-        monthLabelRight.htmlFor = 'monthSelectorRight';
+        const monthLabelRight = InjectedStyles.createLabel('Mois:', 'monthSelectorRight');
         rightColumnDiv.appendChild(monthLabelRight);
         this.monthSelectorRight = this._createMonthSelect('monthSelectorRight', "ALL");
         rightColumnDiv.appendChild(this.monthSelectorRight);
         selectorContainer.appendChild(rightColumnDiv);
 
         // Calculation Type Selector
-        const calcDiv = document.createElement('div');
-        // calcDiv.style.marginTop = '10px'; // REMOVED for flex gap
+        const calcDiv = InjectedStyles.createControlGroup();
 
-        const calcLabel = document.createElement('label');
-        calcLabel.textContent = 'Calculation: ';
-        calcLabel.htmlFor = 'calculationTypeSelector';
+        const calcLabel = InjectedStyles.createLabel('Calcul:', 'calculationTypeSelector');
         calcDiv.appendChild(calcLabel);
 
-        this.calcTypeSelector = document.createElement('select');
-        this.calcTypeSelector.id = 'calculationTypeSelector';
+        this.calcTypeSelector = InjectedStyles.createSelect('calculationTypeSelector');
 
         const optionMedian = document.createElement('option');
         optionMedian.value = 'median';
-        optionMedian.textContent = 'Median';
+        optionMedian.textContent = 'Médiane';
         optionMedian.selected = true;
         this.calcTypeSelector.appendChild(optionMedian);
 
         const optionAverage = document.createElement('option');
         optionAverage.value = 'average';
-        optionAverage.textContent = 'Average';
+        optionAverage.textContent = 'Moyenne';
         this.calcTypeSelector.appendChild(optionAverage);
 
         calcDiv.appendChild(this.calcTypeSelector);
         selectorContainer.appendChild(calcDiv);
 
         // Canvas Creation
-        const budgetCanvas = this._createCanvasElement(this.containerElement);
+        const canvasContainer = InjectedStyles.createCanvasContainer();
+        this.containerElement.appendChild(canvasContainer);
+        
+        const budgetCanvas = InjectedStyles.createCanvas();
+        canvasContainer.appendChild(budgetCanvas);
+        
         if (budgetCanvas) {
             this.budgetCtx = budgetCanvas.getContext('2d');
         } else {
@@ -209,26 +179,9 @@ class ChartDataBudget {
         // console.log('[ChartDataBudget] _initializeData: Data organization complete.');
     }
 
-    static _calculateMedian(arr) {
-        if (!arr || arr.length === 0) return 0;
-        const numericArr = arr.filter(val => typeof val === 'number' && !isNaN(val));
-        if (numericArr.length === 0) return 0;
-        const sortedArr = [...numericArr].sort((a, b) => a - b);
-        const mid = Math.floor(sortedArr.length / 2);
-        return sortedArr.length % 2 === 0 ? (sortedArr[mid - 1] + sortedArr[mid]) / 2 : sortedArr[mid];
-    }
 
-    static _calculateAverage(arr) {
-        if (!arr || arr.length === 0) return 0;
-        const numericArr = arr.filter(val => typeof val === 'number' && !isNaN(val));
-        if (numericArr.length === 0) return 0;
-    
-        const sum = numericArr.reduce((acc, val) => acc + val, 0);
-        return sum / numericArr.length;
-    }
 
     async _organizeTransactions() {
-        const exceptionCat = [326, 282];
         this.organizedData = {};
         // console.log('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
 
@@ -244,14 +197,14 @@ class ChartDataBudget {
         filteredTransactions.forEach(transaction => {
             if (!transaction || !transaction.date || !transaction.category || transaction.category.id == null || transaction.amount == null) return;
 
-            if (transaction.category && exceptionCat.includes(transaction.category.id)) {
+            if (this.isExceptionCategory(transaction.category.id)) {
                 return; // Skip this transaction
             }
             const date = new Date(transaction.date);
             if (isNaN(date.getTime())) return;
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
-            const categoryName = this.categoryLookup.get(transaction.category.id);
+            const categoryName = this.getCategoryNameById(transaction.category.id);
             if (!categoryName) {
                  console.warn(`[ChartDataBudget] _organizeTransactions: Cat ID ${transaction.category.id} not in lookup for tr ${transaction.id || 'N/A'}`);
                 return;
@@ -264,59 +217,9 @@ class ChartDataBudget {
         // console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
     }
 
-    async applySettingOnData() {
-        if (!this.transactions || !Array.isArray(this.transactions)) {
-            console.warn('[ChartDataBudget] applySettingOnData: No transactions to process or not an array.');
-            return [];
-        }
 
-        const startDateSetting = settingClass.getSetting('startDate'); // settingClass is globally available
-        const endDateSetting = settingClass.getSetting('endDate');
-        const startDate = startDateSetting ? Date.parse(startDateSetting) : null;
-        const endDate = endDateSetting ? Date.parse(endDateSetting) : null;
 
-        // console.log(`[ChartDataBudget] applySettingOnData: Filtering with global startDate: ${startDateSetting}, endDate: ${endDateSetting}`);
 
-        return this.transactions.filter(transaction => {
-            if (!transaction || !transaction.date || !transaction.account || transaction.account.id == null) {
-                 // console.warn('[ChartDataBudget] applySettingOnData: Skipping transaction with missing fields for date/account processing.', transaction);
-                 return false;
-            }
-            
-            // let originalTransactionDate = new Date(transaction.date); // Keep original for reference if needed, or just use transaction.date
-            let dateForProcessing = new Date(transaction.date); // Date to be modified
-
-            if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
-                dateForProcessing.setDate(1);
-                dateForProcessing.setMonth(dateForProcessing.getMonth() + transaction.current_month);
-                transaction.date = dateForProcessing; // Persist the adjusted date onto the transaction object
-            }
-            
-            // Use the (potentially) modified transaction.date for filtering
-            const modifiedDateForComparison = new Date(transaction.date).toDateString();
-
-            let dateFilterPassed = true;
-            if (startDate && endDate) {
-                dateFilterPassed = Date.parse(modifiedDateForComparison) >= startDate && Date.parse(modifiedDateForComparison) <= endDate;
-            } else if (startDate) {
-                dateFilterPassed = Date.parse(modifiedDateForComparison) >= startDate;
-            } else if (endDate) {
-                dateFilterPassed = Date.parse(modifiedDateForComparison) <= endDate;
-            }
-
-            let accountFilterPassed = true;
-            if (this.accountsSelected && this.accountsSelected.length > 0) {
-                accountFilterPassed = this.accountsSelected.includes(parseInt(transaction.account.id));
-            }
-            
-            return dateFilterPassed && accountFilterPassed;
-        });
-    }
-
-    _getMonthName(monthNumber) {
-        const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return monthNames[monthNumber] || '';
-    }
 
     getCalculatedMonthlyValueForYear(year, calculationType = 'median') {
         // console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
@@ -359,11 +262,11 @@ class ChartDataBudget {
                 
                 // Ensure monthlyTotals is not empty before calculation, though categoryActiveInProcessedPeriod should imply this.
                 if (monthlyTotals.length > 0) { 
-                    if (calculationType === 'average') {
-                        result[categoryName] = ChartDataBudget._calculateAverage(monthlyTotals);
-                    } else { 
-                        result[categoryName] = ChartDataBudget._calculateMedian(monthlyTotals);
-                    }
+                                    if (calculationType === 'average') {
+                    result[categoryName] = BaseChartData.calculateAverage(monthlyTotals);
+                } else { 
+                    result[categoryName] = BaseChartData.calculateMedian(monthlyTotals);
+                }
                 } else {
                     // This case should ideally not be hit if categoryActiveInProcessedPeriod is true
                     // but as a fallback, it remains 0.
@@ -430,9 +333,9 @@ class ChartDataBudget {
             }
 
             if (calculationType === 'average') {
-                result[categoryName] = ChartDataBudget._calculateAverage(historicalMonthlyTotals);
+                result[categoryName] = BaseChartData.calculateAverage(historicalMonthlyTotals);
             } else { // Default to median
-                result[categoryName] = ChartDataBudget._calculateMedian(historicalMonthlyTotals);
+                result[categoryName] = BaseChartData.calculateMedian(historicalMonthlyTotals);
             }
         });
         // console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Result for month ${targetMonth}, type ${calculationType}:`, result); // Verbose
@@ -452,7 +355,7 @@ class ChartDataBudget {
             primaryLabel = `${calcTypeString} ${selectedYearLeft}`;
         } else {
             primaryData = this.getActualSpendingForMonth(selectedYearLeft, selectedMonthLeft);
-            primaryLabel = `Actual ${this._getMonthName(selectedMonthLeft)} ${selectedYearLeft}`;
+            primaryLabel = `Actual ${this.getMonthName(selectedMonthLeft)} ${selectedYearLeft}`;
         }
 
         // Comparison Data (Right Column)
@@ -461,7 +364,7 @@ class ChartDataBudget {
             comparisonLabel = `${calcTypeString} ${selectedYearRight}`;
         } else {
             comparisonData = this.getActualSpendingForMonth(selectedYearRight, selectedMonthRight);
-            comparisonLabel = `Actual ${this._getMonthName(selectedMonthRight)} ${selectedYearRight}`;
+            comparisonLabel = `Actual ${this.getMonthName(selectedMonthRight)} ${selectedYearRight}`;
         }
 
         const allCategoryNames = new Set();
@@ -613,8 +516,7 @@ class ChartDataBudget {
     }
 
     _createYearSelect(id, defaultSelectedYear, currentYear) {
-        const selectEl = document.createElement('select');
-        selectEl.id = id;
+        const selectEl = InjectedStyles.createSelect(id);
         for (let y = currentYear + 1; y >= 2015; y--) {
             const option = document.createElement('option');
             option.value = y;
@@ -628,8 +530,7 @@ class ChartDataBudget {
     }
 
     _createMonthSelect(id, defaultMonthValue) {
-        const selectEl = document.createElement('select');
-        selectEl.id = id;
+        const selectEl = InjectedStyles.createSelect(id);
         this.monthsArray.forEach((monthName, index) => {
             const option = document.createElement('option');
             option.value = (index === 0) ? "ALL" : index.toString(); // Ensure value is string

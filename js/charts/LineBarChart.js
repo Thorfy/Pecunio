@@ -1,55 +1,12 @@
-class ChartData {
+class LineBarChart extends BaseChartData {
     constructor(transactions, categories, accountsSelected = null, settings) {
-        this.transactions = transactions;
-        this.categories = categories;
-        this.accountsSelected = accountsSelected;
-        this.settings = settings;
+        super(transactions, categories, accountsSelected, settings);
     }
 
     async prepareData() {
         const filteredTransactions = await this.applySettingOnData();
-        const transactionByCategory = this.mergeTransactionByCategory(filteredTransactions, this.categories);
+        const transactionByCategory = this.mergeTransactionByCategoryLegacy(filteredTransactions, this.categories);
         return this.getDataFormated(this.categories, transactionByCategory, true);
-    }
-
-    async applySettingOnData() {
-        const startDate = Date.parse(settingClass.getSetting('startDate'));
-        const endDate = Date.parse(settingClass.getSetting('endDate'));
-        return this.transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date);
-            transactionDate.setDate(1);
-            transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
-            transaction.date = transactionDate;
-            const modifiedDate = transactionDate.toDateString();
-            return (
-                !(startDate && endDate) ||
-                (Date.parse(modifiedDate) >= startDate && Date.parse(modifiedDate) <= endDate))
-                && ((this.accountsSelected && this.accountsSelected.includes(parseInt(transaction.account.id))) || (this.accountsSelected == null)
-                );
-        });
-    }
-
-    mergeTransactionByCategory(allTransactions, allCategory) {
-        const preparedData = [];
-        const exceptionCat = [326, 282];
-
-        allTransactions.forEach(transaction => {
-            allCategory.forEach(category => {
-                if (!preparedData[category.id]) preparedData[category.id] = [];
-
-                if (transaction.category.id === category.id && !exceptionCat.includes(transaction.category.id)) {
-                    preparedData[category.id].push(transaction);
-                } else {
-                    category.categories.forEach(childCategory => {
-                        if (transaction.category.id === childCategory.id && !exceptionCat.includes(transaction.category.id)) {
-                            preparedData[category.id].push(transaction);
-                        }
-                    });
-                }
-            });
-        });
-
-        return preparedData;
     }
 
     async getDataFormated(categoryData, transactionByCategory, isCumulative = false) {

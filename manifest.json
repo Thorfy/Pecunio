@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Pecunio",
   "description": "Pecunio overload Bankin website",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "author": "Remy Lefebvre",
   "icons": {
     "64": "asset/icon.png"
@@ -38,19 +38,29 @@
       "matches": [
         "https://*.bankin.com/*"
       ],
-      "js": [
-        "js/ChartDataBudget.js",
-        "js/Evt.js",
-        "js/Settings.js",
-        "js/BankinData.js",
-        "js/Hidder.js",
-        "js/ChartData.js",
-        "js/ChartData2.js",
-        "libs/js/chart.js",
-        "libs/js/chartjs-adapter-date-fns.js",
-        "libs/js/chartjs-chart-sankey.js",
-        "injected.js"
-      ]
+                          "js": [
+              "js/core/Config.js",
+              "js/core/Evt.js",
+              "js/core/Settings.js",
+              "js/core/DataManager.js",
+              "js/models/Category.js",
+              "js/models/Account.js",
+              "js/models/Transaction.js",
+              "js/services/DataMerger.js",
+              "js/services/BankinDataService.js",
+              "js/ui/InjectedStyles.js",
+              "js/ui/LoadingScreen.js",
+              "js/utils/ColorParser.js",
+              "js/charts/base/BaseChartData.js",
+              "js/charts/BudgetChart.js",
+              "js/charts/LineBarChart.js",
+              "js/charts/SankeyChart.js",
+              "js/ui/AmountHider.js",
+              "libs/js/chart.js",
+              "libs/js/chartjs-adapter-date-fns.js",
+              "libs/js/chartjs-chart-sankey.js",
+              "injected.js"
+            ]
     }
   ]
 }

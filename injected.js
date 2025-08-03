@@ -1,10 +1,15 @@
 
 const evt = new Evt();
 const settingClass = new Settings();
-const dataClass = new BankinData();
+const dataClass = new BankinDataService();
 
-let setting = settingClass.getAllSetting();
+let setting = {};
 let currentUrl = location.href;
+
+// Attendre l'initialisation des settings avant d'y accéder
+settingClass.waitForInitialization().then(() => {
+    setting = settingClass.getAllSettings();
+});
 
 evt.listen('data_loaded', async () => {
     try {
@@ -14,8 +19,9 @@ evt.listen('data_loaded', async () => {
     }
 });
 
-evt.listen("settings_reloaded", () => {
-    setting = settingClass.getAllSetting();
+evt.listen("settings_reloaded", async () => {
+    await settingClass.waitForInitialization();
+    setting = settingClass.getAllSettings();
 });
 
 evt.listen('url_change', async () => {
@@ -36,11 +42,13 @@ setInterval(() => {
 async function build() {
     evt.dispatch('build called');
 
+    // Attendre l'initialisation complète des settings
+    await settingClass.waitForInitialization();
     await settingClass.loadSettings();
 
     if (location.href === "https://app2.bankin.com/accounts") {
         loadingScreen(); // This might clear the space needed for the new chart if not handled
-        setTimeout(() => { new Hidder() }, 500);
+        setTimeout(() => { new AmountHider() }, 500);
 
         const refreshIcon = document.querySelector(".refreshIcon");
         if (refreshIcon) {
@@ -51,16 +59,19 @@ async function build() {
                 };
                 setTimeout(async () => {
                     await settingClass.setSettings(cacheObject);
-                    new BankinData(); // This reloads data, might need to reload budget chart too
+                    new BankinDataService(); // This reloads data, might need to reload budget chart too
                 }, 1100);
             });
         }
 
-        const chartData = new ChartData(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
+        const chartData = new LineBarChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
         const preparedData = await chartData.prepareData();
         
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
         if (homeBlock) {
+            // Injecter les styles Pecunio
+            InjectedStyles.inject();
+            
             var style = document.createElement('style');
             style.innerHTML = `
                 .homeBlock > div {
@@ -70,29 +81,32 @@ async function build() {
             document.head.appendChild(style);
             homeBlock.innerHTML = ""; // Clear existing content
 
+            // Container principal avec style Pecunio
+            const mainContainer = document.createElement('div');
+            InjectedStyles.applyContainerClasses(mainContainer);
+            homeBlock.appendChild(mainContainer);
+
             const originalChartContainer = document.createElement('div');
             originalChartContainer.id = "originalChartContainer";
-            homeBlock.appendChild(originalChartContainer);
+            originalChartContainer.classList.add('pecunio-section');
+            mainContainer.appendChild(originalChartContainer);
+            
             const canvasOriginal = createCanvasElement(originalChartContainer);
             const chartJsConfig = await chartData.getChartJsConfig();
             chartJsConfig.data = preparedData;
             new Chart(canvasOriginal.getContext('2d'), chartJsConfig);
 
-
             // Container for the new budget chart
             const budgetChartBlock = document.createElement('div');
             budgetChartBlock.id = "budgetChartBlock";
-            budgetChartBlock.style.marginTop = "20px";
-            budgetChartBlock.style.height = "500px";
-            budgetChartBlock.style.width = '100%';
-            budgetChartBlock.style.display = 'block';
-            homeBlock.appendChild(budgetChartBlock);
+            budgetChartBlock.classList.add('pecunio-section');
+            mainContainer.appendChild(budgetChartBlock);
 
             const rawTransactionsForBudget = settingClass.getSetting('cache_data_transactions');
             const categoriesForBudget = settingClass.getSetting('cache_data_categories');
             const accountsSelectedForBudget = settingClass.getSetting('accountsSelected');
 
-            const budgetChartDataInstance = new ChartDataBudget(
+            const budgetChartDataInstance = new BudgetChart(
                 rawTransactionsForBudget,
                 categoriesForBudget,
                 accountsSelectedForBudget,
@@ -115,18 +129,32 @@ async function build() {
         const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
         if (dateChoosedElem) {
             const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
-            const chartData2 = new ChartData2(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "));
+            const chartData2 = new SankeyChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "));
             const preparedData = await chartData2.prepareData();
 
             let categBlock = document.getElementsByClassName("categoryChart");
             if (categBlock && categBlock[0]) {
+                // Nettoyer les anciens canvas
                 let canvasDiv = document.getElementsByClassName("canvasDiv")
                 if (canvasDiv && canvasDiv.length > 0) {
                     for (let item of canvasDiv) {
                         item.remove()
                     }
                 }
-                canvasDiv = createCanvasElement(categBlock[0]);
+                
+                // Créer un canvas spécifique pour le Sankey chart
+                canvasDiv = document.createElement('canvas');
+                canvasDiv.classList.add("canvasDiv");
+                canvasDiv.style.width = '100%';
+                canvasDiv.style.height = '400px'; // Hauteur fixe pour éviter la distorsion
+                canvasDiv.style.maxWidth = '100%';
+                canvasDiv.style.display = 'block';
+                
+                if (categBlock[0]) {
+                    categBlock[0].appendChild(canvasDiv);
+                }
+                
+                // Supprimer les classes qui peuvent causer des problèmes d'affichage
                 setTimeout(() => {
                     let h100 = document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive")
                     for (let item of h100) {
@@ -148,6 +176,15 @@ async function build() {
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false, // Important pour éviter la distorsion
+                        layout: {
+                            padding: {
+                                top: 20,
+                                bottom: 20,
+                                left: 20,
+                                right: 20
+                            }
+                        }
                     }
                 });
             }
@@ -156,29 +193,12 @@ async function build() {
 }
 
 function loadingScreen() {
-    const rightBlock = document.getElementsByClassName("rightColumn");
-    if (rightBlock && rightBlock[0]) {
-        const childBlock = rightBlock[0].children;
-
-        const imgdiv = document.createElement('img');
-        imgdiv.src = chrome.runtime.getURL("asset/Loading.gif");
-        imgdiv.style.textAlign = "center";
-
-        if (childBlock && childBlock[0]) { // Check if childBlock[0] exists
-            childBlock[0].innerHTML = "";
-            childBlock[0].appendChild(imgdiv);
-        } else {
-            console.error("childBlock[0] not found in loadingScreen");
-        }
-    }
-    evt.dispatch('loading_sreen_display');
+    LoadingScreen.show();
 }
 
 function createCanvasElement(parentElement) {
-    const canvasDiv = document.createElement('canvas');
-    canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
-    canvasDiv.style.width = '100%';
-    canvasDiv.style.height = '600px';
+    const canvasDiv = InjectedStyles.createCanvas();
+    canvasDiv.classList.add("canvasDiv"); // Keep class if it has other relevant styles
     if (parentElement) {
         parentElement.appendChild(canvasDiv);
     }
@@ -207,12 +227,5 @@ function average(ctx) {
 };
 
 function parseColorCSS(strClass) {
-    const styleElement = document.createElement("div");
-    styleElement.className = strClass;
-    document.body.appendChild(styleElement);
-
-    const colorVal = window.getComputedStyle(styleElement).backgroundColor;
-    styleElement.remove();
-
-    return colorVal;
+    return ColorParser.parseColorCSS(strClass);
 }
