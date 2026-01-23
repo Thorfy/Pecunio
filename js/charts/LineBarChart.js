@@ -1,6 +1,6 @@
 class LineBarChart extends BaseChartData {
-    constructor(transactions, categories, accountsSelected = null, settings) {
-        super(transactions, categories, accountsSelected, settings);
+    constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
+        super(transactions, categories, accountsSelected, settings, settingsInstance);
     }
 
     async prepareData() {
@@ -16,19 +16,41 @@ class LineBarChart extends BaseChartData {
 
         categoryData.forEach(category => {
             const transactions = transactionByCategory[parseInt(category.id)];
+            
+            // Vérifier que transactions existe et est un tableau avant d'appeler forEach
+            if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+                // Si pas de transactions pour cette catégorie, créer un dataset vide
+                data.datasets.push({
+                    label: category.name,
+                    data: [],
+                    backgroundColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
+                    borderColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
+                    fill: false,
+                    tension: 0.3,
+                    hidden: settings[category.name]
+                });
+                return; // Passer à la catégorie suivante
+            }
+            
             const dateValueObject = [];
             const transactionObject = {};
 
             transactions.forEach(transaction => {
-                const dateObj = new Date(transaction.date);
-                const month = `${dateObj.getMonth() + 1}`.padStart(2, "0");
-                const year = dateObj.getUTCFullYear();
+                // Utiliser la date ajustée qui tient compte de current_month
+                const adjustedDate = this.getAdjustedDate(transaction);
+                if (!adjustedDate) {
+                    return; // Ignorer les transactions sans date valide
+                }
+                
+                const month = `${adjustedDate.getMonth() + 1}`.padStart(2, "0");
+                const year = adjustedDate.getUTCFullYear();
                 const stringDate = [year, month].join("-");
 
                 if (isCumulative) {
                     transactionObject[stringDate] = (transactionObject[stringDate] || 0) + transaction.amount;
                 } else {
-                    dateValueObject.push({ x: transaction.date, y: transaction.amount, name: transaction.name });
+                    // Utiliser la date ajustée pour l'affichage
+                    dateValueObject.push({ x: adjustedDate.toISOString().split('T')[0], y: transaction.amount, name: transaction.name });
                 }
             });
 
@@ -38,7 +60,7 @@ class LineBarChart extends BaseChartData {
                 }
             }
 
-            const color = this.parseColorCSS("categoryColor_" + category.id);
+            const color = ColorParser.parseColorCSS("categoryColor_" + category.id);
 
             data.datasets.push({
                 label: category.name,
@@ -54,15 +76,6 @@ class LineBarChart extends BaseChartData {
         return data;
     }
 
-    /**
-     * Parse une couleur CSS depuis une classe CSS
-     * @param {string} strClass - Nom de la classe CSS
-     * @returns {string} Couleur au format RGB/RGBA
-     * @deprecated Utiliser ColorParser.parseColorCSS() directement
-     */
-    parseColorCSS(strClass) {
-        return ColorParser.parseColorCSS(strClass);
-    }
 
     async buildChart(formattedData) {
         const chartJsConfig = await this.getChartJsConfig();
@@ -78,8 +91,23 @@ class LineBarChart extends BaseChartData {
         }
     }
 
+    /**
+     * Retourne la configuration Chart.js standardisée
+     * @returns {Promise<Object>} Configuration Chart.js avec type, data, options, plugins
+     */
     async getChartJsConfig() {
-        const settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
+        // Utiliser l'instance Settings injectée si disponible, sinon fallback sur chrome.storage
+        let settings;
+        if (this.settingsInstance) {
+            await this.settingsInstance.waitForInitialization();
+            settings = {
+                startDate: this.settingsInstance.getSetting('startDate'),
+                endDate: this.settingsInstance.getSetting('endDate'),
+                chartType: this.settingsInstance.getSetting('chartType')
+            };
+        } else {
+            settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
+        }
         const initialChartType = settings.chartType ?? 'bar';
         const cummulative = initialChartType === "line" ? false : true;
 

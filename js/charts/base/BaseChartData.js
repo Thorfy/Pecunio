@@ -1,16 +1,38 @@
 /**
+ * Interface IChart - Contrat que tous les charts doivent respecter
+ * 
+ * Tous les charts doivent implémenter :
+ * - async prepareData(...args): Promise<Object> - Prépare les données pour le chart
+ *   - Retourne les données formatées pour Chart.js ou le format spécifique au chart
+ *   - Les paramètres peuvent varier selon le type de chart
+ * 
+ * Les charts qui utilisent Chart.js directement doivent aussi implémenter :
+ * - async getChartJsConfig(): Promise<Object> - Retourne la configuration Chart.js complète
+ *   - Doit retourner un objet avec les propriétés : type, data, options, plugins
+ * 
+ * Exemples :
+ * - LineBarChart : prepareData() + getChartJsConfig()
+ * - BudgetChart : prepareData(yearLeft, monthLeft, yearRight, monthRight, calcType) - pas de getChartJsConfig (géré en interne)
+ * - SankeyChart : prepareData() - pas de getChartJsConfig (créé directement dans injected.js)
+ * 
+ * @interface IChart
+ */
+// Note: En JavaScript, on ne peut pas forcer l'implémentation d'une interface,
+// mais cette documentation sert de contrat pour tous les charts
+
+/**
  * Classe de base pour tous les charts Pecunio
  * Centralise la logique commune : filtrage des données, gestion des catégories, parsing des couleurs
+ * 
+ * Implémente IChart
  */
 class BaseChartData {
-    constructor(transactions, categories, accountsSelected = null, settings = null) {
+    constructor(transactions, categories, accountsSelected = null, settings = null, settingsInstance = null) {
         this.transactions = transactions || [];
         this.categories = categories || [];
         this.accountsSelected = accountsSelected;
         this.settings = settings;
-        
-        // Constantes communes - Utiliser Config pour la cohérence
-        this.EXCEPTION_CATEGORIES = Config.CATEGORIES.EXCEPTION_IDS;
+        this.settingsInstance = settingsInstance; // Instance de Settings injectée
         
         // Initialisation du lookup des catégories
         this.categoryLookup = new Map();
@@ -52,11 +74,14 @@ class BaseChartData {
      * @returns {Array} Transactions filtrées
      */
     applySettingOnData(options = {}) {
+        // Utiliser l'instance injectée ou fallback sur settingClass global (pour compatibilité)
+        const settingsProvider = this.settingsInstance || (typeof settingClass !== 'undefined' ? settingClass : null);
+        
         const {
-            startDate = settingClass.getSetting('startDate'),
-            endDate = settingClass.getSetting('endDate'),
+            startDate = settingsProvider ? settingsProvider.getSetting('startDate') : null,
+            endDate = settingsProvider ? settingsProvider.getSetting('endDate') : null,
             accountsSelected = this.accountsSelected,
-            exceptionCategories = this.EXCEPTION_CATEGORIES
+            exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS
         } = options;
 
         if (!this.transactions || !Array.isArray(this.transactions)) {
@@ -72,15 +97,13 @@ class BaseChartData {
                 return false;
             }
             
-            // Traitement de la date avec current_month
-            let dateForProcessing = new Date(transaction.date);
-            if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
-                dateForProcessing.setDate(1);
-                dateForProcessing.setMonth(dateForProcessing.getMonth() + transaction.current_month);
-                transaction.date = dateForProcessing; // Persister la date ajustée
+            // Traitement de la date avec current_month (sans muter l'objet original)
+            const dateForProcessing = this.getAdjustedDate(transaction);
+            if (!dateForProcessing) {
+                return false;
             }
             
-            const modifiedDateForComparison = new Date(transaction.date).toDateString();
+            const modifiedDateForComparison = dateForProcessing.toDateString();
 
             // Filtre par date
             let dateFilterPassed = true;
@@ -110,7 +133,7 @@ class BaseChartData {
      * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
      * @returns {Array} Transactions filtrées
      */
-    applySettingOnDataByMonth(targetMonth, targetYear, exceptionCategories = this.EXCEPTION_CATEGORIES) {
+    applySettingOnDataByMonth(targetMonth, targetYear, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
         if (!this.transactions || !Array.isArray(this.transactions)) {
             return [];
         }
@@ -120,12 +143,18 @@ class BaseChartData {
                 return false;
             }
 
-            let transactionDate = new Date(transaction.date);
-            transactionDate.setDate(1);
-            transactionDate.setMonth(transactionDate.getMonth() + (transaction.current_month || 0));
+            // Utiliser la date ajustée qui tient compte de current_month
+            const transactionDate = this.getAdjustedDate(transaction);
+            if (!transactionDate) {
+                return false;
+            }
             
-            const transactionMonth = transactionDate.toLocaleString('default', { month: 'long' });
-            const transactionYear = transactionDate.getUTCFullYear();
+            // S'assurer que la date est au premier jour du mois pour la comparaison
+            const dateForComparison = new Date(transactionDate);
+            dateForComparison.setDate(1);
+            
+            const transactionMonth = dateForComparison.toLocaleString('default', { month: 'long' });
+            const transactionYear = dateForComparison.getUTCFullYear();
             
             return transactionMonth === targetMonth && transactionYear === parseInt(targetYear);
         });
@@ -138,7 +167,7 @@ class BaseChartData {
      * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
      * @returns {Object|Map} Données organisées par catégorie
      */
-    mergeTransactionByCategory(allTransactions, allCategories, exceptionCategories = this.EXCEPTION_CATEGORIES) {
+    mergeTransactionByCategory(allTransactions, allCategories, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
         const preparedData = new Map();
 
         allTransactions.forEach(transaction => {
@@ -180,7 +209,7 @@ class BaseChartData {
      * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
      * @returns {Array} Données organisées par catégorie (format legacy)
      */
-    mergeTransactionByCategoryLegacy(allTransactions, allCategories, exceptionCategories = this.EXCEPTION_CATEGORIES) {
+    mergeTransactionByCategoryLegacy(allTransactions, allCategories, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
         const preparedData = [];
 
         allTransactions.forEach(transaction => {
@@ -204,14 +233,25 @@ class BaseChartData {
         return preparedData;
     }
 
+
     /**
-     * Parse une couleur CSS depuis une classe CSS
-     * @param {string} cssClass - Nom de la classe CSS
-     * @returns {string} Couleur au format RGB/RGBA
-     * @deprecated Utiliser ColorParser.parseColorCSS() à la place
+     * Obtient la date ajustée d'une transaction en tenant compte de current_month
+     * Ne mute pas l'objet transaction original
+     * @param {Object} transaction - Transaction à traiter
+     * @returns {Date} Date ajustée selon current_month
      */
-    parseColorCSS(cssClass) {
-        return ColorParser.parseColorCSS(cssClass);
+    getAdjustedDate(transaction) {
+        if (!transaction || !transaction.date) {
+            return null;
+        }
+        
+        let adjustedDate = new Date(transaction.date);
+        if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
+            adjustedDate.setDate(1);
+            adjustedDate.setMonth(adjustedDate.getMonth() + transaction.current_month);
+        }
+        
+        return adjustedDate;
     }
 
     /**
@@ -229,7 +269,7 @@ class BaseChartData {
      * @returns {boolean} True si c'est une catégorie d'exception
      */
     isExceptionCategory(categoryId) {
-        return this.EXCEPTION_CATEGORIES.includes(categoryId);
+        return Config.CATEGORIES.EXCEPTION_IDS.includes(categoryId);
     }
 
     /**

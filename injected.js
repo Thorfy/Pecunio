@@ -80,7 +80,7 @@ async function build() {
             });
         }
 
-        const chartData = new LineBarChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting);
+        const chartData = new LineBarChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), settingClass.getSetting('accountsSelected'), setting, settingClass);
         const preparedData = await chartData.prepareData();
         
         const homeBlock = document.getElementsByClassName("homeBlock")[0];
@@ -126,7 +126,8 @@ async function build() {
                 rawTransactionsForBudget,
                 categoriesForBudget,
                 accountsSelectedForBudget,
-                setting // Assuming 'setting' is still relevant for ChartDataBudget constructor
+                setting,
+                settingClass
             );
             budgetChartDataInstance.createUI(budgetChartBlock.id);
 
@@ -145,7 +146,7 @@ async function build() {
         const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
         if (dateChoosedElem) {
             const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
-            const chartData2 = new SankeyChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "));
+            const chartData2 = new SankeyChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "), settingClass);
             const preparedData = await chartData2.prepareData();
 
             let categBlock = document.getElementsByClassName("categoryChart");

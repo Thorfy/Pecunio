@@ -58,9 +58,127 @@ class DataManager {
 - `fresh_data_loaded` : Quand de nouvelles données sont récupérées depuis l'API
 - `cache_data_{type}_loaded` : Quand des données sont chargées depuis le cache
 
-## Améliorations proposées
+## Exemples d'utilisation
 
-1. **Gestion d'erreurs robuste** : Retry automatique en cas d'échec
-2. **Validation des données** : Vérifier la structure des données reçues
-3. **Métriques** : Ajouter des logs de performance
-4. **Cache intelligent** : Invalidation sélective par type de données
+### Exemple 1 : Initialisation et chargement des données
+
+```javascript
+const evt = new Evt();
+const dataManager = new DataManager();
+
+// Attendre que les données soient chargées
+evt.listen('data_loaded', () => {
+    const data = dataManager.getCachedData();
+    console.log('Données chargées:', data);
+    
+    // Utiliser les données
+    const transactions = data.transactions;
+    const categories = data.categories;
+    const accounts = data.accounts;
+});
+
+// Ou attendre explicitement
+await dataManager.waitForInitialization();
+const data = dataManager.getCachedData();
+```
+
+### Exemple 2 : Forcer le rechargement des données
+
+```javascript
+try {
+    await dataManager.refreshData();
+    console.log('Données rechargées avec succès');
+} catch (error) {
+    if (error instanceof AuthenticationError) {
+        console.error('Erreur d\'authentification:', error.message);
+    } else if (error instanceof APIError) {
+        console.error('Erreur API:', error.statusCode, error.url);
+    } else {
+        console.error('Erreur inconnue:', error);
+    }
+}
+```
+
+### Exemple 3 : Filtrer les transactions
+
+```javascript
+const data = dataManager.getCachedData();
+const allTransactions = data.transactions;
+
+// Filtrer par date
+const filtered = dataManager.filterTransactions(allTransactions, {
+    startDate: '2024-01-01',
+    endDate: '2024-12-31',
+    accountsSelected: [123, 456], // IDs des comptes
+    excludeCategories: Config.CATEGORIES.EXCEPTION_IDS
+});
+
+console.log(`${filtered.length} transactions après filtrage`);
+```
+
+### Exemple 4 : Organiser les transactions par catégorie
+
+```javascript
+const data = dataManager.getCachedData();
+const transactions = data.transactions;
+const categories = data.categories;
+
+// Organiser par catégorie
+const organized = dataManager.organizeTransactionsByCategory(
+    transactions,
+    categories
+);
+
+// Parcourir les catégories
+organized.forEach((transactions, categoryId) => {
+    console.log(`Catégorie ${categoryId}: ${transactions.length} transactions`);
+});
+```
+
+### Exemple 5 : Créer un lookup de catégories
+
+```javascript
+const data = dataManager.getCachedData();
+const categories = data.categories;
+
+// Créer un lookup pour recherche rapide
+const lookup = dataManager.createCategoryLookup(categories);
+
+// Utiliser le lookup
+const categoryName = lookup.get(123);
+console.log('Nom de la catégorie 123:', categoryName);
+```
+
+### Exemple 6 : Gestion des erreurs typées
+
+```javascript
+try {
+    await dataManager.refreshData();
+} catch (error) {
+    if (error instanceof AuthenticationError) {
+        // Erreur d'authentification
+        console.error('Code:', error.code);
+        console.error('Détails:', error.details);
+        // Afficher un message à l'utilisateur
+        alert('Veuillez rafraîchir la page Bankin pour vous authentifier.');
+    } else if (error instanceof ValidationError) {
+        // Erreur de validation
+        console.error('Type de données invalides:', error.dataType);
+        console.error('Données invalides:', error.invalidData);
+    } else if (error instanceof APIError) {
+        // Erreur API
+        console.error('Status:', error.statusCode);
+        console.error('URL:', error.url);
+    } else {
+        // Autre erreur
+        console.error('Erreur inconnue:', error);
+    }
+}
+```
+
+## Améliorations implémentées
+
+1. ✅ **Gestion d'erreurs robuste** : Retry automatique avec backoff exponentiel
+2. ✅ **Validation des données** : Validation complète avec messages d'erreur clairs
+3. ✅ **Erreurs typées** : `AuthenticationError`, `ValidationError`, `APIError`
+4. ✅ **Logging détaillé** : Logs des données invalides pour le debug

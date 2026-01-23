@@ -1,6 +1,6 @@
 class BudgetChart extends BaseChartData {
-    constructor(transactions, categories, accountsSelected = null, settings) {
-        super(transactions, categories, accountsSelected, settings);
+    constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
+        super(transactions, categories, accountsSelected, settings, settingsInstance);
         
         this.organizedData = {};
         this.initializationPromise = this._initializeData();
@@ -200,8 +200,9 @@ class BudgetChart extends BaseChartData {
             if (this.isExceptionCategory(transaction.category.id)) {
                 return; // Skip this transaction
             }
-            const date = new Date(transaction.date);
-            if (isNaN(date.getTime())) return;
+            // Utiliser la date ajustée qui tient compte de current_month
+            const date = this.getAdjustedDate(transaction);
+            if (!date || isNaN(date.getTime())) return;
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
             const categoryName = this.getCategoryNameById(transaction.category.id);
