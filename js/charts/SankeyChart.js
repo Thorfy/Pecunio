@@ -2,6 +2,68 @@ class SankeyChart extends BaseChartData {
     constructor(transactions, categories, params, settingsInstance = null) {
         super(transactions, categories, null, null, settingsInstance);
         this.params = params;
+        this.chartInstance = null;
+    }
+
+    /**
+     * Sélecteurs CSS utilisés par ce chart
+     */
+    static SELECTORS = {
+        CATEGORY_CHART: Config.SELECTORS.CATEGORY_CHART
+    };
+
+    /**
+     * Obtient la configuration Chart.js pour le Sankey chart
+     * @param {Array} preparedData - Données préparées (optionnel, sera préparé si non fourni)
+     * @returns {Promise<Object>} Configuration Chart.js
+     */
+    async getChartJsConfig(preparedData = null) {
+        const data = preparedData || await this.prepareData();
+        
+        return {
+            type: 'sankey',
+            data: {
+                datasets: [{
+                    label: 'My Dataset',
+                    data: data,
+                    colorFrom: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                    colorTo: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                    colorMode: '',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                layout: {
+                    padding: { top: 20, bottom: 20, left: 20, right: 20 }
+                }
+            }
+        };
+    }
+
+    /**
+     * Crée et affiche le chart dans le conteneur fourni
+     * @param {HTMLElement} container - Conteneur parent (categBlock)
+     * @returns {Promise<Chart>} Instance Chart.js créée
+     */
+    async render(container) {
+        const preparedData = await this.prepareData();
+        const chartJsConfig = await this.getChartJsConfig(preparedData);
+        
+        const { wrapper: sankeyWrapper, canvas: sankeyCanvas } = InjectedStyles.createSankeyChart('Flux financiers');
+        container.appendChild(sankeyWrapper);
+
+        this.chartInstance = new Chart(sankeyCanvas.getContext('2d'), chartJsConfig);
+        
+        // Ajuster les hauteurs des conteneurs après un délai
+        setTimeout(() => {
+            document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive").forEach(item => {
+                item.classList.remove("h100");
+            });
+        }, 1000);
+
+        return this.chartInstance;
     }
 
     async prepareData() {

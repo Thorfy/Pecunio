@@ -447,11 +447,20 @@ class InjectedStyles {
      */
     static cleanupPecunioElements(container) {
         // Nettoyer les canvas
-        const canvasDiv = container.getElementsByClassName('canvasDiv');
-        if (canvasDiv && canvasDiv.length > 0) {
-            for (let item of canvasDiv) {
-                item.remove();
-            }
+        // Utiliser querySelectorAll au lieu de getElementsByClassName pour éviter les problèmes
+        // avec les HTMLCollection "live" qui se mettent à jour pendant l'itération
+        const canvasDivs = container.querySelectorAll('.canvasDiv');
+        if (canvasDivs && canvasDivs.length > 0) {
+            // Convertir en tableau pour éviter les problèmes avec les NodeList
+            // et détruire les instances Chart.js avant de supprimer les canvas
+            Array.from(canvasDivs).forEach(canvas => {
+                // Détruire l'instance Chart.js si elle existe
+                const chartInstance = Chart.getChart(canvas);
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+                canvas.remove();
+            });
         }
 
         // Nettoyer les wrappers

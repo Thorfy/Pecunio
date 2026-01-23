@@ -1,6 +1,105 @@
 class LineBarChart extends BaseChartData {
     constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
         super(transactions, categories, accountsSelected, settings, settingsInstance);
+        this.chartInstance = null;
+    }
+
+    /**
+     * Sélecteurs CSS utilisés par ce chart
+     */
+    static SELECTORS = {
+        HOME_BLOCK: Config.SELECTORS.HOME_BLOCK,
+        REFRESH_ICON: Config.SELECTORS.REFRESH_ICON
+    };
+
+    /**
+     * Configure le bouton de rafraîchissement
+     * @param {DataManager} dataManager - Instance du DataManager
+     * @param {Settings} settingsInstance - Instance de Settings
+     */
+    static setupRefreshButton(dataManager, settingsInstance) {
+        const refreshIcon = document.querySelector(LineBarChart.SELECTORS.REFRESH_ICON);
+        if (refreshIcon) {
+            refreshIcon.addEventListener("click", async () => {
+                try {
+                    const cacheObject = {
+                        ['cache_data_transactions']: "",
+                        ['cache_time_transactions']: ""
+                    };
+                    setTimeout(async () => {
+                        try {
+                            await settingsInstance.setSettings(cacheObject);
+                            await dataManager.refreshData();
+                        } catch (error) {
+                            console.error("[LineBarChart] Error refreshing data:", error);
+                            if (error.message && error.message.includes('Authentication')) {
+                                console.error("[LineBarChart] Authentication not ready. Please wait a moment and try again.");
+                            }
+                        }
+                    }, 1100);
+                } catch (error) {
+                    console.error("[LineBarChart] Error setting up refresh:", error);
+                }
+            });
+        }
+    }
+
+    /**
+     * Crée le conteneur principal pour le chart
+     * @param {HTMLElement} homeBlock - Élément homeBlock parent
+     * @returns {HTMLElement} Conteneur principal créé
+     */
+    static createMainContainer(homeBlock) {
+        // Injecter les styles Pecunio
+        InjectedStyles.inject();
+        
+        // Style pour enlever la limitation de largeur
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .homeBlock > div {
+                max-width: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+        homeBlock.innerHTML = "";
+
+        // Container principal avec style Pecunio
+        const mainContainer = document.createElement('div');
+        InjectedStyles.applyContainerClasses(mainContainer);
+        homeBlock.appendChild(mainContainer);
+
+        return mainContainer;
+    }
+
+    /**
+     * Crée le conteneur pour ce chart
+     * @param {HTMLElement} parentContainer - Conteneur parent
+     * @returns {HTMLElement} Conteneur créé
+     */
+    createContainer(parentContainer) {
+        const container = document.createElement('div');
+        container.id = "originalChartContainer";
+        container.classList.add('pecunio-section');
+        parentContainer.appendChild(container);
+        return container;
+    }
+
+    /**
+     * Crée et affiche le chart
+     * @param {HTMLElement} container - Conteneur pour le chart
+     * @returns {Promise<Chart>} Instance Chart.js créée
+     */
+    async render(container) {
+        const preparedData = await this.prepareData();
+        const chartJsConfig = await this.getChartJsConfig();
+        chartJsConfig.data = preparedData;
+
+        const canvas = InjectedStyles.createCanvas();
+        canvas.classList.add("canvasDiv");
+        container.appendChild(canvas);
+
+        this.chartInstance = new Chart(canvas.getContext('2d'), chartJsConfig);
+        return this.chartInstance;
     }
 
     async prepareData() {
@@ -116,7 +215,7 @@ class LineBarChart extends BaseChartData {
             plugins: {
                 annotation: {
                     annotations: {
-                        annotation
+                        annotation: Config.CHART.ANNOTATION
                     }
                 },
                 title: {
@@ -210,7 +309,8 @@ class LineBarChart extends BaseChartData {
 
                     if (withinLegendX && withinLegendY && event.type === 'click') {
                         await chrome.storage.local.set({ 'chartType': chart.config.type === 'line' ? 'bar' : 'line' });
-                        evt.dispatch('url_change');
+                        // Déclencher un événement personnalisé pour notifier le changement
+                        window.dispatchEvent(new CustomEvent('pecunio_chart_type_changed'));
                     }
                 }
             }]

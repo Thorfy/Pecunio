@@ -6,6 +6,50 @@ class ExpenseTypeChart extends BaseChartData {
     constructor(transactions, categories, params, settingsInstance = null) {
         super(transactions, categories, null, null, settingsInstance);
         this.params = params; // [mois, année] pour filtrer par période
+        this.chartInstance = null;
+    }
+
+    /**
+     * Sélecteurs CSS utilisés par ce chart
+     */
+    static SELECTORS = {
+        CATEGORY_CHART: Config.SELECTORS.CATEGORY_CHART,
+        MONTH_SELECTOR: Config.SELECTORS.MONTH_SELECTOR
+    };
+
+    /**
+     * Prépare le conteneur pour le chart (doit être appelé avant render)
+     * @param {HTMLElement} categBlock - Élément categoryChart
+     * @returns {HTMLElement} Conteneur de ligne pour les charts
+     */
+    static prepareContainer(categBlock) {
+        InjectedStyles.inject();
+        InjectedStyles.cleanupPecunioElements(categBlock);
+
+        let chartsRowContainer = categBlock.querySelector('.pecunio-charts-row');
+        if (!chartsRowContainer) {
+            chartsRowContainer = InjectedStyles.createChartsRow();
+        }
+        InjectedStyles.organizeDonutContent(categBlock, chartsRowContainer);
+        
+        return chartsRowContainer;
+    }
+
+    /**
+     * Crée et affiche le chart dans le conteneur fourni
+     * @param {HTMLElement} chartsRowContainer - Conteneur de ligne pour les charts
+     * @returns {Promise<Chart>} Instance Chart.js créée
+     */
+    async render(chartsRowContainer) {
+        const preparedData = await this.prepareData();
+        const chartJsConfig = await this.getChartJsConfig();
+        chartJsConfig.data = preparedData;
+
+        const { wrapper: expenseTypeWrapper, canvas: expenseTypeCanvas } = InjectedStyles.createDonutChart('Types de dépenses');
+        chartsRowContainer.appendChild(expenseTypeWrapper);
+
+        this.chartInstance = new Chart(expenseTypeCanvas.getContext('2d'), chartJsConfig);
+        return this.chartInstance;
     }
 
     /**
