@@ -26,26 +26,54 @@ class DataManager {
      */
     async _initializeAuth() {
         return new Promise((resolve, reject) => {
-            this.port.onMessage.addListener(message => {
-                if (!message.data || Object.keys(message.data).length === 0) {
+            let messageListener = null;
+            let timeoutId = null;
+
+            const cleanup = () => {
+                if (messageListener) {
+                    this.port.onMessage.removeListener(messageListener);
+                }
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+            };
+
+            messageListener = (message) => {
+                if (!message || !message.data || Object.keys(message.data).length === 0) {
                     return false;
                 }
 
                 // Vérifier que tous les headers requis sont présents
                 const hasAllHeaders = DataManager.REQUIRED_HEADERS.every(header => 
-                    message.data.hasOwnProperty(header)
+                    message.data.hasOwnProperty(header) && message.data[header]
                 );
 
                 if (!hasAllHeaders) {
+                    console.warn('[DataManager] Missing required headers:', 
+                        DataManager.REQUIRED_HEADERS.filter(h => !message.data[h]));
                     return false;
                 }
 
+                cleanup();
                 this.authHeader = message.data;
-                this._loadAllData().then(resolve).catch(reject);
-            });
+                this._loadAllData()
+                    .then(resolve)
+                    .catch(reject);
+            };
+
+            this.port.onMessage.addListener(messageListener);
 
             // Timeout pour éviter un blocage infini
-            setTimeout(() => reject(new Error('Auth timeout')), 10000);
+            timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('Auth timeout: No authentication headers received after 10 seconds. Please refresh the Bankin page.'));
+            }, 10000);
+
+            // Gérer la déconnexion du port
+            this.port.onDisconnect.addListener(() => {
+                cleanup();
+                reject(new Error('Port disconnected: Background script connection lost.'));
+            });
         });
     }
 
@@ -112,9 +140,21 @@ class DataManager {
      * Récupère les données depuis l'API Bankin
      */
     async _fetchDataFromAPI(dataType) {
-        const url = DataManager.ENDPOINTS[dataType];
+        // Mapping des types de données (minuscules) vers les clés ENDPOINTS (majuscules)
+        const endpointMap = {
+            'transactions': 'TRANSACTIONS',
+            'categories': 'CATEGORIES',
+            'accounts': 'ACCOUNTS'
+        };
+        
+        const endpointKey = endpointMap[dataType];
+        if (!endpointKey) {
+            throw new Error(`Unknown data type: ${dataType}. Expected one of: ${Object.keys(endpointMap).join(', ')}`);
+        }
+        
+        const url = DataManager.ENDPOINTS[endpointKey];
         if (!url) {
-            throw new Error(`Unknown data type: ${dataType}`);
+            throw new Error(`Endpoint not found for data type: ${dataType} (key: ${endpointKey})`);
         }
 
         const allData = [];
@@ -124,9 +164,18 @@ class DataManager {
     }
 
     /**
-     * Récupère les données paginées depuis l'API
+     * Récupère les données paginées depuis l'API avec retry automatique
+     * @param {string} url - URL à récupérer
+     * @param {Array} globalData - Tableau pour accumuler les données
+     * @param {number} retryCount - Nombre de tentatives restantes
+     * @returns {Promise<Array>} Données récupérées
      */
-    async _fetchPaginatedData(url, globalData) {
+    async _fetchPaginatedData(url, globalData, retryCount = 3) {
+        // Vérifier que l'authentification est complète
+        if (!this.authHeader) {
+            throw new Error('Cannot fetch data: Authentication headers not available. Please wait for initialization to complete.');
+        }
+        
         const myInit = {
             method: 'GET',
             headers: this.authHeader,
@@ -136,23 +185,42 @@ class DataManager {
 
         try {
             const response = await fetch(DataManager.DOMAIN + url, myInit);
+            
             if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Authentication error! status: ${response.status}. Please refresh Bankin page.`);
+                }
+                if (response.status >= 500 && retryCount > 0) {
+                    console.warn(`[DataManager] Server error ${response.status}, retrying... (${retryCount} attempts left)`);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1s avant retry
+                    return this._fetchPaginatedData(url, globalData, retryCount - 1);
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
+            
+            // Valider la structure des données
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid response format: expected object');
+            }
 
-            if (data.resources && data.resources.length) {
+            if (data.resources && Array.isArray(data.resources) && data.resources.length) {
                 Array.prototype.push.apply(globalData, data.resources);
             }
 
             // Récupérer la page suivante si elle existe
-            if (data.pagination && data.pagination.next_uri && data.pagination.next_uri.length) {
-                await this._fetchPaginatedData(data.pagination.next_uri, globalData);
+            if (data.pagination && data.pagination.next_uri && typeof data.pagination.next_uri === 'string' && data.pagination.next_uri.length) {
+                await this._fetchPaginatedData(data.pagination.next_uri, globalData, retryCount);
             }
 
             return globalData;
         } catch (error) {
+            if (retryCount > 0 && !error.message.includes('Authentication')) {
+                console.warn(`[DataManager] Error fetching data from ${url}, retrying... (${retryCount} attempts left):`, error.message);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return this._fetchPaginatedData(url, globalData, retryCount - 1);
+            }
             console.error(`[DataManager] Error fetching data from ${url}:`, error);
             throw error;
         }
@@ -278,14 +346,10 @@ class DataManager {
 
     /**
      * Parse une couleur CSS depuis une classe
+     * @deprecated Utiliser ColorParser.parseColorCSS() à la place
      */
     static parseColorCSS(strClass) {
-        const styleElement = document.createElement("div");
-        styleElement.className = strClass;
-        document.body.appendChild(styleElement);
-        const colorVal = window.getComputedStyle(styleElement).backgroundColor;
-        styleElement.remove();
-        return colorVal;
+        return ColorParser.parseColorCSS(strClass);
     }
 
     /**
@@ -297,8 +361,17 @@ class DataManager {
 
     /**
      * Force le rechargement des données
+     * Attend que l'authentification soit complète avant de recharger
      */
     async refreshData() {
+        // Attendre que l'authentification soit terminée
+        await this.waitForInitialization();
+        
+        // Vérifier que l'authentification a réussi
+        if (!this.authHeader) {
+            throw new Error('Cannot refresh data: Authentication not completed. Please refresh the Bankin page.');
+        }
+        
         // Vider le cache
         const cacheObject = {
             cache_data_transactions: "",

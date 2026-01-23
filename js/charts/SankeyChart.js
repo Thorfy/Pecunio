@@ -15,17 +15,38 @@ class SankeyChart extends BaseChartData {
     getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
         let datasets = []
 
+        if (!categoryData || !Array.isArray(categoryData)) {
+            console.warn('[SankeyChart] getDataFormated: Invalid categoryData');
+            return datasets;
+        }
+
+        if (!transactionByCategory || !(transactionByCategory instanceof Map)) {
+            console.warn('[SankeyChart] getDataFormated: Invalid transactionByCategory');
+            return datasets;
+        }
+
         categoryData.forEach(categoryParent => {
-            const transactions = transactionByCategory.get(parseInt(categoryParent.id));
+            if (!categoryParent || !categoryParent.id) {
+                console.warn('[SankeyChart] getDataFormated: Invalid categoryParent', categoryParent);
+                return;
+            }
+
+            const transactions = transactionByCategory.get(parseInt(categoryParent.id)) || [];
             let childData = []
-            categoryParent.categories.forEach(categoryEnfant => {
-                const transactionsChild = transactionByCategory.get(parseInt(categoryEnfant.id));
-                childData.push({
-                    "id": categoryEnfant.id,
-                    "name": categoryEnfant.name,
-                    "transactions": transactionsChild
+            
+            if (categoryParent.categories && Array.isArray(categoryParent.categories)) {
+                categoryParent.categories.forEach(categoryEnfant => {
+                    if (!categoryEnfant || !categoryEnfant.id) {
+                        return;
+                    }
+                    const transactionsChild = transactionByCategory.get(parseInt(categoryEnfant.id)) || [];
+                    childData.push({
+                        "id": categoryEnfant.id,
+                        "name": categoryEnfant.name,
+                        "transactions": transactionsChild
+                    })
                 })
-            })
+            }
 
             datasets.push({
                 "id": categoryParent.id,
@@ -42,12 +63,35 @@ class SankeyChart extends BaseChartData {
         let totalExpense = 0;
         let totalBudget = 0;
 
+        if (!data || !Array.isArray(data)) {
+            console.warn('[SankeyChart] convertDataToSankeyFormat: Invalid data');
+            return sankeyData;
+        }
+
         // Traiter tous les nœuds de niveau supérieur.
         data.forEach(function (node) {
+            if (!node || !node.id) {
+                console.warn('[SankeyChart] convertDataToSankeyFormat: Invalid node', node);
+                return;
+            }
 
-            if (node.child) {
+            if (node.child && Array.isArray(node.child)) {
                 node.child.forEach(function (childNode) {
-                    let totalAmount = childNode.transactions.reduce(function (total, transaction) {
+                    if (!childNode || !childNode.name) {
+                        return;
+                    }
+                    
+                    // Vérifier que transactions existe et est un tableau
+                    const transactions = childNode.transactions || [];
+                    if (!Array.isArray(transactions)) {
+                        console.warn('[SankeyChart] convertDataToSankeyFormat: Invalid transactions for childNode', childNode);
+                        return;
+                    }
+
+                    let totalAmount = transactions.reduce(function (total, transaction) {
+                        if (!transaction || typeof transaction.amount !== 'number') {
+                            return total;
+                        }
                         return total + Math.abs(transaction.amount);  // On utilise Math.abs pour éviter les valeurs négatives
                     }, 0);
 
@@ -60,7 +104,17 @@ class SankeyChart extends BaseChartData {
                 })
             }
 
-            let totalAmount = node.transactions.reduce(function (total, transaction) {
+            // Vérifier que transactions existe et est un tableau
+            const transactions = node.transactions || [];
+            if (!Array.isArray(transactions)) {
+                console.warn('[SankeyChart] convertDataToSankeyFormat: Invalid transactions for node', node);
+                return;
+            }
+
+            let totalAmount = transactions.reduce(function (total, transaction) {
+                if (!transaction || typeof transaction.amount !== 'number') {
+                    return total;
+                }
                 return total + Math.abs(transaction.amount);  // On utilise Math.abs pour éviter les valeurs négatives
             }, 0);
 
@@ -74,7 +128,6 @@ class SankeyChart extends BaseChartData {
             sankeyData.push({ from: "Budget", to: "Restant", flow: totalBudget - totalExpense, id: 2 });
         }
         sankeyData.push({ from: "Budget", to: "Depenses", flow: totalExpense, id: 163 });
-
 
         return sankeyData;
     }

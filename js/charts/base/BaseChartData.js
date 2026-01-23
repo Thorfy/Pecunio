@@ -9,8 +9,8 @@ class BaseChartData {
         this.accountsSelected = accountsSelected;
         this.settings = settings;
         
-        // Constantes communes
-        this.EXCEPTION_CATEGORIES = [326, 282];
+        // Constantes communes - Utiliser Config pour la cohérence
+        this.EXCEPTION_CATEGORIES = Config.CATEGORIES.EXCEPTION_IDS;
         
         // Initialisation du lookup des catégories
         this.categoryLookup = new Map();
@@ -208,14 +208,10 @@ class BaseChartData {
      * Parse une couleur CSS depuis une classe CSS
      * @param {string} cssClass - Nom de la classe CSS
      * @returns {string} Couleur au format RGB/RGBA
+     * @deprecated Utiliser ColorParser.parseColorCSS() à la place
      */
     parseColorCSS(cssClass) {
-        const styleElement = document.createElement("div");
-        styleElement.className = cssClass;
-        document.body.appendChild(styleElement);
-        const colorVal = window.getComputedStyle(styleElement).backgroundColor;
-        styleElement.remove();
-        return colorVal;
+        return ColorParser.parseColorCSS(cssClass);
     }
 
     /**

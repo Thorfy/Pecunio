@@ -1,7 +1,7 @@
 
 const evt = new Evt();
 const settingClass = new Settings();
-const dataClass = new BankinDataService();
+const dataManager = new DataManager();
 
 let setting = {};
 let currentUrl = location.href;
@@ -15,7 +15,11 @@ evt.listen('data_loaded', async () => {
     try {
         await build();
     } catch (error) {
-        console.error("Error during data_loaded event:", error);
+        console.error("[InjectedJS] Error during data_loaded event:", error);
+        // Afficher un message d'erreur à l'utilisateur si possible
+        if (error.message && error.message.includes('Authentication')) {
+            console.error("[InjectedJS] Authentication issue detected. Please refresh the page.");
+        }
     }
 });
 
@@ -28,7 +32,7 @@ evt.listen('url_change', async () => {
     try {
         await build();
     } catch (error) {
-        console.error("Error during url_change event:", error);
+        console.error("[InjectedJS] Error during url_change event:", error);
     }
 });
 
@@ -52,15 +56,27 @@ async function build() {
 
         const refreshIcon = document.querySelector(".refreshIcon");
         if (refreshIcon) {
-            refreshIcon.addEventListener("click", () => {
-                let cacheObject = {
-                    ['cache_data_transactions']: "",
-                    ['cache_time_transactions']: ""
-                };
-                setTimeout(async () => {
-                    await settingClass.setSettings(cacheObject);
-                    new BankinDataService(); // This reloads data, might need to reload budget chart too
-                }, 1100);
+            refreshIcon.addEventListener("click", async () => {
+                try {
+                    let cacheObject = {
+                        ['cache_data_transactions']: "",
+                        ['cache_time_transactions']: ""
+                    };
+                    setTimeout(async () => {
+                        try {
+                            await settingClass.setSettings(cacheObject);
+                            // refreshData() attend maintenant automatiquement l'authentification
+                            await dataManager.refreshData(); // Reload data and trigger data_loaded event
+                        } catch (error) {
+                            console.error("[InjectedJS] Error refreshing data:", error);
+                            if (error.message && error.message.includes('Authentication')) {
+                                console.error("[InjectedJS] Authentication not ready. Please wait a moment and try again.");
+                            }
+                        }
+                    }, 1100);
+                } catch (error) {
+                    console.error("[InjectedJS] Error setting up refresh:", error);
+                }
             });
         }
 
@@ -169,8 +185,8 @@ async function build() {
                         datasets: [{
                             label: 'My Dataset',
                             data: preparedData,
-                            colorFrom: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
-                            colorTo: (c) => parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                            colorFrom: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                            colorTo: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
                             colorMode: '',
                         }]
                     },
@@ -226,6 +242,4 @@ function average(ctx) {
     return values.reduce((a, b) => a + b, 0) / values.length;
 };
 
-function parseColorCSS(strClass) {
-    return ColorParser.parseColorCSS(strClass);
-}
+// parseColorCSS est maintenant géré directement par ColorParser.parseColorCSS()

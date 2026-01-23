@@ -54,13 +54,14 @@ class LineBarChart extends BaseChartData {
         return data;
     }
 
+    /**
+     * Parse une couleur CSS depuis une classe CSS
+     * @param {string} strClass - Nom de la classe CSS
+     * @returns {string} Couleur au format RGB/RGBA
+     * @deprecated Utiliser ColorParser.parseColorCSS() directement
+     */
     parseColorCSS(strClass) {
-        const styleElement = document.createElement("div");
-        styleElement.className = strClass;
-        document.body.appendChild(styleElement);
-        const colorVal = window.getComputedStyle(styleElement).backgroundColor;
-        styleElement.remove();
-        return colorVal;
+        return ColorParser.parseColorCSS(strClass);
     }
 
     async buildChart(formattedData) {

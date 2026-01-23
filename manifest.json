@@ -47,7 +47,6 @@
               "js/models/Account.js",
               "js/models/Transaction.js",
               "js/services/DataMerger.js",
-              "js/services/BankinDataService.js",
               "js/ui/InjectedStyles.js",
               "js/ui/LoadingScreen.js",
               "js/utils/ColorParser.js",
