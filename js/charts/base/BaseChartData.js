@@ -9,9 +9,6 @@ class BaseChartData {
         this.accountsSelected = accountsSelected;
         this.settings = settings;
         
-        // Constantes communes - Utiliser Config pour la cohérence
-        this.EXCEPTION_CATEGORIES = Config.CATEGORIES.EXCEPTION_IDS;
-        
         // Initialisation du lookup des catégories
         this.categoryLookup = new Map();
         this._initializeCategoryLookup();
@@ -56,7 +53,7 @@ class BaseChartData {
             startDate = settingClass.getSetting('startDate'),
             endDate = settingClass.getSetting('endDate'),
             accountsSelected = this.accountsSelected,
-            exceptionCategories = this.EXCEPTION_CATEGORIES
+            exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS
         } = options;
 
         if (!this.transactions || !Array.isArray(this.transactions)) {
@@ -110,7 +107,7 @@ class BaseChartData {
      * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
      * @returns {Array} Transactions filtrées
      */
-    applySettingOnDataByMonth(targetMonth, targetYear, exceptionCategories = this.EXCEPTION_CATEGORIES) {
+    applySettingOnDataByMonth(targetMonth, targetYear, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
         if (!this.transactions || !Array.isArray(this.transactions)) {
             return [];
         }
@@ -138,7 +135,7 @@ class BaseChartData {
      * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
      * @returns {Object|Map} Données organisées par catégorie
      */
-    mergeTransactionByCategory(allTransactions, allCategories, exceptionCategories = this.EXCEPTION_CATEGORIES) {
+    mergeTransactionByCategory(allTransactions, allCategories, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
         const preparedData = new Map();
 
         allTransactions.forEach(transaction => {
@@ -180,7 +177,7 @@ class BaseChartData {
      * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
      * @returns {Array} Données organisées par catégorie (format legacy)
      */
-    mergeTransactionByCategoryLegacy(allTransactions, allCategories, exceptionCategories = this.EXCEPTION_CATEGORIES) {
+    mergeTransactionByCategoryLegacy(allTransactions, allCategories, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
         const preparedData = [];
 
         allTransactions.forEach(transaction => {
@@ -204,15 +201,6 @@ class BaseChartData {
         return preparedData;
     }
 
-    /**
-     * Parse une couleur CSS depuis une classe CSS
-     * @param {string} cssClass - Nom de la classe CSS
-     * @returns {string} Couleur au format RGB/RGBA
-     * @deprecated Utiliser ColorParser.parseColorCSS() à la place
-     */
-    parseColorCSS(cssClass) {
-        return ColorParser.parseColorCSS(cssClass);
-    }
 
     /**
      * Obtient le nom d'une catégorie par son ID
@@ -229,7 +217,7 @@ class BaseChartData {
      * @returns {boolean} True si c'est une catégorie d'exception
      */
     isExceptionCategory(categoryId) {
-        return this.EXCEPTION_CATEGORIES.includes(categoryId);
+        return Config.CATEGORIES.EXCEPTION_IDS.includes(categoryId);
     }
 
     /**

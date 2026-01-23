@@ -38,7 +38,7 @@ class LineBarChart extends BaseChartData {
                 }
             }
 
-            const color = this.parseColorCSS("categoryColor_" + category.id);
+            const color = ColorParser.parseColorCSS("categoryColor_" + category.id);
 
             data.datasets.push({
                 label: category.name,
@@ -54,15 +54,6 @@ class LineBarChart extends BaseChartData {
         return data;
     }
 
-    /**
-     * Parse une couleur CSS depuis une classe CSS
-     * @param {string} strClass - Nom de la classe CSS
-     * @returns {string} Couleur au format RGB/RGBA
-     * @deprecated Utiliser ColorParser.parseColorCSS() directement
-     */
-    parseColorCSS(strClass) {
-        return ColorParser.parseColorCSS(strClass);
-    }
 
     async buildChart(formattedData) {
         const chartJsConfig = await this.getChartJsConfig();

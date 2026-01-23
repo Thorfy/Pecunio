@@ -7,7 +7,6 @@ class DataManager {
     static DOMAIN = Config.API.DOMAIN;
     static ENDPOINTS = Config.API.ENDPOINTS;
     static CACHE_DURATION = Config.API.CACHE_DURATION;
-    static EXCEPTION_CATEGORIES = Config.CATEGORIES.EXCEPTION_IDS;
 
     constructor() {
         this.port = chrome.runtime.connect();
@@ -234,7 +233,7 @@ class DataManager {
             startDate = null,
             endDate = null,
             accountsSelected = null,
-            excludeCategories = DataManager.EXCEPTION_CATEGORIES
+            excludeCategories = Config.CATEGORIES.EXCEPTION_IDS
         } = options;
 
         return transactions.filter(transaction => {
@@ -344,13 +343,6 @@ class DataManager {
         return lookup;
     }
 
-    /**
-     * Parse une couleur CSS depuis une classe
-     * @deprecated Utiliser ColorParser.parseColorCSS() à la place
-     */
-    static parseColorCSS(strClass) {
-        return ColorParser.parseColorCSS(strClass);
-    }
 
     /**
      * Récupère les données mises en cache
