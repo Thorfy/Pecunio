@@ -18,6 +18,32 @@ class ExpenseTypeChart extends BaseChartData {
     };
 
     /**
+     * Mapping centralisé des types de dépenses (name, icon, color)
+     */
+    static EXPENSE_TYPE_MAPPING = {
+        'ESSENTIAL': { 
+            name: 'Essentiel', 
+            icon: '🏠', 
+            color: 'rgba(102, 126, 234, 0.8)' 
+        },
+        'PLEASURE': { 
+            name: 'Plaisir', 
+            icon: '🎯', 
+            color: 'rgba(255, 99, 132, 0.8)' 
+        },
+        'OTHER': { 
+            name: 'Autre', 
+            icon: '📦', 
+            color: 'rgba(199, 199, 199, 0.8)' 
+        },
+        'SAVING': { 
+            name: 'Épargne', 
+            icon: '💰', 
+            color: 'rgba(75, 192, 192, 0.8)' 
+        }
+    };
+
+    /**
      * Prépare le conteneur pour le chart (doit être appelé avant render)
      * @param {HTMLElement} categBlock - Élément categoryChart
      * @returns {HTMLElement} Conteneur de ligne pour les charts
@@ -217,29 +243,11 @@ class ExpenseTypeChart extends BaseChartData {
      * @returns {string} Type formaté avec icône
      */
     _formatExpenseType(expenseType) {
-        const mapping = {
-            'ESSENTIAL': { name: 'Essentiel', icon: '🏠' },
-            'PLEASURE': { name: 'Plaisir', icon: '🎯' },
-            'OTHER': { name: 'Autre', icon: '📦' },
-            'SAVING': { name: 'Épargne', icon: '💰' }
+        const mapped = ExpenseTypeChart.EXPENSE_TYPE_MAPPING[expenseType] || { 
+            name: expenseType, 
+            icon: '📦' 
         };
-        const mapped = mapping[expenseType] || { name: expenseType, icon: '📦' };
         return `${mapped.icon} ${mapped.name}`;
-    }
-
-    /**
-     * Obtient l'icône pour un expense_type
-     * @param {string} expenseType - Type de dépense brut
-     * @returns {string} Icône
-     */
-    _getExpenseTypeIcon(expenseType) {
-        const mapping = {
-            'ESSENTIAL': '🏠',
-            'PLEASURE': '🎯',
-            'OTHER': '📦',
-            'SAVING': '💰'
-        };
-        return mapping[expenseType] || '📦';
     }
 
     /**
@@ -249,30 +257,23 @@ class ExpenseTypeChart extends BaseChartData {
      * @returns {Array<string>} Tableau de couleurs
      */
     _generateColors(count, expenseTypes = []) {
-        // Couleurs spécifiques pour chaque type de dépense
-        const typeColors = {
-            'ESSENTIAL': 'rgba(102, 126, 234, 0.8)',   // Bleu - Essentiel
-            'PLEASURE': 'rgba(255, 99, 132, 0.8)',     // Rose - Plaisir
-            'OTHER': 'rgba(199, 199, 199, 0.8)',       // Gris - Autre
-            'SAVING': 'rgba(75, 192, 192, 0.8)'        // Turquoise - Épargne
-        };
+        const defaultColor = 'rgba(199, 199, 199, 0.8)';
 
-        // Si on a les types, utiliser les couleurs spécifiques
+        // Si on a les types, utiliser les couleurs spécifiques depuis le mapping
         if (expenseTypes.length > 0) {
-            return expenseTypes.map(type => typeColors[type] || 'rgba(199, 199, 199, 0.8)');
+            return expenseTypes.map(type => {
+                const mapping = ExpenseTypeChart.EXPENSE_TYPE_MAPPING[type];
+                return mapping ? mapping.color : defaultColor;
+            });
         }
 
-        // Sinon, utiliser des couleurs par défaut
-        const baseColors = [
-            'rgba(102, 126, 234, 0.8)',   // Bleu
-            'rgba(255, 99, 132, 0.8)',    // Rose
-            'rgba(199, 199, 199, 0.8)',   // Gris
-            'rgba(75, 192, 192, 0.8)'     // Turquoise
-        ];
+        // Sinon, utiliser des couleurs par défaut depuis le mapping
+        const baseColors = Object.values(ExpenseTypeChart.EXPENSE_TYPE_MAPPING)
+            .map(mapping => mapping.color);
 
         const colors = [];
         for (let i = 0; i < count; i++) {
-            colors.push(baseColors[i % baseColors.length]);
+            colors.push(baseColors[i % baseColors.length] || defaultColor);
         }
         return colors;
     }
