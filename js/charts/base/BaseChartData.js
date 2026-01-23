@@ -1,13 +1,38 @@
 /**
+ * Interface IChart - Contrat que tous les charts doivent respecter
+ * 
+ * Tous les charts doivent implémenter :
+ * - async prepareData(...args): Promise<Object> - Prépare les données pour le chart
+ *   - Retourne les données formatées pour Chart.js ou le format spécifique au chart
+ *   - Les paramètres peuvent varier selon le type de chart
+ * 
+ * Les charts qui utilisent Chart.js directement doivent aussi implémenter :
+ * - async getChartJsConfig(): Promise<Object> - Retourne la configuration Chart.js complète
+ *   - Doit retourner un objet avec les propriétés : type, data, options, plugins
+ * 
+ * Exemples :
+ * - LineBarChart : prepareData() + getChartJsConfig()
+ * - BudgetChart : prepareData(yearLeft, monthLeft, yearRight, monthRight, calcType) - pas de getChartJsConfig (géré en interne)
+ * - SankeyChart : prepareData() - pas de getChartJsConfig (créé directement dans injected.js)
+ * 
+ * @interface IChart
+ */
+// Note: En JavaScript, on ne peut pas forcer l'implémentation d'une interface,
+// mais cette documentation sert de contrat pour tous les charts
+
+/**
  * Classe de base pour tous les charts Pecunio
  * Centralise la logique commune : filtrage des données, gestion des catégories, parsing des couleurs
+ * 
+ * Implémente IChart
  */
 class BaseChartData {
-    constructor(transactions, categories, accountsSelected = null, settings = null) {
+    constructor(transactions, categories, accountsSelected = null, settings = null, settingsInstance = null) {
         this.transactions = transactions || [];
         this.categories = categories || [];
         this.accountsSelected = accountsSelected;
         this.settings = settings;
+        this.settingsInstance = settingsInstance; // Instance de Settings injectée
         
         // Initialisation du lookup des catégories
         this.categoryLookup = new Map();
@@ -49,9 +74,12 @@ class BaseChartData {
      * @returns {Array} Transactions filtrées
      */
     applySettingOnData(options = {}) {
+        // Utiliser l'instance injectée ou fallback sur settingClass global (pour compatibilité)
+        const settingsProvider = this.settingsInstance || (typeof settingClass !== 'undefined' ? settingClass : null);
+        
         const {
-            startDate = settingClass.getSetting('startDate'),
-            endDate = settingClass.getSetting('endDate'),
+            startDate = settingsProvider ? settingsProvider.getSetting('startDate') : null,
+            endDate = settingsProvider ? settingsProvider.getSetting('endDate') : null,
             accountsSelected = this.accountsSelected,
             exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS
         } = options;
@@ -69,15 +97,15 @@ class BaseChartData {
                 return false;
             }
             
-            // Traitement de la date avec current_month
+            // Traitement de la date avec current_month (sans muter l'objet original)
             let dateForProcessing = new Date(transaction.date);
             if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
                 dateForProcessing.setDate(1);
                 dateForProcessing.setMonth(dateForProcessing.getMonth() + transaction.current_month);
-                transaction.date = dateForProcessing; // Persister la date ajustée
+                // Ne pas muter transaction.date pour éviter de corrompre les données en cache
             }
             
-            const modifiedDateForComparison = new Date(transaction.date).toDateString();
+            const modifiedDateForComparison = dateForProcessing.toDateString();
 
             // Filtre par date
             let dateFilterPassed = true;

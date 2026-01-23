@@ -1,6 +1,6 @@
 class BudgetChart extends BaseChartData {
-    constructor(transactions, categories, accountsSelected = null, settings) {
-        super(transactions, categories, accountsSelected, settings);
+    constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
+        super(transactions, categories, accountsSelected, settings, settingsInstance);
         
         this.organizedData = {};
         this.initializationPromise = this._initializeData();

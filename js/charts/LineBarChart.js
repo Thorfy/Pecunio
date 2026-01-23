@@ -1,6 +1,6 @@
 class LineBarChart extends BaseChartData {
-    constructor(transactions, categories, accountsSelected = null, settings) {
-        super(transactions, categories, accountsSelected, settings);
+    constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
+        super(transactions, categories, accountsSelected, settings, settingsInstance);
     }
 
     async prepareData() {
@@ -69,8 +69,23 @@ class LineBarChart extends BaseChartData {
         }
     }
 
+    /**
+     * Retourne la configuration Chart.js standardisée
+     * @returns {Promise<Object>} Configuration Chart.js avec type, data, options, plugins
+     */
     async getChartJsConfig() {
-        const settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
+        // Utiliser l'instance Settings injectée si disponible, sinon fallback sur chrome.storage
+        let settings;
+        if (this.settingsInstance) {
+            await this.settingsInstance.waitForInitialization();
+            settings = {
+                startDate: this.settingsInstance.getSetting('startDate'),
+                endDate: this.settingsInstance.getSetting('endDate'),
+                chartType: this.settingsInstance.getSetting('chartType')
+            };
+        } else {
+            settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
+        }
         const initialChartType = settings.chartType ?? 'bar';
         const cummulative = initialChartType === "line" ? false : true;
 

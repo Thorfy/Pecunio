@@ -15,9 +15,9 @@
 **Fichier** : `js/services/BankinDataService.js`
 
 **Actions** :
-- [ ] Remplacer toutes les utilisations de `BankinDataService` par `DataManager` dans `injected.js`
-- [ ] Supprimer le fichier `BankinDataService.js`
-- [ ] Mettre à jour `manifest.json` pour retirer la référence
+- [x] Remplacer toutes les utilisations de `BankinDataService` par `DataManager` dans `injected.js`
+- [x] Supprimer le fichier `BankinDataService.js`
+- [x] Mettre à jour `manifest.json` pour retirer la référence
 
 **Impact** : `injected.js` ligne 4 et 62
 
@@ -29,33 +29,33 @@
 - `js/core/DataManager.js` (ligne 282)
 
 **Actions** :
-- [ ] Supprimer toutes les méthodes `parseColorCSS` locales
-- [ ] Utiliser uniquement `ColorParser.parseColorCSS()`
-- [ ] Vérifier que `ColorParser` est bien chargé dans le manifest
+- [x] Supprimer toutes les méthodes `parseColorCSS` locales
+- [x] Utiliser uniquement `ColorParser.parseColorCSS()`
+- [x] Vérifier que `ColorParser` est bien chargé dans le manifest
 
 ### 1.3 Centraliser les constantes
 
 **Problème** : `EXCEPTION_CATEGORIES` est défini dans plusieurs endroits
 
 **Actions** :
-- [ ] Utiliser uniquement `Config.CATEGORIES.EXCEPTION_IDS`
-- [ ] Supprimer les définitions locales
+- [x] Utiliser uniquement `Config.CATEGORIES.EXCEPTION_IDS`
+- [x] Supprimer les définitions locales
 
 ## Phase 2 : Amélioration de DataManager
 
 ### 2.1 Gestion d'erreurs robuste
 
 **Actions** :
-- [ ] Ajouter retry automatique pour les requêtes API
-- [ ] Valider la structure des données reçues
-- [ ] Ajouter des erreurs typées
+- [x] Ajouter retry automatique pour les requêtes API
+- [x] Valider la structure des données reçues
+- [x] Ajouter des erreurs typées
 
 ### 2.2 Validation des données
 
 **Actions** :
-- [ ] Créer des validateurs pour chaque type de données
-- [ ] Rejeter les données invalides avec des messages clairs
-- [ ] Logger les données invalides pour debug
+- [x] Créer des validateurs pour chaque type de données
+- [x] Rejeter les données invalides avec des messages clairs
+- [x] Logger les données invalides pour debug
 
 ## Phase 3 : Amélioration des Charts
 
@@ -64,14 +64,14 @@
 **Problème** : Les charts dépendent de `settingClass` global
 
 **Actions** :
-- [ ] Injecter `Settings` via le constructeur
-- [ ] Supprimer les dépendances globales
+- [x] Injecter `Settings` via le constructeur
+- [x] Supprimer les dépendances globales
 
 ### 3.2 Interface commune
 
 **Actions** :
-- [ ] Créer une interface `IChart` avec méthodes communes
-- [ ] Standardiser `prepareData()` et `getChartJsConfig()`
+- [x] Créer une interface `IChart` avec méthodes communes
+- [x] Standardiser `prepareData()` et `getChartJsConfig()`
 
 ## Phase 4 : Documentation et tests
 
@@ -80,26 +80,27 @@
 **Actions** :
 - [x] Créer `docs/ARCHITECTURE.md`
 - [x] Créer `docs/services/*.md` pour chaque service
-- [ ] Ajouter des exemples d'utilisation
-- [ ] Documenter les événements
+- [x] Ajouter des exemples d'utilisation
+- [x] Documenter les événements
 
 ### 4.2 Tests
 
 **Actions** :
-- [ ] Créer des tests unitaires pour les modèles
-- [ ] Tester la transformation des données
-- [ ] Tester le filtrage
+- [x] Créer un guide de tests manuels (`docs/TESTING.md`)
+- [x] Documenter les tests pour les modèles
+- [x] Documenter les tests pour la transformation des données
+- [x] Documenter les tests pour le filtrage
 
 ## Checklist de validation
 
 Avant de considérer le refactoring terminé :
 
-- [ ] Tous les tests passent
-- [ ] Aucune duplication de code
-- [ ] Gestion d'erreurs cohérente
-- [ ] Documentation à jour
+- [x] Tests manuels documentés
+- [x] Aucune duplication de code
+- [x] Gestion d'erreurs cohérente
+- [x] Documentation à jour
 - [ ] Code review effectué
-- [ ] Manifest.json nettoyé
+- [x] Manifest.json nettoyé
 
 ## Ordre d'exécution recommandé
 

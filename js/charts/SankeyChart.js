@@ -1,6 +1,6 @@
 class SankeyChart extends BaseChartData {
-    constructor(transactions, categories, params) {
-        super(transactions, categories);
+    constructor(transactions, categories, params, settingsInstance = null) {
+        super(transactions, categories, null, null, settingsInstance);
         this.params = params;
     }
 
