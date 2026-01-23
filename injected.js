@@ -146,41 +146,43 @@ async function build() {
         const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
         if (dateChoosedElem) {
             const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
-            const chartData2 = new SankeyChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateChoosed.split(" "), settingClass);
+            const dateParams = dateChoosed.split(" ");
+            
+            // Préparer les données pour le Sankey chart
+            const chartData2 = new SankeyChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateParams, settingClass);
             const preparedData = await chartData2.prepareData();
+
+            // Préparer les données pour le ExpenseType chart
+            const expenseTypeChart = new ExpenseTypeChart(settingClass.getSetting('cache_data_transactions'), settingClass.getSetting('cache_data_categories'), dateParams, settingClass);
+            const expenseTypeData = await expenseTypeChart.prepareData();
+            const expenseTypeConfig = await expenseTypeChart.getChartJsConfig();
+            expenseTypeConfig.data = expenseTypeData;
 
             let categBlock = document.getElementsByClassName("categoryChart");
             if (categBlock && categBlock[0]) {
-                // Nettoyer les anciens canvas
-                let canvasDiv = document.getElementsByClassName("canvasDiv")
-                if (canvasDiv && canvasDiv.length > 0) {
-                    for (let item of canvasDiv) {
-                        item.remove()
-                    }
+                InjectedStyles.inject();
+                InjectedStyles.cleanupPecunioElements(categBlock[0]);
+
+                let chartsRowContainer = categBlock[0].querySelector('.pecunio-charts-row');
+                if (!chartsRowContainer) {
+                    chartsRowContainer = InjectedStyles.createChartsRow();
                 }
-                
-                // Créer un canvas spécifique pour le Sankey chart
-                canvasDiv = document.createElement('canvas');
-                canvasDiv.classList.add("canvasDiv");
-                canvasDiv.style.width = '100%';
-                canvasDiv.style.height = '400px'; // Hauteur fixe pour éviter la distorsion
-                canvasDiv.style.maxWidth = '100%';
-                canvasDiv.style.display = 'block';
-                
-                if (categBlock[0]) {
-                    categBlock[0].appendChild(canvasDiv);
-                }
-                
-                // Supprimer les classes qui peuvent causer des problèmes d'affichage
+                InjectedStyles.organizeDonutContent(categBlock[0], chartsRowContainer);
+
+                const { wrapper: expenseTypeWrapper, canvas: expenseTypeCanvas } = InjectedStyles.createDonutChart('Types de dépenses');
+                chartsRowContainer.appendChild(expenseTypeWrapper);
+                new Chart(expenseTypeCanvas.getContext('2d'), expenseTypeConfig);
+
+                const { wrapper: sankeyWrapper, canvas: sankeyCanvas } = InjectedStyles.createSankeyChart('Flux financiers');
+                categBlock[0].appendChild(sankeyWrapper);
+
                 setTimeout(() => {
-                    let h100 = document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive")
-                    for (let item of h100) {
+                    document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive").forEach(item => {
                         item.classList.remove("h100");
-                    }
+                    });
                 }, 1000);
 
-                const ctx = canvasDiv.getContext('2d');
-                const myChart = new Chart(ctx, {
+                new Chart(sankeyCanvas.getContext('2d'), {
                     type: 'sankey',
                     data: {
                         datasets: [{
@@ -193,14 +195,10 @@ async function build() {
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false, // Important pour éviter la distorsion
+                        maintainAspectRatio: true,
+                        aspectRatio: 2,
                         layout: {
-                            padding: {
-                                top: 20,
-                                bottom: 20,
-                                left: 20,
-                                right: 20
-                            }
+                            padding: { top: 20, bottom: 20, left: 20, right: 20 }
                         }
                     }
                 });

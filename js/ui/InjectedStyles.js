@@ -203,6 +203,59 @@ class InjectedStyles {
                 background: linear-gradient(90deg, transparent, #e1e5e9, transparent);
                 margin: 12px 0;
             }
+
+            /* Styles pour les graphiques côte à côte */
+            .pecunio-charts-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 16px;
+                margin-bottom: 16px;
+                width: 100%;
+                align-items: flex-start;
+            }
+
+            .pecunio-donut-wrapper,
+            .pecunio-expense-type-wrapper {
+                flex: 1 1 0;
+                min-width: 0;
+            }
+
+            @media (max-width: 1024px) {
+                .pecunio-charts-row {
+                    flex-direction: column;
+                }
+                .pecunio-donut-wrapper,
+                .pecunio-expense-type-wrapper {
+                    flex: 1 1 100% !important;
+                    min-width: 100% !important;
+                    width: 100%;
+                }
+            }
+
+            .pecunio-expense-type-wrapper {
+                background: #fff;
+                border-radius: 8px;
+                padding: 16px;
+                border: 1px solid #e1e5e9;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            .pecunio-donut-wrapper {
+                background: #fff;
+                border-radius: 8px;
+                padding: 16px;
+                border: 1px solid #e1e5e9;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            .pecunio-sankey-wrapper {
+                background: #fff;
+                border-radius: 8px;
+                padding: 16px;
+                border: 1px solid #e1e5e9;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                margin-top: 16px;
+            }
         `;
     }
 
@@ -309,5 +362,134 @@ class InjectedStyles {
         const canvas = document.createElement('canvas');
         canvas.classList.add('pecunio-canvas');
         return canvas;
+    }
+
+    /**
+     * Crée un conteneur pour les graphiques côte à côte
+     */
+    static createChartsRow() {
+        const row = document.createElement('div');
+        row.classList.add('pecunio-charts-row');
+        return row;
+    }
+
+    /**
+     * Crée un wrapper pour un donut chart
+     */
+    static createDonutWrapper() {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('pecunio-donut-wrapper');
+        return wrapper;
+    }
+
+    /**
+     * Crée un wrapper pour le graphique expense_type
+     */
+    static createExpenseTypeWrapper() {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('pecunio-expense-type-wrapper');
+        return wrapper;
+    }
+
+    /**
+     * Crée un wrapper pour le graphique Sankey
+     */
+    static createSankeyWrapper() {
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('pecunio-sankey-wrapper');
+        return wrapper;
+    }
+
+    /**
+     * Crée un graphique donut avec titre et canvas
+     */
+    static createDonutChart(title, height = '320px') {
+        const wrapper = this.createExpenseTypeWrapper();
+        const chartTitle = this.createTitle(title);
+        wrapper.appendChild(chartTitle);
+        
+        const canvasContainer = this.createCanvasContainer();
+        canvasContainer.style.height = height;
+        
+        const canvas = document.createElement('canvas');
+        canvas.classList.add('canvasDiv');
+        canvasContainer.appendChild(canvas);
+        wrapper.appendChild(canvasContainer);
+        
+        return { wrapper, canvas };
+    }
+
+    /**
+     * Crée un graphique Sankey avec titre et canvas
+     */
+    static createSankeyChart(title) {
+        const wrapper = this.createSankeyWrapper();
+        const chartTitle = this.createTitle(title);
+        wrapper.appendChild(chartTitle);
+        
+        const canvasContainer = this.createCanvasContainer();
+        // Pas de hauteur fixe pour le Sankey, laisser libre pour éviter l'écrasement
+        canvasContainer.style.height = 'auto';
+        canvasContainer.style.minHeight = '400px';
+        
+        const canvas = document.createElement('canvas');
+        canvas.classList.add('canvasDiv');
+        canvas.style.width = '100%';
+        // Pas de hauteur fixe sur le canvas, laisser Chart.js gérer
+        canvasContainer.appendChild(canvas);
+        wrapper.appendChild(canvasContainer);
+        
+        return { wrapper, canvas };
+    }
+
+    /**
+     * Nettoie les éléments créés par Pecunio dans un conteneur
+     */
+    static cleanupPecunioElements(container) {
+        // Nettoyer les canvas
+        const canvasDiv = container.getElementsByClassName('canvasDiv');
+        if (canvasDiv && canvasDiv.length > 0) {
+            for (let item of canvasDiv) {
+                item.remove();
+            }
+        }
+
+        // Nettoyer les wrappers
+        const expenseTypeWrapper = container.querySelector('.pecunio-expense-type-wrapper');
+        if (expenseTypeWrapper) {
+            expenseTypeWrapper.remove();
+        }
+
+        const sankeyWrapper = container.querySelector('.pecunio-sankey-wrapper');
+        if (sankeyWrapper) {
+            sankeyWrapper.remove();
+        }
+    }
+
+    /**
+     * Organise le contenu existant dans un wrapper donut
+     */
+    static organizeDonutContent(container, chartsRowContainer) {
+        let donutWrapper = container.querySelector('.pecunio-donut-wrapper');
+        
+        if (!donutWrapper) {
+            donutWrapper = this.createDonutWrapper();
+            const donutTitle = this.createTitle('Catégories');
+            donutWrapper.appendChild(donutTitle);
+            
+            const existingContent = Array.from(container.children);
+            existingContent.forEach(child => {
+                if (!child.classList.contains('pecunio-charts-row') && 
+                    !child.classList.contains('pecunio-expense-type-wrapper') &&
+                    !child.classList.contains('pecunio-sankey-wrapper')) {
+                    donutWrapper.appendChild(child);
+                }
+            });
+            
+            chartsRowContainer.appendChild(donutWrapper);
+            container.appendChild(chartsRowContainer);
+        }
+        
+        return donutWrapper;
     }
 } 

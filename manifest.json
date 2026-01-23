@@ -54,6 +54,7 @@
               "js/charts/BudgetChart.js",
               "js/charts/LineBarChart.js",
               "js/charts/SankeyChart.js",
+              "js/charts/ExpenseTypeChart.js",
               "js/ui/AmountHider.js",
               "libs/js/chart.js",
               "libs/js/chartjs-adapter-date-fns.js",
