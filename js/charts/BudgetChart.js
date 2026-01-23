@@ -200,8 +200,9 @@ class BudgetChart extends BaseChartData {
             if (this.isExceptionCategory(transaction.category.id)) {
                 return; // Skip this transaction
             }
-            const date = new Date(transaction.date);
-            if (isNaN(date.getTime())) return;
+            // Utiliser la date ajustée qui tient compte de current_month
+            const date = this.getAdjustedDate(transaction);
+            if (!date || isNaN(date.getTime())) return;
             const year = date.getFullYear();
             const month = date.getMonth() + 1;
             const categoryName = this.getCategoryNameById(transaction.category.id);

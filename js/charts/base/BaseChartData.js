@@ -98,11 +98,9 @@ class BaseChartData {
             }
             
             // Traitement de la date avec current_month (sans muter l'objet original)
-            let dateForProcessing = new Date(transaction.date);
-            if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
-                dateForProcessing.setDate(1);
-                dateForProcessing.setMonth(dateForProcessing.getMonth() + transaction.current_month);
-                // Ne pas muter transaction.date pour éviter de corrompre les données en cache
+            const dateForProcessing = this.getAdjustedDate(transaction);
+            if (!dateForProcessing) {
+                return false;
             }
             
             const modifiedDateForComparison = dateForProcessing.toDateString();
@@ -145,12 +143,18 @@ class BaseChartData {
                 return false;
             }
 
-            let transactionDate = new Date(transaction.date);
-            transactionDate.setDate(1);
-            transactionDate.setMonth(transactionDate.getMonth() + (transaction.current_month || 0));
+            // Utiliser la date ajustée qui tient compte de current_month
+            const transactionDate = this.getAdjustedDate(transaction);
+            if (!transactionDate) {
+                return false;
+            }
             
-            const transactionMonth = transactionDate.toLocaleString('default', { month: 'long' });
-            const transactionYear = transactionDate.getUTCFullYear();
+            // S'assurer que la date est au premier jour du mois pour la comparaison
+            const dateForComparison = new Date(transactionDate);
+            dateForComparison.setDate(1);
+            
+            const transactionMonth = dateForComparison.toLocaleString('default', { month: 'long' });
+            const transactionYear = dateForComparison.getUTCFullYear();
             
             return transactionMonth === targetMonth && transactionYear === parseInt(targetYear);
         });
@@ -229,6 +233,26 @@ class BaseChartData {
         return preparedData;
     }
 
+
+    /**
+     * Obtient la date ajustée d'une transaction en tenant compte de current_month
+     * Ne mute pas l'objet transaction original
+     * @param {Object} transaction - Transaction à traiter
+     * @returns {Date} Date ajustée selon current_month
+     */
+    getAdjustedDate(transaction) {
+        if (!transaction || !transaction.date) {
+            return null;
+        }
+        
+        let adjustedDate = new Date(transaction.date);
+        if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
+            adjustedDate.setDate(1);
+            adjustedDate.setMonth(adjustedDate.getMonth() + transaction.current_month);
+        }
+        
+        return adjustedDate;
+    }
 
     /**
      * Obtient le nom d'une catégorie par son ID

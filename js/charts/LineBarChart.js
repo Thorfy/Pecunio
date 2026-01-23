@@ -16,19 +16,41 @@ class LineBarChart extends BaseChartData {
 
         categoryData.forEach(category => {
             const transactions = transactionByCategory[parseInt(category.id)];
+            
+            // Vérifier que transactions existe et est un tableau avant d'appeler forEach
+            if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+                // Si pas de transactions pour cette catégorie, créer un dataset vide
+                data.datasets.push({
+                    label: category.name,
+                    data: [],
+                    backgroundColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
+                    borderColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
+                    fill: false,
+                    tension: 0.3,
+                    hidden: settings[category.name]
+                });
+                return; // Passer à la catégorie suivante
+            }
+            
             const dateValueObject = [];
             const transactionObject = {};
 
             transactions.forEach(transaction => {
-                const dateObj = new Date(transaction.date);
-                const month = `${dateObj.getMonth() + 1}`.padStart(2, "0");
-                const year = dateObj.getUTCFullYear();
+                // Utiliser la date ajustée qui tient compte de current_month
+                const adjustedDate = this.getAdjustedDate(transaction);
+                if (!adjustedDate) {
+                    return; // Ignorer les transactions sans date valide
+                }
+                
+                const month = `${adjustedDate.getMonth() + 1}`.padStart(2, "0");
+                const year = adjustedDate.getUTCFullYear();
                 const stringDate = [year, month].join("-");
 
                 if (isCumulative) {
                     transactionObject[stringDate] = (transactionObject[stringDate] || 0) + transaction.amount;
                 } else {
-                    dateValueObject.push({ x: transaction.date, y: transaction.amount, name: transaction.name });
+                    // Utiliser la date ajustée pour l'affichage
+                    dateValueObject.push({ x: adjustedDate.toISOString().split('T')[0], y: transaction.amount, name: transaction.name });
                 }
             });
 
