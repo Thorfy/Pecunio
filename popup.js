@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     let noEndDateCheckbox = document.querySelector('#noEndDate');
     let accountsInput = document.querySelector('#accountsInput');
     let csvExport = document.querySelector("#exportCsv");
-    let refresh = document.querySelector("#refresh");
+    let refreshData = document.querySelector("#refreshData");
+    let refreshSettings = document.querySelector("#refreshSettings");
 
     chrome.storage.local.get(['startDate', 'endDate', 'cache_data_transactions', 'noEndDate'], function (data) {
         let startDateValue = data.startDate;
@@ -178,14 +179,54 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    refresh.addEventListener('click', function () {
-        chrome.storage.local.clear(function () {
+    // Réinitialiser uniquement les données (cache)
+    refreshData.addEventListener('click', function () {
+        const cacheKeys = [
+            'cache_data_transactions',
+            'cache_time_transactions',
+            'cache_data_categories',
+            'cache_time_categories',
+            'cache_data_accounts',
+            'cache_time_accounts'
+        ];
+        
+        chrome.storage.local.remove(cacheKeys, function () {
             var error = chrome.runtime.lastError;
             if (error) {
                 console.error(error);
+                alert('Erreur lors de la réinitialisation des données: ' + error.message);
             } else {
-                console.log("data refresh");
+                console.log("Données réinitialisées");
                 evt.dispatch('url_change');
+                alert('Les données ont été réinitialisées avec succès. Les paramètres ont été conservés.');
+            }
+        });
+    });
+
+    // Réinitialiser uniquement les paramètres utilisateur
+    refreshSettings.addEventListener('click', function () {
+        if (!confirm('Êtes-vous sûr de vouloir réinitialiser tous vos paramètres ? Les données seront conservées.')) {
+            return;
+        }
+        
+        const settingsKeys = [
+            'startDate',
+            'endDate',
+            'accounts',
+            'accountsSelected',
+            'isBlurry',
+            'noEndDate'
+        ];
+        
+        chrome.storage.local.remove(settingsKeys, function () {
+            var error = chrome.runtime.lastError;
+            if (error) {
+                console.error(error);
+                alert('Erreur lors de la réinitialisation des paramètres: ' + error.message);
+            } else {
+                console.log("Paramètres réinitialisés");
+                // Recharger la page pour appliquer les changements
+                window.location.reload();
             }
         });
     });
