@@ -99,6 +99,10 @@ class LineBarChart extends BaseChartData {
         container.appendChild(canvas);
 
         this.chartInstance = new Chart(canvas.getContext('2d'), chartJsConfig);
+        // Stocker la référence à settingsInstance dans le chart pour l'utiliser dans le plugin
+        if (this.settingsInstance) {
+            this.chartInstance._settingsInstance = this.settingsInstance;
+        }
         return this.chartInstance;
     }
 
@@ -285,6 +289,45 @@ class LineBarChart extends BaseChartData {
 
                     chart.options.plugins.title.text = `Depense sur ${monthCount} mois`;
                 },
+                afterInit: function (chart) {
+                    // Ajouter un event listener directement sur le canvas pour une meilleure fiabilité
+                    const canvas = chart.canvas;
+                    const legendWidth = 120;
+                    const legendHeight = 20;
+                    
+                    const handleClick = async (event) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const x = event.clientX - rect.left;
+                        const y = event.clientY - rect.top;
+                        
+                        const withinLegendX = x >= 10 && x <= 10 + legendWidth;
+                        const withinLegendY = y >= 10 && y <= 10 + legendHeight;
+
+                        if (withinLegendX && withinLegendY) {
+                            try {
+                                const newChartType = chart.config.type === 'line' ? 'bar' : 'line';
+                                
+                                // Utiliser settingsInstance si disponible, sinon chrome.storage.local
+                                if (chart._settingsInstance) {
+                                    await chart._settingsInstance.setSetting('chartType', newChartType);
+                                } else {
+                                    await chrome.storage.local.set({ 'chartType': newChartType });
+                                }
+                                
+                                // Déclencher un événement personnalisé pour notifier le changement
+                                window.dispatchEvent(new CustomEvent('pecunio_chart_type_changed'));
+                            } catch (error) {
+                                console.error('[LineBarChart] Error toggling chart type:', error);
+                            }
+                        }
+                    };
+                    
+                    // Ajouter l'event listener
+                    canvas.addEventListener('click', handleClick);
+                    
+                    // Stocker la fonction de nettoyage pour pouvoir la supprimer si nécessaire
+                    chart._toggleChartHandler = handleClick;
+                },
                 beforeDraw: function (chart) {
                     const canvas = chart.canvas;
                     const ctx = canvas.getContext('2d');
@@ -300,17 +343,11 @@ class LineBarChart extends BaseChartData {
                     ctx.fillText('Toggle chart type', 10 + legendWidth / 2, 10 + legendHeight / 2);
                     ctx.restore();
                 },
-                afterEvent: async function (chart, args) {
-                    const event = args.event;
-                    const legendWidth = 120;
-                    const legendHeight = 20;
-                    const withinLegendX = event.x >= 10 && event.x <= 10 + legendWidth;
-                    const withinLegendY = event.y >= 10 && event.y <= 10 + legendHeight;
-
-                    if (withinLegendX && withinLegendY && event.type === 'click') {
-                        await chrome.storage.local.set({ 'chartType': chart.config.type === 'line' ? 'bar' : 'line' });
-                        // Déclencher un événement personnalisé pour notifier le changement
-                        window.dispatchEvent(new CustomEvent('pecunio_chart_type_changed'));
+                beforeDestroy: function (chart) {
+                    // Nettoyer l'event listener lors de la destruction du chart
+                    if (chart._toggleChartHandler && chart.canvas) {
+                        chart.canvas.removeEventListener('click', chart._toggleChartHandler);
+                        chart._toggleChartHandler = null;
                     }
                 }
             }]

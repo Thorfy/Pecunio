@@ -6,7 +6,14 @@ const dataManager = new DataManager();
 let setting = {};
 let currentUrl = location.href;
 
-// Attendre l'initialisation des settings avant d'y accéder
+// Demander l'ouverture de la popup dès le début (sans bloquer)
+try {
+    chrome.runtime.sendMessage({ action: 'openPopup' });
+} catch (error) {
+    console.warn("[InjectedJS] Impossible d'envoyer le message pour ouvrir la popup:", error);
+}
+
+// Charger les settings en arrière-plan (sans bloquer)
 settingClass.waitForInitialization().then(() => {
     setting = settingClass.getAllSettings();
 });
@@ -38,6 +45,9 @@ evt.listen('url_change', async () => {
 
 // Écouter les changements de type de chart
 window.addEventListener('pecunio_chart_type_changed', async () => {
+    // Attendre que les settings soient bien rechargés avant de reconstruire
+    await settingClass.waitForInitialization();
+    // loadSettings() est déjà appelé dans _initialize(), pas besoin de le refaire
     evt.dispatch('url_change');
 });
 
@@ -65,9 +75,10 @@ function getCommonChartData() {
 async function build() {
     evt.dispatch('build called');
 
-    // Attendre l'initialisation complète des settings
+    // Attendre l'initialisation (qui inclut déjà loadSettings())
     await settingClass.waitForInitialization();
-    await settingClass.loadSettings();
+    // Mettre à jour la variable setting
+    setting = settingClass.getAllSettings();
 
     if (location.href === Config.URLS.ACCOUNTS_PAGE) {
         await buildAccountsPage();

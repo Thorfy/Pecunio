@@ -14,7 +14,8 @@ class Settings {
         'cache_data_accounts', 
         'cache_time_accounts',
         'accountsSelected',
-        'isBlurry'
+        'isBlurry',
+        'chartType'
     ];
 
     constructor() {
