@@ -34,7 +34,8 @@
 
 1. Installez l'extension depuis le [Chrome Web Store](https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github)
 2. Connectez-vous à votre compte Bankin
-3. Les graphiques apparaissent automatiquement sur vos pages de comptes et catégories
+3. (Recommandé) **Épinglez Pecunio** à la barre d'outils pour y accéder rapidement
+4. Les graphiques apparaissent automatiquement sur vos pages de comptes et catégories
 
 ## 💡 Comment ça marche ?
 

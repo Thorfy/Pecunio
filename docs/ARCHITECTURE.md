@@ -88,6 +88,13 @@ sequenceDiagram
     participant API as Bankin API
     participant STORAGE as Chrome Storage
     participant INJ as Injected Script
+    participant SETTINGS as Settings
+    
+    INJ->>BG: sendMessage({action: openPopup})
+    INJ->>SETTINGS: new Settings() (constructor)
+    SETTINGS->>STORAGE: loadSettings() (async)
+    STORAGE-->>SETTINGS: settings
+    SETTINGS-->>INJ: settings_reloaded (evt)
     
     BG->>API: Intercept Request Headers
     BG->>DM: Send Headers via Port
@@ -102,7 +109,9 @@ sequenceDiagram
         DM->>STORAGE: Save to Cache
     end
     DM->>INJ: Dispatch 'data_loaded'
-    INJ->>INJ: Build Charts
+    INJ->>SETTINGS: waitForInitialization() (await)
+    SETTINGS-->>INJ: ready
+    INJ->>INJ: build() → buildAccountsPage/buildCategoriesPage
 ```
 
 ### 2. Affichage des graphiques
@@ -114,13 +123,14 @@ sequenceDiagram
     participant CHART as Chart Classes
     participant DOM as Page DOM
     
-    INJ->>SETTINGS: Get Filter Settings
-    SETTINGS->>INJ: Return Dates/Accounts
-    INJ->>CHART: Create Chart Instance
-    CHART->>SETTINGS: Get Transactions
-    CHART->>CHART: Filter & Transform Data
-    CHART->>DOM: Render Chart
-    DOM->>USER: Display Chart
+    INJ->>SETTINGS: waitForInitialization() (await)
+    SETTINGS-->>INJ: settings ready
+    INJ->>SETTINGS: getSetting(...) / getAllSettings() (sync reads)
+    SETTINGS-->>INJ: dates/accounts/cache pointers
+    INJ->>CHART: create chart instances
+    CHART->>CHART: prepare/filter/transform data
+    CHART->>DOM: render (inject DOM + canvas)
+    DOM-->>USER: affichage des graphiques
 ```
 
 ## Structure des modules

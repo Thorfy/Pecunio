@@ -5,17 +5,17 @@ const evt = new Evt();
 const settingClass = new Settings();
 let setting = {};
 
-evt.listen("settings_reloaded", async () => {
-    await settingClass.waitForInitialization();
+evt.listen("settings_reloaded", () => {
+    // Pas besoin d'attendre, les settings sont déjà chargés
     setting = settingClass.getAllSettings();
 });
 
 
 document.addEventListener('DOMContentLoaded', async function () {
 
-    // Attendre l'initialisation complète des settings
+    // Attendre l'initialisation (qui inclut déjà loadSettings())
     await settingClass.waitForInitialization();
-    await settingClass.loadSettings();
+    setting = settingClass.getAllSettings();
 
     let currentVersionImg = document.querySelector("#currentVersion");
     let currentVersionBadge = document.querySelector("#currentVersionBadge");
@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     currentVersionImg.textContent = chrome.runtime.getManifest().version;
     currentVersionBadge.src = cvSource;
 
+    // Retirer le badge si présent (l'utilisateur a ouvert la popup)
+    chrome.action.setBadgeText({ text: '' });
+
+    // Récupérer les éléments DOM
     let startDate = document.querySelector('#startDate');
     let endDate = document.querySelector('#endDate');
     let noEndDateCheckbox = document.querySelector('#noEndDate');
@@ -31,7 +35,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     let refreshData = document.querySelector("#refreshData");
     let refreshSettings = document.querySelector("#refreshSettings");
 
-    chrome.storage.local.get(['startDate', 'endDate', 'cache_data_transactions', 'noEndDate'], function (data) {
+    // Fonction pour charger les dates
+    function loadDates(startDate, endDate, noEndDateCheckbox) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['startDate', 'endDate', 'cache_data_transactions', 'noEndDate'], function (data) {
         let startDateValue = data.startDate;
         let endDateValue = data.endDate;
         let noEndDateValue = data.noEndDate || false;
@@ -68,32 +75,80 @@ document.addEventListener('DOMContentLoaded', async function () {
         endDate.disabled = noEndDateValue;
         
         console.log('[Popup] Date range initialized:', startDateValue, 'to', endDateValue, 'noEndDate:', noEndDateValue);
-    });
+        resolve();
+            });
+        });
+    }
 
-    chrome.storage.local.get(['cache_data_accounts', 'accountsSelected'], function (data) {
-        let { cache_data_accounts, accountsSelected } = data;
+    // Variable pour stocker l'instance Choices
+    let choicesInstance = null;
 
-        if (cache_data_accounts) {
-            if (!accountsSelected) {
+    // Fonction pour charger et afficher les comptes
+    async function loadAccounts() {
+        const cache_data_accounts = settingClass.getSetting('cache_data_accounts');
+        let accountsSelected = settingClass.getSetting('accountsSelected');
+
+        if (cache_data_accounts && Array.isArray(cache_data_accounts) && cache_data_accounts.length > 0) {
+            if (!accountsSelected || !Array.isArray(accountsSelected)) {
                 accountsSelected = cache_data_accounts.map(account => account.id);
-                chrome.storage.local.set({ accountsSelected: accountsSelected });
+                await settingClass.setSetting('accountsSelected', accountsSelected);
             }
 
+            // Si Choices est déjà initialisé, le détruire avant de recréer
+            if (choicesInstance) {
+                try {
+                    choicesInstance.destroy();
+                } catch (e) {
+                    console.warn('[Popup] Error destroying Choices instance:', e);
+                }
+                choicesInstance = null;
+            }
+
+            // Réinitialiser le select
             accountsInput.innerHTML = '';
             cache_data_accounts.forEach(account => {
-                let checked = accountsSelected.includes(account.id)
+                let checked = accountsSelected.includes(account.id);
                 const option = new Option(account.name, account.id, checked, checked);
-
                 accountsInput.add(option);
             });
 
-            const choices = new Choices(accountsInput, {
-                removeItemButton: true,   // Allows users to remove selected items
-                placeholder: false,        // Enable placeholder
-                searchEnabled: true,      // Enable search within the dropdown
-                shouldSort: true,        // Disable sorting of options
+            // Initialiser Choices
+            choicesInstance = new Choices(accountsInput, {
+                removeItemButton: true,
+                placeholder: false,
+                searchEnabled: true,
+                shouldSort: true,
             });
+
+            console.log('[Popup] Accounts loaded:', cache_data_accounts.length);
+        } else {
+            console.warn('[Popup] No accounts found in cache. Available settings:', Object.keys(settingClass.getAllSettings()));
         }
+    }
+
+    // Charger les dates, vérifier l'épinglage et charger les comptes en parallèle
+    await Promise.all([
+        loadDates(startDate, endDate, noEndDateCheckbox),
+        checkAndShowPinInstructions()
+    ]);
+
+    // Charger les comptes après (nécessite que les settings soient chargés)
+    await loadAccounts();
+
+    // Recharger les comptes quand les settings sont mis à jour
+    evt.listen('settings_reloaded', async () => {
+        await loadAccounts();
+    });
+
+    // Recharger les comptes quand ils sont chargés depuis le cache ou l'API
+    evt.listen('cache_data_accounts_loaded', async () => {
+        console.log('[Popup] Accounts cache loaded event received');
+        await loadAccounts();
+    });
+
+    evt.listen('data_loaded', async () => {
+        console.log('[Popup] Data loaded event received');
+        await loadAccounts();
     });
 
     accountsInput.addEventListener('change', function () {
@@ -180,54 +235,121 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     // Réinitialiser uniquement les données (cache)
-    refreshData.addEventListener('click', function () {
+    refreshData.addEventListener('click', async function () {
         const cacheKeys = [
             'cache_data_transactions',
             'cache_time_transactions',
             'cache_data_categories',
-            'cache_time_categories',
-            'cache_data_accounts',
-            'cache_time_accounts'
+            'cache_time_categories'
+            // Note: cache_data_accounts et cache_time_accounts sont gérés par refreshSettings
         ];
         
-        chrome.storage.local.remove(cacheKeys, function () {
-            var error = chrome.runtime.lastError;
-            if (error) {
-                console.error(error);
-                alert('Erreur lors de la réinitialisation des données: ' + error.message);
-            } else {
-                console.log("Données réinitialisées");
-                evt.dispatch('url_change');
-                alert('Les données ont été réinitialisées avec succès. Les paramètres ont été conservés.');
+        try {
+            await settingClass.waitForInitialization();
+            
+            // Supprimer chaque cache
+            for (const key of cacheKeys) {
+                await settingClass.removeSetting(key);
             }
-        });
+            
+            console.log('[Popup] Données (caches) réinitialisées avec succès');
+            evt.dispatch('url_change');
+            alert('Les données ont été réinitialisées avec succès. Les paramètres ont été conservés.');
+        } catch (error) {
+            console.error('[Popup] Erreur lors de la réinitialisation des données:', error);
+            alert('Erreur lors de la réinitialisation des données: ' + error.message);
+        }
     });
 
     // Réinitialiser uniquement les paramètres utilisateur
-    refreshSettings.addEventListener('click', function () {
+    refreshSettings.addEventListener('click', async function () {
         if (!confirm('Êtes-vous sûr de vouloir réinitialiser tous vos paramètres ? Les données seront conservées.')) {
             return;
         }
         
-        const settingsKeys = [
-            'startDate',
-            'endDate',
-            'accounts',
-            'accountsSelected',
-            'isBlurry',
-            'noEndDate'
+        // Récupérer tous les noms de paramètres depuis Settings
+        // Exclure les caches de transactions et catégories (qui sont gérés par refreshData)
+        const cacheKeys = [
+            'cache_data_transactions',
+            'cache_time_transactions',
+            'cache_data_categories',
+            'cache_time_categories'
+            // Note: cache_data_accounts et cache_time_accounts sont supprimés avec les paramètres
         ];
         
-        chrome.storage.local.remove(settingsKeys, function () {
-            var error = chrome.runtime.lastError;
-            if (error) {
-                console.error(error);
-                alert('Erreur lors de la réinitialisation des paramètres: ' + error.message);
-            } else {
-                console.log("Paramètres réinitialisés");
-                // Recharger la page pour appliquer les changements
-                window.location.reload();
+        // Liste complète des paramètres utilisateur à supprimer
+        const settingsKeys = Settings.ALL_SETTING_NAMES
+            .filter(key => !cacheKeys.includes(key)) // Exclure uniquement les caches de transactions/catégories
+            .concat(['noEndDate']); // Ajouter noEndDate qui n'est pas dans ALL_SETTING_NAMES
+        
+        console.log('[Popup] Suppression des paramètres:', settingsKeys);
+        
+        try {
+            await settingClass.waitForInitialization();
+            
+            // Supprimer chaque paramètre
+            for (const key of settingsKeys) {
+                await settingClass.removeSetting(key);
             }
-        });
+            
+            console.log('[Popup] Paramètres réinitialisés avec succès');
+            
+            // Recharger la page pour appliquer les changements
+            window.location.reload();
+        } catch (error) {
+            console.error('[Popup] Erreur lors de la réinitialisation des paramètres:', error);
+            alert('Erreur lors de la réinitialisation des paramètres: ' + error.message);
+        }
     });
 });
+
+/**
+ * Vérifie si l'extension est épinglée à la barre d'outils et affiche les instructions si nécessaire
+ */
+async function checkAndShowPinInstructions() {
+    try {
+        const pinInstructionsSection = document.querySelector('#pinInstructionsSection');
+        
+        if (!pinInstructionsSection) {
+            console.warn('[Popup] Section d\'instructions d\'épinglage non trouvée');
+            return;
+        }
+
+        // Fonction pour vérifier et mettre à jour l'affichage
+        const updatePinInstructions = async () => {
+            try {
+                const userSettings = await chrome.action.getUserSettings();
+                const isPinned = userSettings.isOnToolbar;
+
+                if (!isPinned) {
+                    // Afficher les instructions si pas épinglée
+                    pinInstructionsSection.style.display = 'block';
+                } else {
+                    // Masquer les instructions si épinglée
+                    pinInstructionsSection.style.display = 'none';
+                }
+            } catch (error) {
+                // Si l'API n'est pas disponible (ancienne version de Chrome), ne rien afficher
+                console.log('[Popup] Impossible de vérifier l\'état d\'épinglage:', error);
+                pinInstructionsSection.style.display = 'none';
+            }
+        };
+
+        // Vérifier immédiatement
+        await updatePinInstructions();
+
+        // Vérifier périodiquement si l'extension est maintenant épinglée
+        // (pour masquer automatiquement les instructions si l'utilisateur épingle)
+        const checkInterval = setInterval(async () => {
+            await updatePinInstructions();
+        }, 2000); // Vérifier toutes les 2 secondes
+
+        // Nettoyer l'intervalle quand la popup est fermée
+        window.addEventListener('beforeunload', () => {
+            clearInterval(checkInterval);
+        });
+
+    } catch (error) {
+        console.error('[Popup] Erreur lors de la vérification de l\'épinglage:', error);
+    }
+}
