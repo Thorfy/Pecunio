@@ -10,14 +10,6 @@ class ExpenseTypeChart extends BaseChartData {
     }
 
     /**
-     * Sélecteurs CSS utilisés par ce chart
-     */
-    static SELECTORS = {
-        CATEGORY_CHART: Config.SELECTORS.CATEGORY_CHART,
-        MONTH_SELECTOR: Config.SELECTORS.MONTH_SELECTOR
-    };
-
-    /**
      * Mapping centralisé des types de dépenses (name, icon, color)
      */
     static EXPENSE_TYPE_MAPPING = {

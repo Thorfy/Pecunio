@@ -36,6 +36,7 @@ class Config {
         RIGHT_COLUMN: ".rightColumn",
         REFRESH_ICON: ".refreshIcon",
         MONTH_SELECTOR: "#monthSelector",
+        MONTH_SELECTOR_ACTIVE: "#monthSelector .active .dib",
         CATEGORY_CHART: ".categoryChart",
         CANVAS_DIV: ".canvasDiv",
         HIDE_BUTTON: "#hideButton",

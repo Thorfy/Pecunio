@@ -140,14 +140,15 @@ async function buildAccountsPage() {
  * Construit la page des catégories avec les charts SankeyChart et ExpenseTypeChart
  */
 async function buildCategoriesPage() {
-    const menu = document.querySelector(ExpenseTypeChart.SELECTORS.MONTH_SELECTOR);
+    const menu = document.querySelector(Config.SELECTORS.MONTH_SELECTOR);
     if (menu) {
         menu.addEventListener("click", () => {
-            evt.dispatch('url_change');
+            // Laisser le temps au DOM (SPA) de mettre à jour .active sur le nouveau mois
+            setTimeout(() => evt.dispatch('url_change'), 30);
         }, { once: true });
     }
 
-    const dateChoosedElem = document.querySelector("#monthSelector .active .dib");
+    const dateChoosedElem = document.querySelector(Config.SELECTORS.MONTH_SELECTOR_ACTIVE);
     if (!dateChoosedElem) {
         return;
     }
@@ -155,7 +156,7 @@ async function buildCategoriesPage() {
     const dateChoosed = dateChoosedElem.textContent.toLocaleLowerCase();
     const dateParams = dateChoosed.split(" ");
 
-    const categBlock = document.querySelector(ExpenseTypeChart.SELECTORS.CATEGORY_CHART);
+    const categBlock = document.querySelector(Config.SELECTORS.CATEGORY_CHART);
     if (!categBlock) {
         return;
     }

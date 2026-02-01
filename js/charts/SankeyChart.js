@@ -6,13 +6,6 @@ class SankeyChart extends BaseChartData {
     }
 
     /**
-     * Sélecteurs CSS utilisés par ce chart
-     */
-    static SELECTORS = {
-        CATEGORY_CHART: Config.SELECTORS.CATEGORY_CHART
-    };
-
-    /**
      * Obtient la configuration Chart.js pour le Sankey chart
      * @param {Array} preparedData - Données préparées (optionnel, sera préparé si non fourni)
      * @returns {Promise<Object>} Configuration Chart.js
