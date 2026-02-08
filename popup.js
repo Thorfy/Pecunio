@@ -32,8 +32,44 @@ document.addEventListener('DOMContentLoaded', async function () {
     let noEndDateCheckbox = document.querySelector('#noEndDate');
     let accountsInput = document.querySelector('#accountsInput');
     let csvExport = document.querySelector("#exportCsv");
+    let exportPdf = document.querySelector("#exportPdf");
+    let pdfYear = document.querySelector("#pdfYear");
+    let pdfMonth = document.querySelector("#pdfMonth");
     let refreshData = document.querySelector("#refreshData");
     let refreshSettings = document.querySelector("#refreshSettings");
+
+    const PDF_MONTHS = ['Toute l\'année', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+    function fillPdfYearSelect(transactions) {
+        const currentYear = new Date().getFullYear();
+        let minYear = currentYear - 10;
+        let defaultYear = currentYear;
+        if (transactions && transactions.length > 0) {
+            const years = transactions.map(t => new Date(t.date).getFullYear());
+            minYear = Math.min(minYear, Math.min(...years));
+            defaultYear = Math.max(...years);
+        }
+        minYear = Math.max(2015, minYear);
+        pdfYear.innerHTML = '';
+        for (let y = currentYear; y >= minYear; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            if (y === defaultYear) opt.selected = true;
+            pdfYear.appendChild(opt);
+        }
+    }
+
+    function fillPdfMonthSelect() {
+        pdfMonth.innerHTML = '';
+        PDF_MONTHS.forEach((label, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.textContent = label;
+            if (index === 0) opt.selected = true;
+            pdfMonth.appendChild(opt);
+        });
+    }
 
     // Fonction pour charger les dates
     function loadDates(startDate, endDate, noEndDateCheckbox) {
@@ -135,6 +171,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Charger les comptes après (nécessite que les settings soient chargés)
     await loadAccounts();
 
+    fillPdfMonthSelect();
+    const cacheTx = settingClass.getSetting('cache_data_transactions');
+    fillPdfYearSelect(cacheTx || []);
+
     // Recharger les comptes quand les settings sont mis à jour
     evt.listen('settings_reloaded', async () => {
         await loadAccounts();
@@ -149,6 +189,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     evt.listen('data_loaded', async () => {
         console.log('[Popup] Data loaded event received');
         await loadAccounts();
+        const tx = settingClass.getSetting('cache_data_transactions');
+        if (tx && tx.length) fillPdfYearSelect(tx);
     });
 
     accountsInput.addEventListener('change', function () {
@@ -231,6 +273,80 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (error) {
             console.error('Error exporting CSV:', error);
             alert('Erreur lors de l\'export CSV: ' + error.message);
+        }
+    });
+
+    // Générer rapport PDF : période = Année + Mois (sélecteurs décroissants)
+    exportPdf.addEventListener('click', async function () {
+        try {
+            const year = parseInt(pdfYear.value, 10);
+            const monthIndex = parseInt(pdfMonth.value, 10);
+            let reportStartDate, reportEndDate;
+            if (monthIndex === 0) {
+                reportStartDate = `${year}-01-01`;
+                const end = year === new Date().getFullYear() ? new Date() : new Date(year, 11, 31);
+                reportEndDate = end.toISOString().split('T')[0];
+            } else {
+                reportStartDate = `${year}-${String(monthIndex).padStart(2, '0')}-01`;
+                const lastDay = new Date(year, monthIndex, 0);
+                reportEndDate = lastDay.toISOString().split('T')[0];
+            }
+            chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories', 'cache_data_accounts', 'accountsSelected'], async function (data) {
+                if (typeof DataMerger === 'undefined') {
+                    alert('Erreur: Impossible de charger les données. Veuillez recharger l\'extension.');
+                    return;
+                }
+                if (!data.cache_data_transactions || data.cache_data_transactions.length === 0) {
+                    alert('Aucune donnée de transaction disponible. Veuillez d\'abord charger des données depuis Bankin.');
+                    return;
+                }
+                let dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, reportStartDate, reportEndDate, data.accountsSelected);
+                let mergedData = dataMerger.mergeData();
+                let usedStartDate = reportStartDate;
+                let usedEndDate = reportEndDate;
+                let usedPdfYear = year;
+                let usedPdfMonthIndex = monthIndex;
+                if (mergedData.length === 0) {
+                    const fallbackStart = startDate.value;
+                    let fallbackEnd = endDate.value;
+                    if (noEndDateCheckbox.checked) {
+                        const today = new Date();
+                        fallbackEnd = today.toISOString().split('T')[0];
+                    }
+                    dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, fallbackStart, fallbackEnd, data.accountsSelected);
+                    mergedData = dataMerger.mergeData();
+                    usedStartDate = fallbackStart;
+                    usedEndDate = fallbackEnd;
+                    usedPdfYear = null;
+                    usedPdfMonthIndex = null;
+                }
+                if (mergedData.length === 0) {
+                    alert('Aucune transaction trouvée pour la période sélectionnée ni pour la période d\'export. Vérifiez les dates et les comptes sélectionnés.');
+                    return;
+                }
+                const stats = dataMerger.getStats();
+                const accountNames = (data.cache_data_accounts || [])
+                    .filter(a => (data.accountsSelected || []).includes(a.id))
+                    .map(a => a.name)
+                    .join(', ') || 'Tous les comptes';
+                const exceptionCategoryIds = typeof Config !== 'undefined' && Config.CATEGORIES && Array.isArray(Config.CATEGORIES.EXCEPTION_IDS)
+                    ? Config.CATEGORIES.EXCEPTION_IDS
+                    : [326, 282];
+                const params = {
+                    startDate: usedStartDate,
+                    endDate: usedEndDate,
+                    accountNames: accountNames,
+                    pdfYear: usedPdfYear,
+                    pdfMonthIndex: usedPdfMonthIndex != null ? usedPdfMonthIndex : 0,
+                    pdfMonthLabel: usedPdfMonthIndex != null ? PDF_MONTHS[usedPdfMonthIndex] : 'Toute l\'année',
+                    exceptionCategoryIds: exceptionCategoryIds
+                };
+                await ReportStorage.saveReportData(mergedData, stats, params);
+                chrome.tabs.create({ url: chrome.runtime.getURL('report.html') });
+            });
+        } catch (error) {
+            console.error('Error preparing PDF report:', error);
+            alert('Erreur lors de la préparation du rapport PDF: ' + error.message);
         }
     });
 

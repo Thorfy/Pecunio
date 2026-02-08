@@ -150,18 +150,18 @@ class DataMerger {
         console.log('[DataMerger] Date range:', this.startDate, 'to', this.endDate);
         console.log('[DataMerger] Selected accounts:', this.accountsSelected);
         
+        const toDateOnly = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const startStr = this.startDate ? toDateOnly(this.startDate) : null;
+        const endStr = this.endDate ? toDateOnly(this.endDate) : null;
+
         const filtered = this.transactions.filter(transaction => {
             const adjustedDate = transaction.getAdjustedDate();
-            const dateString = adjustedDate.toDateString();
+            const dateOnly = toDateOnly(adjustedDate);
 
-            // Filtre par date
-            if (this.startDate && this.endDate) {
-                const dateTimestamp = Date.parse(dateString);
-                const startTime = this.startDate.getTime();
-                const endTime = this.endDate.getTime();
-                
-                if (dateTimestamp < startTime || dateTimestamp > endTime) {
-                    console.log(`[DataMerger] Transaction ${transaction.id} filtered out by date: ${dateString} not in range`);
+            // Filtre par date (comparaison en date seule pour éviter les soucis de fuseau horaire)
+            if (startStr && endStr) {
+                if (dateOnly < startStr || dateOnly > endStr) {
+                    console.log(`[DataMerger] Transaction ${transaction.id} filtered out by date: ${dateOnly} not in range [${startStr}, ${endStr}]`);
                     return false;
                 }
             }
