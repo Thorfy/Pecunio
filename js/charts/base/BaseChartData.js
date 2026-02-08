@@ -65,6 +65,23 @@ class BaseChartData {
     }
 
     /**
+     * Attache l'écouteur de visibilité des montants (blur). Met à jour la globale et appelle chart.update().
+     * @param {Chart} chart - Instance Chart.js
+     */
+    static _attachAmountVisibilityListener(chart) {
+        const handler = (e) => {
+            if (!chart.canvas || !chart.canvas.isConnected) {
+                window.removeEventListener('pecunio_amounts_visibility_changed', handler);
+                return;
+            }
+            window.__pecunioIsBlurry = !!e.detail.isBlurry;
+            chart.update();
+        };
+        window.addEventListener('pecunio_amounts_visibility_changed', handler);
+        chart._pecunioAmountVisibilityHandler = handler;
+    }
+
+    /**
      * Applique les filtres de paramètres sur les données de transactions
      * @param {Object} options - Options de filtrage
      * @param {string} options.startDate - Date de début (optionnel)
@@ -89,39 +106,44 @@ class BaseChartData {
             return [];
         }
 
-        const startDateParsed = startDate ? Date.parse(startDate) : null;
-        const endDateParsed = endDate ? Date.parse(endDate) : null;
+        let startDateParsed = startDate ? Date.parse(startDate) : null;
+        let endDateParsed = endDate ? Date.parse(endDate) : null;
+
+        // Calibration : borner les dates aux données réelles (si date set < première data, partir de la première data)
+        const accountOnly = this.transactions.filter(t => {
+            if (!t || !t.date || !t.account || t.account.id == null) return false;
+            if (accountsSelected && accountsSelected.length > 0 && !accountsSelected.includes(parseInt(t.account.id))) return false;
+            return true;
+        });
+        const dates = accountOnly.map(t => this.getAdjustedDate(t)).filter(Boolean);
+        if (dates.length > 0) {
+            const firstDataTime = Math.min(...dates.map(d => d.getTime()));
+            const lastDataTime = Math.max(...dates.map(d => d.getTime()));
+            if (startDateParsed != null && startDateParsed < firstDataTime) startDateParsed = firstDataTime;
+            if (endDateParsed != null && endDateParsed > lastDataTime) endDateParsed = lastDataTime;
+        }
 
         return this.transactions.filter(transaction => {
             if (!transaction || !transaction.date || !transaction.account || transaction.account.id == null) {
                 return false;
             }
-            
-            // Traitement de la date avec current_month (sans muter l'objet original)
             const dateForProcessing = this.getAdjustedDate(transaction);
-            if (!dateForProcessing) {
-                return false;
-            }
-            
-            const modifiedDateForComparison = dateForProcessing.toDateString();
+            if (!dateForProcessing) return false;
+            const txTime = dateForProcessing.getTime();
 
-            // Filtre par date
             let dateFilterPassed = true;
-            if (startDateParsed && endDateParsed) {
-                dateFilterPassed = Date.parse(modifiedDateForComparison) >= startDateParsed && 
-                                 Date.parse(modifiedDateForComparison) <= endDateParsed;
-            } else if (startDateParsed) {
-                dateFilterPassed = Date.parse(modifiedDateForComparison) >= startDateParsed;
-            } else if (endDateParsed) {
-                dateFilterPassed = Date.parse(modifiedDateForComparison) <= endDateParsed;
+            if (startDateParsed != null && endDateParsed != null) {
+                dateFilterPassed = txTime >= startDateParsed && txTime <= endDateParsed;
+            } else if (startDateParsed != null) {
+                dateFilterPassed = txTime >= startDateParsed;
+            } else if (endDateParsed != null) {
+                dateFilterPassed = txTime <= endDateParsed;
             }
 
-            // Filtre par compte
             let accountFilterPassed = true;
             if (accountsSelected && accountsSelected.length > 0) {
                 accountFilterPassed = accountsSelected.includes(parseInt(transaction.account.id));
             }
-            
             return dateFilterPassed && accountFilterPassed;
         });
     }

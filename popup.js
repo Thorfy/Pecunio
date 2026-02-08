@@ -218,6 +218,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
+    /** Retourne la date de fin effective (aujourd'hui si "pas de limite" coché, sinon valeur du champ). */
+    function getEffectiveEndDate() {
+        if (noEndDateCheckbox.checked) {
+            return new Date().toISOString().split('T')[0];
+        }
+        return endDate.value;
+    }
+
     // Load data
     csvExport.addEventListener('click', async function () {
         try {
@@ -227,42 +235,16 @@ document.addEventListener('DOMContentLoaded', async function () {
                     alert('Erreur: Impossible de charger les données. Veuillez recharger l\'extension.');
                     return;
                 }
-                
-                // Debug: Afficher les données disponibles
-                console.log('=== DEBUG CSV EXPORT ===');
-                console.log('Transactions:', data.cache_data_transactions?.length || 0);
-                console.log('Categories:', data.cache_data_categories?.length || 0);
-                console.log('Accounts:', data.cache_data_accounts?.length || 0);
-                console.log('Accounts Selected:', data.accountsSelected);
-                console.log('Start Date:', startDate.value);
-                console.log('End Date:', endDate.value);
-                console.log('No End Date Checked:', noEndDateCheckbox.checked);
-                if (noEndDateCheckbox.checked) {
-                    const today = new Date();
-                    const effectiveEndDate = today.toISOString().split('T')[0];
-                    console.log('Effective End Date (today):', effectiveEndDate);
-                }
-                
+
                 if (!data.cache_data_transactions || data.cache_data_transactions.length === 0) {
                     alert('Aucune donnée de transaction disponible. Veuillez d\'abord charger des données depuis Bankin.');
                     return;
                 }
-                
-                // Déterminer la date de fin à utiliser
-                let effectiveEndDate = endDate.value;
-                if (noEndDateCheckbox.checked) {
-                    // Si "pas de date de fin" est coché, utiliser aujourd'hui
-                    const today = new Date();
-                    effectiveEndDate = today.toISOString().split('T')[0];
-                }
-                
+
+                const effectiveEndDate = getEffectiveEndDate();
                 const dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, startDate.value, effectiveEndDate, data.accountsSelected);
-                
-                // Debug: Vérifier les données fusionnées
                 const mergedData = dataMerger.mergeData();
-                console.log('Merged Data Length:', mergedData.length);
-                console.log('Sample Merged Data:', mergedData.slice(0, 2));
-                
+
                 if (mergedData.length === 0) {
                     alert('Aucune transaction trouvée pour la période sélectionnée. Vérifiez vos dates et comptes sélectionnés.');
                     return;
@@ -308,11 +290,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 let usedPdfMonthIndex = monthIndex;
                 if (mergedData.length === 0) {
                     const fallbackStart = startDate.value;
-                    let fallbackEnd = endDate.value;
-                    if (noEndDateCheckbox.checked) {
-                        const today = new Date();
-                        fallbackEnd = today.toISOString().split('T')[0];
-                    }
+                    const fallbackEnd = getEffectiveEndDate();
                     dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, fallbackStart, fallbackEnd, data.accountsSelected);
                     mergedData = dataMerger.mergeData();
                     usedStartDate = fallbackStart;

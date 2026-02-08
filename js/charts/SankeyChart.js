@@ -12,7 +12,7 @@ class SankeyChart extends BaseChartData {
      */
     async getChartJsConfig(preparedData = null) {
         const data = preparedData || await this.prepareData();
-        
+
         return {
             type: 'sankey',
             data: {
@@ -30,6 +30,24 @@ class SankeyChart extends BaseChartData {
                 aspectRatio: 2,
                 layout: {
                     padding: { top: 20, bottom: 20, left: 20, right: 20 }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            // Quand blur: seulement from → to. Sinon: comportement par défaut Sankey (from → to : flow €)
+                            label: (context) => {
+                                if (Config.isBlurry()) {
+                                    const r = context.raw || {};
+                                    return r.from && r.to ? `${r.from} → ${r.to}` : (context.label || '');
+                                }
+                                const r = context.raw || {};
+                                if (r.from != null && r.to != null && r.flow != null) {
+                                    return `${r.from} → ${r.to}: ${Number(r.flow).toFixed(2)} €`;
+                                }
+                                return context.formatted != null ? context.formatted : (context.label || '');
+                            }
+                        }
+                    }
                 }
             }
         };
@@ -48,7 +66,8 @@ class SankeyChart extends BaseChartData {
         container.appendChild(sankeyWrapper);
 
         this.chartInstance = new Chart(sankeyCanvas.getContext('2d'), chartJsConfig);
-        
+        BaseChartData._attachAmountVisibilityListener(this.chartInstance);
+
         // Ajuster les hauteurs des conteneurs après un délai
         setTimeout(() => {
             document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive").forEach(item => {

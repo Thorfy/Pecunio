@@ -1,74 +1,102 @@
 class AmountHider {
-    static blurryClassList = ".amountGreen,.amountRed,.amountBlack"
     constructor() {
-        this.insertButton()
+        this.insertButton();
     }
 
     insertButton() {
         let button = document.getElementById("hideButton");
         if (!button) {
-            // Injecter les styles Pecunio
             InjectedStyles.inject();
-            
-            button = document.createElement('img')
-            button.id = "hideButton"
+            button = document.createElement('img');
+            button.id = "hideButton";
             button.classList.add('pecunio-hide-button');
-            this.spanHeaderAmmount = document.querySelector(".dbl.fs14.fw7.lh18.elp")
-            this.spanHeaderText = document.querySelector(".dbl.fs1.elp")
-            this.spanHeaderText.append(button)
-            this.loadEvent()
+            this.spanHeaderAmmount = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
+            let container = document.querySelector(Config.SELECTORS.BUTTON_CONTAINER);
+            if (!container && typeof Config !== 'undefined' && location.href.indexOf(Config.URLS.CATEGORIES_PAGE) !== -1) {
+                container = document.querySelector(Config.SELECTORS.CATEGORY_PAGE_BUTTON_CONTAINER);
+            }
+            if (container) {
+                container.append(button);
+            }
+            this.loadEvent();
+        } else if (settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) {
+            AmountHider.refreshBlur();
         }
     }
 
     loadElement() {
-        this.spanHeaderAmmount = document.querySelector(".dbl.fs14.fw7.lh18.elp")
-        this.spanHeaderText = document.querySelector(".dbl.fs1.elp")
-
-        this.hideButton = document.querySelector("#hideButton")
-        this.blurryDivs = document.querySelectorAll(AmountHider.blurryClassList)
+        this.spanHeaderAmmount = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
+        this.spanHeaderText = document.querySelector(Config.SELECTORS.HEADER_TEXT);
+        this.hideButton = document.querySelector(Config.SELECTORS.HIDE_BUTTON);
+        this.blurryDivs = document.querySelectorAll(Config.SELECTORS.BLURRY_SELECTORS);
     }
 
     loadEvent() {
-        this.loadElement()
-        this.disableBlurry()
+        this.loadElement();
+        this.disableBlurry();
+        if (settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) this.enableBlurry();
+        const toggle = () => {
+            if (this.isBlurry()) return this.disableBlurry();
+            return this.enableBlurry();
+        };
+        const buttons = Array.from(document.querySelectorAll('.pecunio-hide-button'));
+        buttons.forEach(btn => btn.replaceWith(btn.cloneNode(true)));
+        document.querySelectorAll('.pecunio-hide-button').forEach(btn => btn.addEventListener('click', toggle));
+    }
 
-        if (settingClass.getSetting('isBlurry'))
-            this.enableBlurry()
+    _applyBlurState(blurred) {
+        const className = 'pecunio-blurred';
+        if (this.spanHeaderAmmount) {
+            this.spanHeaderAmmount.classList.toggle(className, blurred);
+        }
+        this.blurryDivs.forEach(el => el.classList.toggle(className, blurred));
+    }
 
-        this.hideButton.addEventListener('click', () => {
-            if (this.isBlurry())
-                return this.disableBlurry()
+    _updateButtonIcon(blurred) {
+        const url = blurred ? Config.getAssetURL('EYE_CLOSED') : Config.getAssetURL('EYE_OPEN');
+        document.querySelectorAll('.pecunio-hide-button').forEach(btn => { btn.src = url; });
+    }
 
-            return this.enableBlurry()
-        })
+    _syncGlobalBlur(value) {
+        if (typeof window !== 'undefined') window.__pecunioIsBlurry = !!value;
+        window.dispatchEvent(new CustomEvent('pecunio_amounts_visibility_changed', { detail: { isBlurry: !!value } }));
     }
 
     enableBlurry() {
-        settingClass.setSettings({ 'isBlurry': true })
-        this.loadElement()
-        this.spanHeaderAmmount.classList.add('pecunio-blurred');
-        this.blurryDivs.forEach(x => {
-            x.classList.add('pecunio-blurred');
-        })
-        this.hideButton.src = chrome.runtime.getURL("asset/eyeClose.png")
+        settingClass.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: true });
+        this.loadElement();
+        this._applyBlurState(true);
+        this._updateButtonIcon(true);
+        this._syncGlobalBlur(true);
     }
 
     disableBlurry() {
-        settingClass.setSettings({ 'isBlurry': false })
-        this.loadElement()
-
-        this.spanHeaderAmmount.classList.remove('pecunio-blurred');
-        this.blurryDivs.forEach(x => {
-            x.classList.remove('pecunio-blurred');
-        })
-        this.hideButton.src = chrome.runtime.getURL("asset/eye.png")
+        settingClass.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: false });
+        this.loadElement();
+        this._applyBlurState(false);
+        this._updateButtonIcon(false);
+        this._syncGlobalBlur(false);
     }
 
     isBlurry() {
-        this.loadElement()
-
-        // Vérifier si l'élément a la classe pecunio-blurred
-        return this.spanHeaderAmmount.classList.contains('pecunio-blurred');
+        this.loadElement();
+        return this.spanHeaderAmmount
+            ? this.spanHeaderAmmount.classList.contains('pecunio-blurred')
+            : settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY);
     }
 
+    /**
+     * Réapplique le flou à tous les éléments ciblés (liste analyse, graphiques).
+     * À appeler après un changement de page ou injection de contenu (ex: charts).
+     */
+    static refreshBlur() {
+        if (!settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) return;
+        const header = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
+        const all = document.querySelectorAll(Config.SELECTORS.BLURRY_SELECTORS);
+        if (header) header.classList.add('pecunio-blurred');
+        all.forEach(el => el.classList.add('pecunio-blurred'));
+        document.querySelectorAll('.pecunio-hide-button').forEach(btn => {
+            btn.src = Config.getAssetURL('EYE_CLOSED');
+        });
+    }
 }

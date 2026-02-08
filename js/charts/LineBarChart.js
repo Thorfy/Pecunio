@@ -94,15 +94,33 @@ class LineBarChart extends BaseChartData {
         const chartJsConfig = await this.getChartJsConfig();
         chartJsConfig.data = preparedData;
 
+        // Adapter l'axe X aux données réelles (pas de trou : min/max = plage des données)
+        const allX = preparedData.datasets.flatMap(d => (d.data || []).map(p => p.x)).filter(Boolean);
+        if (allX.length > 0 && chartJsConfig.options && chartJsConfig.options.scales && chartJsConfig.options.scales.x) {
+            const minT = Math.min(...allX.map(x => new Date(x).getTime()));
+            const maxT = Math.max(...allX.map(x => new Date(x).getTime()));
+            chartJsConfig.options.scales.x.min = minT;
+            chartJsConfig.options.scales.x.max = maxT;
+        }
+        // Titre ici pour éviter toute mutation dans le plugin (RangeError)
+        const dates = preparedData.datasets.flatMap(d => (d.data || []).map(p => p.x)).filter(Boolean);
+        if (dates.length > 0 && chartJsConfig.options && chartJsConfig.options.plugins && chartJsConfig.options.plugins.title) {
+            const minD = new Date(Math.min(...dates.map(d => new Date(d).getTime())));
+            const maxD = new Date(Math.max(...dates.map(d => new Date(d).getTime())));
+            const monthCount = maxD.getMonth() - minD.getMonth() + 12 * (maxD.getFullYear() - minD.getFullYear());
+            chartJsConfig.options.plugins.title.text = Config.isBlurry()
+                ? 'Dépenses' : `Depense sur ${monthCount} mois`;
+        }
+
         const canvas = InjectedStyles.createCanvas();
         canvas.classList.add("canvasDiv");
         container.appendChild(canvas);
 
         this.chartInstance = new Chart(canvas.getContext('2d'), chartJsConfig);
-        // Stocker la référence à settingsInstance dans le chart pour l'utiliser dans le plugin
         if (this.settingsInstance) {
             this.chartInstance._settingsInstance = this.settingsInstance;
         }
+        BaseChartData._attachAmountVisibilityListener(this.chartInstance);
         return this.chartInstance;
     }
 
@@ -206,10 +224,11 @@ class LineBarChart extends BaseChartData {
             settings = {
                 startDate: this.settingsInstance.getSetting('startDate'),
                 endDate: this.settingsInstance.getSetting('endDate'),
-                chartType: this.settingsInstance.getSetting('chartType')
+                chartType: this.settingsInstance.getSetting('chartType'),
+                isBlurry: this.settingsInstance.getSetting(Config.STORAGE_KEYS.IS_BLURRY)
             };
         } else {
-            settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType']);
+            settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType', Config.STORAGE_KEYS.IS_BLURRY]);
         }
         const initialChartType = settings.chartType ?? 'bar';
         const cummulative = initialChartType === "line" ? false : true;
@@ -232,6 +251,16 @@ class LineBarChart extends BaseChartData {
                         await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
                         Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
                     },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            if (Config.isBlurry()) return context.dataset.label || '';
+                            const label = context.dataset.label || '';
+                            const value = context.parsed?.y ?? context.parsed;
+                            return value != null ? `${label}: ${Number(value).toFixed(2)} €` : label;
+                        }
+                    }
                 }
             },
             interaction: {
@@ -240,6 +269,24 @@ class LineBarChart extends BaseChartData {
             scales: {
                 x: {
                     type: 'time',
+                    time: {
+                        unit: 'month',
+                        displayFormats: {
+                            millisecond: 'HH:mm',
+                            second: 'HH:mm',
+                            minute: 'HH:mm',
+                            hour: 'HH:mm',
+                            day: 'dd MMM',
+                            week: 'dd MMM',
+                            month: 'MMM yyyy',
+                            quarter: 'MMM yyyy',
+                            year: 'yyyy'
+                        },
+                        tooltipFormat: 'MMM yyyy'
+                    },
+                    ticks: {
+                        maxTicksLimit: 24
+                    },
                     grid: {
                         color: "#e9f5f9",
                         borderColor: "#d3eaf2",
@@ -260,6 +307,9 @@ class LineBarChart extends BaseChartData {
                         borderColor: "#d3eaf2",
                         tickColor: "#e9f5f9"
                     },
+                    ticks: {
+                        callback: (value) => (Config.isBlurry() ? '' : value)
+                    }
                 }
             }
         };
@@ -277,18 +327,6 @@ class LineBarChart extends BaseChartData {
             },
             plugins: [{
                 id: 'toggleTypeChart',
-                beforeInit: function (chart) {
-                    // Helper function to calculate the number of months between two dates
-                    function monthDiff(dateFrom, dateTo) {
-                        return dateTo.getMonth() - dateFrom.getMonth() + (12 * (dateTo.getFullYear() - dateFrom.getFullYear()));
-                    }
-
-                    const minDate = new Date(Math.min(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
-                    const maxDate = new Date(Math.max(...chart.data.datasets.flatMap(dataset => dataset.data.map(data => new Date(data.x)))));
-                    const monthCount = monthDiff(minDate, maxDate);
-
-                    chart.options.plugins.title.text = `Depense sur ${monthCount} mois`;
-                },
                 afterInit: function (chart) {
                     // Ajouter un event listener directement sur le canvas pour une meilleure fiabilité
                     const canvas = chart.canvas;
@@ -344,10 +382,13 @@ class LineBarChart extends BaseChartData {
                     ctx.restore();
                 },
                 beforeDestroy: function (chart) {
-                    // Nettoyer l'event listener lors de la destruction du chart
                     if (chart._toggleChartHandler && chart.canvas) {
                         chart.canvas.removeEventListener('click', chart._toggleChartHandler);
                         chart._toggleChartHandler = null;
+                    }
+                    if (chart._pecunioAmountVisibilityHandler) {
+                        window.removeEventListener('pecunio_amounts_visibility_changed', chart._pecunioAmountVisibilityHandler);
+                        chart._pecunioAmountVisibilityHandler = null;
                     }
                 }
             }]

@@ -28,8 +28,8 @@ graph TB
     end
     
     subgraph "Services"
-        BANKIN[BankinDataService]
         MERGER[DataMerger]
+        REPORT_STORAGE[ReportStorage]
     end
     
     subgraph "Charts"
@@ -37,6 +37,14 @@ graph TB
         LINE[LineBarChart]
         BUDGET[BudgetChart]
         SANKEY[SankeyChart]
+        EXPENSE_TYPE[ExpenseTypeChart]
+    end
+    
+    subgraph "Report"
+        REPORT_HTML[report.html/js]
+        REPORT_FILTERS[ReportFilters]
+        REPORT_BUILDER[ReportChartDataBuilder]
+        PDF_EXPORTER[PdfExporter]
     end
     
     subgraph "UI"
@@ -66,11 +74,18 @@ graph TB
     INJECTED -->|Creates| LINE
     INJECTED -->|Creates| BUDGET
     INJECTED -->|Creates| SANKEY
+    INJECTED -->|Creates| EXPENSE_TYPE
     LINE -->|Extends| BASE
     BUDGET -->|Extends| BASE
     SANKEY -->|Extends| BASE
+    EXPENSE_TYPE -->|Extends| BASE
     POPUP -->|Uses| SETTINGS
     POPUP -->|Uses| MERGER
+    POPUP -->|Uses| REPORT_STORAGE
+    REPORT_HTML -->|Uses| REPORT_STORAGE
+    REPORT_HTML -->|Uses| REPORT_FILTERS
+    REPORT_HTML -->|Uses| REPORT_BUILDER
+    REPORT_HTML -->|Uses| PDF_EXPORTER
     EVT -->|Coordinates| INJECTED
     EVT -->|Coordinates| POPUP
     CONFIG -->|Provides Constants| DATAMGR
@@ -184,15 +199,32 @@ Modèle représentant une catégorie :
 
 ### Services (`js/services/`)
 
-#### BankinDataService.js ⚠️ (À déprécier)
-Ancien service de récupération de données. **Doit être remplacé par DataManager**.
-
 #### DataMerger.js
 Service de fusion et transformation des données :
 - Fusion transactions + catégories + comptes
 - Filtrage par date et compte
 - Export CSV
 - Calcul de statistiques
+
+#### ReportStorage.js
+Service de stockage des données du rapport PDF :
+- Sauvegarde/lecture des données fusionnées, stats et paramètres dans `chrome.storage.local`
+- Utilisé par la popup (écriture) et par `report.html` (lecture)
+
+### Report (`js/report/`)
+
+Module rapport PDF (page `report.html`), alimenté par la popup via ReportStorage.
+
+#### ReportFilters.js
+- Filtrage des données (exclusion des catégories d’exception, cohérent avec Config)
+- Calcul des statistiques (revenus, dépenses, totaux)
+- Filtres pour le graphique Revenus vs Dépenses (épargne, remboursements)
+
+#### ReportChartDataBuilder.js
+- Construction des données pour les graphiques du rapport (catégories, évolution, Sankey, polar, type de dépenses)
+
+#### PdfExporter.js
+- Export du contenu du rapport (HTML + canvas Chart.js) en PDF via html2pdf
 
 ### Charts (`js/charts/`)
 
@@ -220,6 +252,11 @@ Diagramme de Sankey pour flux financiers :
 - Visualisation Budget → Dépenses
 - Organisation par catégories
 
+#### ExpenseTypeChart.js
+Répartition des dépenses par type (Essentiel, Plaisir, Épargne, Autre) :
+- Utilisé sur la page catégories Bankin
+- Données alignées avec les catégories Bankin
+
 ### UI (`js/ui/`)
 
 #### InjectedStyles.js
@@ -236,16 +273,10 @@ Masquage des montants sensibles :
 - Toggle blur/unblur
 - Persistance de l'état
 
-## Problèmes identifiés et solutions
+## Améliorations réalisées et pistes
 
-### 1. Duplication de services
-
-**Problème** : `BankinDataService` et `DataManager` font la même chose.
-
-**Solution** : 
-- Déprécier `BankinDataService`
-- Utiliser uniquement `DataManager`
-- Mettre à jour `injected.js` pour utiliser `DataManager`
+### 1. Unification des services ✅
+`DataManager` est le seul service de récupération des données (API Bankin, cache, validation). Aucun `BankinDataService` résiduel.
 
 ### 2. Duplication de code
 
@@ -255,7 +286,10 @@ Masquage des montants sensibles :
 - Utiliser uniquement `ColorParser.parseColorCSS()`
 - Supprimer les duplications
 
-### 3. Dépendances globales
+### 3. Gestion d’erreurs et validation ✅
+DataManager utilise des erreurs typées (`AuthenticationError`, `ValidationError`, `APIError`) et des validators (`DataValidators`). Le cache est vidé correctement via `removeSetting` lors d’un refresh.
+
+### 4. Dépendances globales
 
 **Problème** : Les charts dépendent directement de `settingClass` global.
 
@@ -263,14 +297,8 @@ Masquage des montants sensibles :
 - Injecter `Settings` via le constructeur
 - Utiliser l'injection de dépendances
 
-### 4. Gestion d'erreurs inconsistante
-
-**Problème** : Certaines erreurs sont silencieuses, d'autres loggées.
-
-**Solution** :
-- Standardiser la gestion d'erreurs
-- Ajouter des validations partout
-- Utiliser des erreurs typées
+### 5. Gestion d’erreurs (affichage)
+Standardiser l’affichage des erreurs côté UI (messages utilisateur cohérents).
 
 ## Schémas détaillés par service
 

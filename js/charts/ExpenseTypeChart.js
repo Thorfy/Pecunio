@@ -67,6 +67,7 @@ class ExpenseTypeChart extends BaseChartData {
         chartsRowContainer.appendChild(expenseTypeWrapper);
 
         this.chartInstance = new Chart(expenseTypeCanvas.getContext('2d'), chartJsConfig);
+        BaseChartData._attachAmountVisibilityListener(this.chartInstance);
         return this.chartInstance;
     }
 
@@ -209,15 +210,13 @@ class ExpenseTypeChart extends BaseChartData {
                         callbacks: {
                             label: (context) => {
                                 const label = context.label || '';
-                                // Retirer l'icône du label pour le tooltip
                                 const labelWithoutIcon = label.replace(/^[^\s]+\s/, '');
+                                if (Config.isBlurry()) return labelWithoutIcon;
                                 const value = context.parsed || 0;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                
                                 if (total === 0 || label === 'Aucune donnée') {
                                     return 'Aucune donnée disponible';
                                 }
-                                
                                 const percentage = ((value / total) * 100).toFixed(1);
                                 return `${labelWithoutIcon}: ${value.toFixed(2)} € (${percentage}%)`;
                             }

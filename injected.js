@@ -79,11 +79,15 @@ async function build() {
     await settingClass.waitForInitialization();
     // Mettre à jour la variable setting
     setting = settingClass.getAllSettings();
+    // Sync global pour les charts (évite mutations chart.options = stack overflow)
+    window.__pecunioIsBlurry = !!settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY);
 
     if (location.href === Config.URLS.ACCOUNTS_PAGE) {
         await buildAccountsPage();
+        setTimeout(() => { new AmountHider(); AmountHider.refreshBlur(); }, Config.INTERVALS.HIDDER_DELAY);
     } else if (location.href === Config.URLS.CATEGORIES_PAGE) {
         await buildCategoriesPage();
+        setTimeout(() => { new AmountHider(); AmountHider.refreshBlur(); }, Config.INTERVALS.HIDDER_DELAY);
     }
 }
 
@@ -92,7 +96,6 @@ async function build() {
  */
 async function buildAccountsPage() {
     loadingScreen();
-    setTimeout(() => { new AmountHider() }, Config.INTERVALS.HIDDER_DELAY);
 
     // Configuration du bouton de rafraîchissement
     LineBarChart.setupRefreshButton(dataManager, settingClass);

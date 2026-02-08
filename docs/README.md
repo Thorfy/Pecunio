@@ -7,8 +7,7 @@ Bienvenue dans la documentation de l'architecture Pecunio. Cette documentation a
 ### Vue d'ensemble
 
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** : Vue d'ensemble complète de l'architecture avec schémas Mermaid
-- **[IMPROVEMENTS.md](./IMPROVEMENTS.md)** : Liste détaillée de toutes les améliorations apportées
-- **[REFACTORING_PLAN.md](./REFACTORING_PLAN.md)** : Plan de refactoring avec checklist
+- **[TESTING.md](./TESTING.md)** : Guide de tests manuels (modèles, DataManager, charts, événements)
 
 ### Documentation par service
 
@@ -26,7 +25,7 @@ Chaque service spécialisé a sa propre documentation avec schémas :
 
 - **[services/Charts.md](./services/Charts.md)** : Système de graphiques
   - BaseChartData (classe de base)
-  - LineBarChart, BudgetChart, SankeyChart
+  - LineBarChart, BudgetChart, SankeyChart, ExpenseTypeChart
   - Flux de données et transformations
 
 - **[services/Settings.md](./services/Settings.md)** : Gestionnaire de paramètres
@@ -75,15 +74,13 @@ Tous les schémas utilisent **Mermaid** et peuvent être visualisés dans :
 - **Charts** : Hiérarchie et flux de données
 - **Settings** : Flux de persistance et validation
 
-## 🚀 Améliorations récentes
+## 🚀 État actuel
 
-Voir **[IMPROVEMENTS.md](./IMPROVEMENTS.md)** pour la liste complète, notamment :
-
-- ✅ Élimination des duplications de code
-- ✅ Unification des services (BankinDataService → DataManager)
-- ✅ Amélioration de la gestion d'erreurs avec retry automatique
-- ✅ Validation des données
-- ✅ Documentation complète avec schémas
+- ✅ **DataManager** : seul service de données (API Bankin, cache, validation, retry)
+- ✅ **Gestion d’erreurs** : erreurs typées (AuthenticationError, ValidationError, APIError)
+- ✅ **Validation** : DataValidators pour transactions, catégories, comptes
+- ✅ **Rapport PDF** : ReportStorage, ReportFilters, ReportChartDataBuilder, PdfExporter
+- ✅ Documentation avec schémas Mermaid dans `docs/` et `docs/services/`
 
 ## 📝 Conventions
 
@@ -111,9 +108,9 @@ Cette documentation doit être mise à jour lors de :
 ## 📞 Support
 
 Pour toute question sur l'architecture :
-1. Consultez d'abord la documentation du service concerné
-2. Regardez les schémas pour comprendre les flux
-3. Vérifiez le plan de refactoring pour les évolutions prévues
+1. Consultez d'abord la documentation du service concerné dans `docs/` et `docs/services/`
+2. Regardez les schémas dans ARCHITECTURE.md pour comprendre les flux
+3. Consultez TESTING.md pour les tests manuels
 
 ---
 

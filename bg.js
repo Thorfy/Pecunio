@@ -1,15 +1,19 @@
-/*
-working POC*/
+/**
+ * Service worker Pecunio - Interception des en-têtes d'authentification Bankin.
+ * Les noms des en-têtes requis doivent rester alignés avec Config.API.REQUIRED_HEADERS
+ * (js/core/Config.js) car le DataManager les utilise pour l'authentification.
+ */
 const allHeaders = {};
-const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"]
+const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"];
 let portEvent = false;
+
 chrome.webRequest.onBeforeSendHeaders.addListener(
     function (info) {
         info.requestHeaders.forEach(headerRow => {
-            if(requiredHeader.includes(headerRow.name)){
-                allHeaders[headerRow.name] = headerRow.value
+            if (requiredHeader.includes(headerRow.name)) {
+                allHeaders[headerRow.name] = headerRow.value;
             }
-        })
+        });
         if (portEvent){
             portEvent.postMessage({
                 'data': allHeaders
@@ -18,7 +22,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 
     },
     {
-        urls: ['https://sync.bankin.com/v2/accounts?limit=200'],
+        urls: ['https://sync.bankin.com/v2/accounts*'],
         types: ['main_frame', 'sub_frame', 'xmlhttprequest']
     },
     ['requestHeaders']

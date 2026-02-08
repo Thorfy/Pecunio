@@ -14,10 +14,12 @@ graph TD
     LINE[LineBarChart]
     BUDGET[BudgetChart]
     SANKEY[SankeyChart]
+    EXPENSE[ExpenseTypeChart]
     
     BASE --> LINE
     BASE --> BUDGET
     BASE --> SANKEY
+    BASE --> EXPENSE
     
     BASE --> FILTER[Filtrage]
     BASE --> CATEGORY[Gestion Catégories]
@@ -26,6 +28,7 @@ graph TD
     LINE --> TIME[Visualisation Temporelle]
     BUDGET --> COMPARE[Comparaison Budget]
     SANKEY --> FLOW[Flux Financiers]
+    EXPENSE --> TYPE[Répartition par type]
 ```
 
 ## BaseChartData
@@ -135,6 +138,14 @@ graph TD
     NODES --> RENDER[Affichage]
     LINKS --> RENDER
 ```
+
+## ExpenseTypeChart
+
+### Responsabilités
+
+- Répartition des dépenses par type (Essentiel, Plaisir, Épargne, Autre)
+- Utilisé sur la page catégories Bankin
+- Données alignées avec les catégories et types de dépenses Bankin
 
 ## Exemples d'utilisation
 

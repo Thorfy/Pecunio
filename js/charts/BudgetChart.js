@@ -483,7 +483,10 @@ class BudgetChart extends BaseChartData {
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: 'Amount (€)'
+                                    text: Config.isBlurry() ? '' : 'Amount (€)'
+                                },
+                                ticks: {
+                                    callback: (value) => (Config.isBlurry() ? '' : value)
                                 }
                             },
                             x: {
@@ -500,6 +503,9 @@ class BudgetChart extends BaseChartData {
                             tooltip: {
                                 mode: 'index',
                                 intersect: false,
+                                callbacks: {
+                                    label: (context) => (Config.isBlurry() ? (context.dataset.label || '') : `${context.dataset.label}: ${Number(context.parsed).toFixed(2)} €`)
+                                }
                             },
                             title: {
                                 display: true,
@@ -508,6 +514,7 @@ class BudgetChart extends BaseChartData {
                         }
                     }
                 });
+                BaseChartData._attachAmountVisibilityListener(this.budgetChart);
                 // console.log('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
             } catch (error) {
                 console.error('[ChartDataBudget] _updateChartView: Error creating new budget bar chart:', error);

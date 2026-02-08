@@ -673,17 +673,19 @@ class DataManager {
             );
         }
         
-        // Vider le cache
-        const cacheObject = {
-            cache_data_transactions: "",
-            cache_time_transactions: "",
-            cache_data_categories: "",
-            cache_time_categories: "",
-            cache_data_accounts: "",
-            cache_time_accounts: ""
-        };
-        await settingClass.setSettings(cacheObject);
-        
+        // Vider le cache (suppression explicite pour forcer un rechargement)
+        const cacheKeys = [
+            Config.getCacheKey('transactions'),
+            Config.getCacheTimeKey('transactions'),
+            Config.getCacheKey('categories'),
+            Config.getCacheTimeKey('categories'),
+            Config.getCacheKey('accounts'),
+            Config.getCacheTimeKey('accounts')
+        ];
+        for (const key of cacheKeys) {
+            await settingClass.removeSetting(key);
+        }
+
         // Recharger les données
         return this._loadAllData();
     }

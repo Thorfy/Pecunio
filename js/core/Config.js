@@ -41,8 +41,17 @@ class Config {
         CANVAS_DIV: ".canvasDiv",
         HIDE_BUTTON: "#hideButton",
         BLURRY_ELEMENTS: ".amountGreen,.amountRed,.amountBlack",
+        /** Sélecteurs complets pour le flou (liste, header, légendes donut) */
+        BLURRY_SELECTORS: [
+            ".amountGreen,.amountRed,.amountBlack",
+            "#contentList .dtc.vam.tar.w30 span",
+            ".pecunio-donut-wrapper .mt2.tac span.fs2.fw7",
+            ".pecunio-donut-wrapper #donutChart text"
+        ].join(","),
         HEADER_AMOUNT: ".dbl.fs14.fw7.lh18.elp",
-        HEADER_TEXT: ".dbl.fs1.elp"
+        HEADER_TEXT: ".dbl.fs1.elp",
+        BUTTON_CONTAINER: ".dbl.fs1.elp",
+        CATEGORY_PAGE_BUTTON_CONTAINER: ".pecunio-donut-wrapper .mt2.tac, .scrollable.categoryChart .mt2.tac"
     };
 
     // Configuration des paramètres de stockage
@@ -85,11 +94,11 @@ class Config {
             borderWidth: 3,
             label: {
                 enabled: true,
-                content: (ctx) => 'Average: ' + Config.CHART.calculateAverage(ctx).toFixed(2),
+                content: (ctx) => 'Average: ' + Config.calculateAverage(ctx).toFixed(2),
                 position: 'end'
             },
             scaleID: 'y',
-            value: (ctx) => Config.CHART.calculateAverage(ctx)
+            value: (ctx) => Config.calculateAverage(ctx)
         },
         COLORS: {
             PRIMARY: 'rgba(54, 162, 235, 0.6)',
@@ -111,7 +120,7 @@ class Config {
     // Configuration des intervalles
     static INTERVALS = {
         URL_CHECK: 1000, // 1 seconde pour vérifier les changements d'URL
-        HIDDER_DELAY: 500 // 500ms pour l'initialisation du Hidder
+        HIDDER_DELAY: 150 // ms avant d'injecter le bouton masquer montants (DOM Bankin)
     };
 
     // Configuration des mois
@@ -150,6 +159,15 @@ class Config {
 
     static getAssetURL(assetName) {
         return chrome.runtime.getURL(Config.ASSETS[assetName]);
+    }
+
+    /**
+     * Indique si le mode masquage des montants (flou) est actif.
+     * Centralise l'accès à l'état blur pour les charts et l'UI.
+     * @returns {boolean}
+     */
+    static isBlurry() {
+        return typeof window !== 'undefined' && !!window.__pecunioIsBlurry;
     }
 
     /**
