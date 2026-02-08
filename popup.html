@@ -307,6 +307,9 @@
                     <li>Cliquez sur l'icône <strong>Épingler</strong> (📌) à côté de Pecunio</li>
                 </ol>
             </div>
+            <a href="https://app2.bankin.com/signin" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="margin-top: 8px; display: inline-block;">
+                🔗 Aller sur Bankin
+            </a>
         </div>
 
         <!-- Section Dates -->
@@ -341,10 +344,30 @@
         <!-- Section Actions -->
         <div class="section">
             <div class="section-title">📊 Export des données</div>
+
+            <div class="form-group" id="pdfPeriodGroup">
+                <label class="form-label">📄 Période du rapport PDF</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+                    <div>
+                        <label for="pdfYear" style="font-size: 12px; color: #666;">Année</label>
+                        <select id="pdfYear" class="form-input" style="margin-top: 4px;"></select>
+                    </div>
+                    <div>
+                        <label for="pdfMonth" style="font-size: 12px; color: #666;">Mois</label>
+                        <select id="pdfMonth" class="form-input" style="margin-top: 4px;"></select>
+                    </div>
+                </div>
+            </div>
             
             <div class="form-group">
                 <button id="exportCsv" class="btn btn-success">
                     📥 Exporter en CSV
+                </button>
+            </div>
+
+            <div class="form-group">
+                <button id="exportPdf" class="btn btn-primary">
+                    📄 Générer rapport PDF
                 </button>
             </div>
 
@@ -376,10 +399,6 @@
                     <img src="https://img.shields.io/github/v/release/Thorfy/Bankin-" alt="Dernière version">
                 </a>
             </div>
-            
-            <a href="https://app2.bankin.com/signin" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                🔗 Aller sur Bankin
-            </a>
         </div>
     </div>
 
@@ -391,6 +410,7 @@
     <script src="js/models/Account.js"></script>
     <script src="js/models/Transaction.js"></script>
     <script src="js/services/DataMerger.js"></script>
+    <script src="js/services/ReportStorage.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

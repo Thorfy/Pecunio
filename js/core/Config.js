@@ -57,6 +57,21 @@ class Config {
         CACHE_TIME_PREFIX: 'cache_time_'
     };
 
+    // Configuration du rapport PDF
+    static REPORT = {
+        STORAGE_KEYS: {
+            MERGED: 'pecunio_report_mergedData',
+            STATS: 'pecunio_report_stats',
+            PARAMS: 'pecunio_report_params'
+        },
+        PDF: {
+            DEFAULT_FILENAME_PREFIX: 'pecunio_rapport_',
+            IMAGE_QUALITY: 1,
+            JPEG_QUALITY: 1,
+            FONT_READY_DELAY_MS: 400
+        }
+    };
+
     // Configuration des charts
     static CHART = {
         DEFAULT_HEIGHT: '600px',
