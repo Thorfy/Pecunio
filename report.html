@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pecunio — Rapport budgétaire</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --page-bg: #f5f5f7;
+            --surface: #ffffff;
+            --ink: #111111;
+            --ink-light: #6e6e73;
+            --line: #d2d2d7;
+            --brand: #0071e3;
+            --green: #34c759;
+            --red: #ff3b30;
+            --fintech-danger: #ff3b30;
+            --a4-w: 210mm;
+            --a4-h: 297mm;
+            --gutter: 16mm;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        @page { size: A4 portrait; margin: 0; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--page-bg);
+            color: var(--ink);
+            line-height: 1.45;
+            min-height: 100vh;
+            font-size: 15px;
+        }
+
+        #report-container {
+            width: var(--a4-w);
+            max-width: var(--a4-w);
+            min-height: var(--a4-h);
+            margin: 0 auto;
+            padding: var(--gutter);
+            padding-bottom: 72px;
+            background: var(--surface);
+        }
+
+        .report-header {
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--line);
+        }
+        .report-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: -0.02em;
+        }
+        .report-header .period {
+            font-size: 0.9375rem;
+            color: var(--ink-light);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+        .report-header .accounts {
+            font-size: 0.8125rem;
+            color: var(--ink-light);
+            margin-top: 2px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            margin-bottom: 28px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .stat-cell {
+            background: var(--surface);
+            padding: 18px 12px;
+            text-align: center;
+            border-right: 1px solid var(--line);
+        }
+        .stat-cell:last-child { border-right: none; }
+        .stat-cell .label {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ink-light);
+            margin-bottom: 6px;
+        }
+        .stat-cell .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--ink);
+            letter-spacing: -0.01em;
+        }
+        .stat-cell.positive .value { color: var(--green); }
+        .stat-cell.negative .value { color: var(--red); }
+        @media (max-width: 560px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .stat-cell:nth-child(2) { border-right: none; }
+        }
+
+        .report-section {
+            margin-bottom: 28px;
+        }
+        .report-section h2 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 12px;
+        }
+        .report-section .section-desc {
+            font-size: 0.8125rem;
+            color: var(--ink-light);
+            margin-bottom: 10px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 260px;
+            margin-bottom: 8px;
+        }
+        .chart-wrapper canvas { max-height: 100%; }
+        .chart-wrapper-tall { height: 320px; }
+        .chart-wrapper-sankey {
+            width: 100%;
+            height: 500px;
+            min-height: 400px;
+        }
+        .chart-wrapper-sankey canvas {
+            width: 100% !important;
+            height: 500px !important;
+            min-height: 400px !important;
+        }
+        .charts-single .chart-wrapper { height: 200px; }
+        .chart-type-select {
+            font-size: 0.75rem;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--ink);
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .charts-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 620px) {
+            .charts-pair { grid-template-columns: 1fr; }
+        }
+
+        .transactions-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+        }
+        .transactions-table th {
+            text-align: left;
+            padding: 12px 14px;
+            background: var(--page-bg);
+            color: var(--ink-light);
+            font-weight: 600;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .transactions-table td {
+            padding: 10px 14px;
+            border-top: 1px solid var(--line);
+        }
+        .transactions-table tbody tr:hover { background: var(--page-bg); }
+        .transactions-table .amount-positive { color: var(--green); font-weight: 600; }
+        .transactions-table .amount-negative { color: var(--red); font-weight: 600; }
+
+        .report-footer {
+            margin-top: 28px;
+            padding: 14px 16px;
+            background: var(--page-bg);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--ink-light);
+            line-height: 1.5;
+        }
+        .report-footer strong { color: var(--ink); }
+
+        .actions-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 14px 24px;
+            background: var(--surface);
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+        }
+        .btn {
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary {
+            background: var(--brand);
+            color: white;
+        }
+        .btn-primary:hover { opacity: 0.88; }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--ink);
+            border: 1px solid var(--line);
+        }
+        .btn-secondary:hover { background: var(--page-bg); }
+        #status-msg {
+            font-size: 0.8125rem;
+            color: var(--ink-light);
+        }
+
+        #report-container {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .report-header { page-break-after: avoid; }
+        .report-section { page-break-inside: avoid; }
+        .report-section-table { page-break-inside: auto; }
+        .transactions-table tbody tr { page-break-inside: auto; }
+        body.pdf-export { background: #fff; }
+        body.pdf-export #report-container {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        @media print {
+            body { background: #fff; }
+            .actions-bar { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="report-container">
+        <header class="report-header">
+            <h1>Rapport budgétaire</h1>
+            <p class="period" id="report-period">Pecunio</p>
+            <p class="accounts" id="report-accounts"></p>
+        </header>
+
+        <div class="stats-row">
+            <div class="stat-cell">
+                <div class="label">Transactions</div>
+                <div class="value" id="stat-count">—</div>
+            </div>
+            <div class="stat-cell positive">
+                <div class="label">Revenus</div>
+                <div class="value" id="stat-income">—</div>
+            </div>
+            <div class="stat-cell negative">
+                <div class="label">Dépenses</div>
+                <div class="value" id="stat-expenses">—</div>
+            </div>
+            <div class="stat-cell">
+                <div class="label">Solde</div>
+                <div class="value" id="stat-balance">—</div>
+            </div>
+        </div>
+
+        <section class="report-section">
+            <h2>Revenus et dépenses</h2>
+            <p class="section-desc">Comparaison des totaux sur la période</p>
+            <div class="chart-wrapper charts-single">
+                <canvas id="chart-income-expense"></canvas>
+            </div>
+        </section>
+
+        <section class="report-section">
+            <h2>Répartition des dépenses</h2>
+            <div class="charts-pair">
+                <div>
+                    <p class="section-desc">Par type (Essentiel, Plaisir, Épargne…)</p>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-expense-type"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <div class="chart-header">
+                        <span class="section-desc">Par catégorie</span>
+                        <select id="chart-category-type" class="chart-type-select" title="Type de graphique">
+                            <option value="bar">Barres</option>
+                            <option value="line">Courbe</option>
+                        </select>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-category"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="report-section" id="section-sankey">
+            <h2>Flux financiers</h2>
+            <p class="section-desc">Dépenses → Catégories → Sous-catégories</p>
+            <div class="chart-wrapper chart-wrapper-sankey">
+                <canvas id="chart-sankey"></canvas>
+            </div>
+        </section>
+
+        <section class="report-section" id="section-polar">
+            <h2>Répartition par catégorie</h2>
+            <p class="section-desc">Vue circulaire des dépenses</p>
+            <div class="chart-wrapper chart-wrapper-tall" style="height: 280px;">
+                <canvas id="chart-polar"></canvas>
+            </div>
+        </section>
+
+        <section class="report-section" id="section-evolution">
+            <h2>Évolution mensuelle</h2>
+            <div class="chart-header">
+                <span class="section-desc">Dépenses cumulées par catégorie</span>
+                <select id="chart-evolution-type" class="chart-type-select" title="Type de graphique">
+                    <option value="bar">Barres empilées</option>
+                    <option value="line">Courbe</option>
+                </select>
+            </div>
+            <div class="chart-wrapper chart-wrapper-tall" style="height: 300px;">
+                <canvas id="chart-evolution"></canvas>
+            </div>
+        </section>
+
+        <section class="report-section report-section-table">
+            <h2>Détail des transactions</h2>
+            <div class="transactions-table-wrap">
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Catégorie</th>
+                            <th>Compte</th>
+                            <th style="text-align:right">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer class="report-footer" id="report-footer"></footer>
+    </div>
+
+    <div class="actions-bar">
+        <button type="button" class="btn btn-primary" id="btn-download-pdf">Télécharger le PDF</button>
+        <button type="button" class="btn btn-secondary" id="btn-close">Fermer</button>
+        <span id="status-msg"></span>
+    </div>
+
+    <script src="js/core/Config.js"></script>
+    <script src="js/services/ReportStorage.js"></script>
+    <script src="js/report/ReportFilters.js"></script>
+    <script src="js/report/ReportChartDataBuilder.js"></script>
+    <script src="js/report/PdfExporter.js"></script>
+    <script src="libs/js/chart.js"></script>
+    <script src="libs/js/chartjs-chart-sankey.js"></script>
+    <script src="libs/js/html2pdf.bundle.min.js"></script>
+    <script src="report.js"></script>
+</body>
+</html>
