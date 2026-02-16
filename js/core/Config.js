@@ -123,6 +123,11 @@ class Config {
         HIDDER_DELAY: 150 // ms avant d'injecter le bouton masquer montants (DOM Bankin)
     };
 
+    // Configuration du prompt de review
+    static REVIEW = {
+        DEBUG: false // true = affiche la modale de review à chaque chargement (ignorer compteur/état)
+    };
+
     // Configuration des mois
     static MONTHS = {
         NAMES: ["All Months", "January", "February", "March", "April", "May", "June", 
