@@ -33,6 +33,10 @@ Chaque service spécialisé a sa propre documentation avec schémas :
   - Validation des données
   - Gestion de l'initialisation asynchrone
 
+- **[services/ReviewPrompt.md](./services/ReviewPrompt.md)** : Invitation à laisser un avis
+  - Modale conditionnelle (compteur, état, délai après « Plus tard »)
+  - Stockage et configuration (Config.REVIEW.DEBUG)
+
 ## 🎨 Visualisation des schémas
 
 Tous les schémas utilisent **Mermaid** et peuvent être visualisés dans :
@@ -73,6 +77,7 @@ Tous les schémas utilisent **Mermaid** et peuvent être visualisés dans :
 - **DataMerger** : Flux de fusion et transformation
 - **Charts** : Hiérarchie et flux de données
 - **Settings** : Flux de persistance et validation
+- **ReviewPrompt** : Flux d’affichage conditionnel de la modale d’avis
 
 ## 🚀 État actuel
 

@@ -85,9 +85,13 @@ async function build() {
     if (location.href === Config.URLS.ACCOUNTS_PAGE) {
         await buildAccountsPage();
         setTimeout(() => { new AmountHider(); AmountHider.refreshBlur(); }, Config.INTERVALS.HIDDER_DELAY);
+        // Proposer de laisser un avis après que les charts sont chargés
+        ReviewPrompt.tryShow();
     } else if (location.href === Config.URLS.CATEGORIES_PAGE) {
         await buildCategoriesPage();
         setTimeout(() => { new AmountHider(); AmountHider.refreshBlur(); }, Config.INTERVALS.HIDDER_DELAY);
+        // Proposer de laisser un avis après que les charts sont chargés
+        ReviewPrompt.tryShow();
     }
 }
 

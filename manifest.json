@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Pecunio",
   "description": "Pecunio overload Bankin website",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "author": "Remy Lefebvre",
   "icons": {
     "64": "asset/icon.png"
@@ -56,6 +56,7 @@
               "js/charts/SankeyChart.js",
               "js/charts/ExpenseTypeChart.js",
               "js/ui/AmountHider.js",
+              "js/ui/ReviewPrompt.js",
               "libs/js/chart.js",
               "libs/js/chartjs-adapter-date-fns.js",
               "libs/js/chartjs-chart-sankey.js",

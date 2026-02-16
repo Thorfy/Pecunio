@@ -51,6 +51,7 @@ graph TB
         STYLES[InjectedStyles]
         LOADING[LoadingScreen]
         HIDER[AmountHider]
+        REVIEW[ReviewPrompt]
     end
     
     subgraph "External"
@@ -71,6 +72,7 @@ graph TB
     MERGER -->|Uses| CATEGORY
     INJECTED -->|Uses| DATAMGR
     INJECTED -->|Uses| SETTINGS
+    INJECTED -->|Uses| REVIEW
     INJECTED -->|Creates| LINE
     INJECTED -->|Creates| BUDGET
     INJECTED -->|Creates| SANKEY
@@ -272,6 +274,13 @@ Styles CSS injectés dans la page Bankin :
 Masquage des montants sensibles :
 - Toggle blur/unblur
 - Persistance de l'état
+
+#### ReviewPrompt.js
+Modale d'invitation à laisser un avis sur le Chrome Web Store :
+- Affichage conditionnel (nombre de builds, état « plus tard » / « jamais »)
+- Stockage dans `chrome.storage.local` (compteur, état, date de report)
+- Option debug via `Config.REVIEW.DEBUG` pour forcer l'affichage
+- Détails : voir [services/ReviewPrompt.md](services/ReviewPrompt.md)
 
 ## Améliorations réalisées et pistes
 
