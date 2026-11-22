@@ -14,7 +14,10 @@ export class Config {
             ACCOUNTS: "/v2/accounts?limit=500"
         },
         REQUIRED_HEADERS: ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"],
-        CACHE_DURATION: 2 * 60 * 1000 // 2 minutes en millisecondes
+        // Durée pendant laquelle le cache est utilisé sans rappeler l'API. Les graphiques
+        // s'affichent de toute façon depuis le cache ; au-delà, les données sont
+        // rechargées en arrière-plan (le bouton ↻ force un rechargement).
+        CACHE_DURATION: 10 * 60 * 1000 // 10 minutes
     };
 
     // Configuration des catégories
@@ -86,6 +89,8 @@ export class Config {
     // Configuration des charts
     static CHART = {
         DEFAULT_HEIGHT: '600px',
+        /** Hauteur fixe du graphique temporel (évite la boucle de redimensionnement, bug B23) */
+        LINE_CHART_HEIGHT: '580px',
         BUDGET_CHART_HEIGHT: '400px',
         DEFAULT_TYPE: 'bar',
         ANNOTATION: {

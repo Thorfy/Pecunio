@@ -1,0 +1,23 @@
+# Mises à jour automatiques des dépendances (une PR par groupe, chaque semaine).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Chart.js et ses plugins évoluent ensemble
+      charts:
+        patterns: ["chart.js", "chartjs-*", "date-fns"]
+      # Outillage de développement (ne change pas l'extension publiée)
+      dev-tooling:
+        dependency-type: development
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies, ci]

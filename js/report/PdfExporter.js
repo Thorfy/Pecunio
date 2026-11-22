@@ -1,6 +1,5 @@
 import { Config } from '../core/Config.js';
 
-/* global html2pdf -- librairie chargée par une balise <script> dans la page du rapport */
 
 /**
  * PdfExporter - Génération du PDF du rapport
@@ -22,6 +21,8 @@ export class PdfExporter {
         this.imageQuality = options.imageQuality != null ? options.imageQuality : (reportCfg.IMAGE_QUALITY ?? 0.88);
         this.jpegQuality = options.jpegQuality != null ? options.jpegQuality : (reportCfg.JPEG_QUALITY ?? 1);
         this.fontReadyDelayMs = options.fontReadyDelayMs != null ? options.fontReadyDelayMs : (reportCfg.FONT_READY_DELAY_MS ?? 400);
+        /** Fonction html2pdf (librairie html2pdf.js), fournie par la page du rapport. */
+        this.html2pdf = options.html2pdf ?? null;
         this._restored = [];
     }
 
@@ -114,7 +115,8 @@ export class PdfExporter {
      * @returns {Promise<void>}
      */
     exportToPdf(chartInstances = []) {
-        if (typeof html2pdf === 'undefined') {
+        const html2pdf = this.html2pdf;
+        if (typeof html2pdf !== 'function') {
             return Promise.reject(new Error('html2pdf non chargé'));
         }
 

@@ -57,6 +57,9 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B19 | 🔴 | **Page Catégories vide si le navigateur n'est pas en français** : `applySettingOnDataByMonth` compare le nom du mois affiché par Bankin (« février ») au nom du mois dans la langue du navigateur (`toLocaleString('default')`) ; avec Chrome en anglais, aucune transaction ne correspond (non vérifié en réel : le Chrome testé est en français) | T | ✅ 2a |
 | B20 | 🟠 | **Infobulle du graphique « Comparaison Budget Médian » : montants NaN** : `Number(context.parsed)` alors que Chart.js fournit un objet `{ x, y }` pour un graphique en barres (signalé par l'utilisateur le 22/11/2026, présent depuis février 2026) | L + T | ✅ 2a |
 | B21 | 🟡 | **Modale « Un petit avis ? » affichée en double** : la vérification « déjà affichée » précède le délai de 2 s ; deux constructions rapprochées (chargement puis arrivée des données) programment chacune une modale (vu en recette de la phase 3a sur une installation neuve) | L + T | ✅ 3a |
+| B22 | 🟡 | **Bandeau d'état déformé dans la page Bankin** : les règles CSS de Bankin sur tous les `button` (largeur, marges, fond, prioritaires) écrasent les styles en ligne du bandeau ; corrigé en isolant son contenu dans un Shadow DOM | L + T | ✅ 3b |
+| B23 | 🔴 | **« Vibration » du graphique temporel** : canvas en `height: 100%` dans un conteneur sans hauteur fixe + ratio 2 ⇒ hauteur idéale 582,5 px, Chart.js alterne 582/583 px toutes les 20–30 ms et redessine en continu (mesuré : 65 redimensionnements en 7 s, sans fin) ; conteneur de 580 px et `maintainAspectRatio: false` | L + T | ✅ 3b |
+| B24 | 🟠 | **Graphiques reconstruits deux fois au chargement** : construits depuis le cache puis reconstruits 50 ms plus tard à l'arrivée de données identiques (clignotement, travail inutile) ; la reconstruction est désormais ignorée quand l'empreinte données + réglages + page est inchangée | L + T | ✅ 3b |
 
 ### 3.2 Dette technique et qualité
 
@@ -65,7 +68,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D1 | Couplage fort au DOM Bankin : classes CSS utilitaires (`.dbl.fs14.fw7.lh18.elp`…), IDs de catégories en dur (`326, 282, 2, 163`) | 4 |
 | D2 | 134 `console.*` en production, dont des transactions brutes (données bancaires dans la console) — ✅ 2b : `Logger` (debug silencieux par défaut), plus de transactions dans la console | 2b |
 | D3 | Classes globales + ordre de chargement maintenu à 3 endroits | ✅ 3a |
-| D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 — ✅ 3a : npm (mêmes versions) ; mise à jour en 3b | 3b |
+| D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 — ✅ 3a : npm ; ✅ 3b : versions à jour + Dependabot | ✅ 3b |
 | D5 | Wrappers callback → Promise inutiles en MV3 ; popup encore en callbacks | 2a / 3 |
 | D6 | Code mort : `getAllSetting`, `mergeTransactionByCategoryLegacy`, `DataManager.filterTransactions`, `organizeTransactionsByCategory` (O(n × catégories²)). ✅ `LineBarChart.buildChart` déjà retiré | 3 |
 | D7 | `Math.min(...dates)` sur des milliers d'éléments (dépassement de pile possible) | ✅ 2a |
@@ -152,7 +155,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 - `check-manifest.mjs` et `package.sh` remplacés par `wxt build` / `wxt zip` ; CI et release adaptées (Node 22).
 - Tests : plus de plugin « legacy », les modules sont importés ; leurs exports restent exposés en global pendant la transition.
 
-**3b — Dépendances** : Chart.js 3 → 4 (+ sankey, adaptateur de dates), html2pdf via npm, Dependabot ; comparaison visuelle avant/après.
+**3b — Dépendances** ✅ _(branche `chore/phase-3b-deps`)_ : Chart.js 3.7.1 → 4.6.1, chartjs-chart-sankey 0.12 → 0.22, chartjs-adapter-date-fns 2 → 3 (date-fns 2 → 4), Choices 11.0 → 11.2 ; html2pdf.js 0.14 via npm (fourni à `PdfExporter` par la page du rapport, plus de fichier dans `public/libs/`) ; seule option à adapter : `grid.borderColor` → `border.color` ; Dependabot (npm chaque semaine, groupes « charts » et « outillage », Actions chaque mois).
 
 **3c — Nettoyage** : `Evt` remplacé par un émetteur en mémoire (B15) ; code mort (D6) ; warnings ESLint à zéro et règles en `error` (D13) ; tests sans exports globaux.
 
@@ -193,7 +196,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 1 Tests unitaires | 1,5–2 j | ✅ mergée (#13) | documente B1–B3, B7–B10, B13–B15, B17–B19 |
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
-| 3 Modules + WXT | 2–3 j | 3a ✅ PR à merger | B15, D3–D6, D13 |
+| 3 Modules + WXT | 2–3 j | 3a ✅ (#16), 3b ✅ PR à merger | B15, D3–D6, D13 |
 | 4 Types + adaptateur | 2–3 j | | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |

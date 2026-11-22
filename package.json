@@ -34,10 +34,11 @@
     "wxt": "^0.21.5"
   },
   "dependencies": {
-    "chart.js": "3.7.1",
-    "chartjs-adapter-date-fns": "2.0.0",
-    "chartjs-chart-sankey": "0.12.0",
-    "choices.js": "11.0.2",
-    "date-fns": "2.30.0"
+    "chart.js": "4.6.1",
+    "chartjs-adapter-date-fns": "3.0.0",
+    "chartjs-chart-sankey": "0.22.0",
+    "choices.js": "11.2.4",
+    "date-fns": "4.4.0",
+    "html2pdf.js": "0.14.0"
   }
 }

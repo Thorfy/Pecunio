@@ -22,6 +22,16 @@ export class LineBarChart extends BaseChartData {
     // Le bouton ↻ de Bankin est géré par PageController (un seul écouteur, bug B4).
 
     /**
+     * Conteneur de hauteur fixe pour le canvas du graphique temporel.
+     * @returns {HTMLElement}
+     */
+    static createCanvasContainer() {
+        const canvasContainer = InjectedStyles.createCanvasContainer();
+        canvasContainer.style.height = Config.CHART.LINE_CHART_HEIGHT;
+        return canvasContainer;
+    }
+
+    /**
      * Crée le conteneur principal pour le chart
      * @param {HTMLElement} homeBlock - Élément homeBlock parent
      * @returns {HTMLElement} Conteneur principal créé
@@ -88,9 +98,14 @@ export class LineBarChart extends BaseChartData {
                 ? 'Dépenses' : `Depense sur ${monthCount} mois`;
         }
 
+        // Conteneur de hauteur fixe : sans lui, Chart.js et le CSS du canvas
+        // (height: 100%) se renvoient la hauteur à l'infini, le graphique oscille
+        // d'un pixel et se redessine en continu (bug B23).
+        const canvasContainer = LineBarChart.createCanvasContainer();
+        container.appendChild(canvasContainer);
         const canvas = InjectedStyles.createCanvas();
         canvas.classList.add("canvasDiv");
-        container.appendChild(canvas);
+        canvasContainer.appendChild(canvas);
 
         this.chartInstance = new Chart(canvas.getContext('2d'), chartJsConfig);
         if (this.settingsInstance) {
@@ -192,6 +207,7 @@ export class LineBarChart extends BaseChartData {
 
         const commonConfig = {
             responsive: true,
+            maintainAspectRatio: false, // hauteur donnée par le conteneur (bug B23)
             plugins: {
                 annotation: {
                     annotations: {
@@ -246,8 +262,11 @@ export class LineBarChart extends BaseChartData {
                     },
                     grid: {
                         color: "#e9f5f9",
-                        borderColor: "#d3eaf2",
                         tickColor: "#e9f5f9"
+                    },
+                    // Chart.js 4 : la couleur de l'axe est dans `border` (et non plus `grid.borderColor`)
+                    border: {
+                        color: "#d3eaf2"
                     },
                     display: true,
                     stacked: true,
@@ -261,8 +280,11 @@ export class LineBarChart extends BaseChartData {
                     stacked: cummulative,
                     grid: {
                         color: "#e9f5f9",
-                        borderColor: "#d3eaf2",
                         tickColor: "#e9f5f9"
+                    },
+                    // Chart.js 4 : la couleur de l'axe est dans `border` (et non plus `grid.borderColor`)
+                    border: {
+                        color: "#d3eaf2"
                     },
                     ticks: {
                         callback: (value) => (Config.isBlurry() ? '' : value)

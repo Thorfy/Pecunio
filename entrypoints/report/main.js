@@ -1,4 +1,5 @@
 import { Chart } from '../../js/lib/chart.js';
+import html2pdf from 'html2pdf.js';
 import { PdfExporter } from '../../js/report/PdfExporter.js';
 import { ReportChartDataBuilder } from '../../js/report/ReportChartDataBuilder.js';
 import { ReportFilters } from '../../js/report/ReportFilters.js';
@@ -361,7 +362,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
             if (bar) bar.style.display = 'flex';
         };
 
-        const exporter = new PdfExporter(container);
+        const exporter = new PdfExporter(container, { html2pdf });
         const chartInstances = getChartInstancesForPdf();
 
         exporter.exportToPdf(chartInstances)

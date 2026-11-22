@@ -103,7 +103,7 @@ const setup = ({ href = 'https://app2.bankin.com/accounts', dom = ACCOUNTS_DOM, 
     const createDataManager = vi.fn(() => dataManager);
     const evt = new Evt();
     const controller = new PageController({ settings, cacheStore, evt, createDataManager, win, charts: charts.classes });
-    return { controller, win, charts, settings, dataManager, createDataManager, evt };
+    return { controller, win, charts, settings, cacheStore, dataManager, createDataManager, evt };
 };
 
 /** Simule une navigation de Bankin (SPA). */
@@ -175,8 +175,8 @@ describe('PageController — chargement des données (B12)', () => {
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         const banner = document.getElementById(StatusBanner.ID);
         expect(banner.getAttribute('role')).toBe('alert');
-        expect(banner.textContent).toContain('session non reconnue');
-        banner.querySelector('.pecunio-status-action').click();
+        expect(banner.shadowRoot.textContent).toContain('session non reconnue');
+        banner.shadowRoot.querySelector('.pecunio-status-action').click();
         expect(win.location.reload).toHaveBeenCalled();
     });
 
@@ -185,7 +185,7 @@ describe('PageController — chargement des données (B12)', () => {
         await controller.start();
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         await controller.whenIdle();
-        expect(document.getElementById(StatusBanner.ID).textContent).toContain('dernières données enregistrées');
+        expect(document.getElementById(StatusBanner.ID).shadowRoot.textContent).toContain('dernières données enregistrées');
         expect(kinds(charts.created.slice(-2))).toEqual(['LineBarChart', 'BudgetChart']);
         expect(controller.charts).toHaveLength(2);
     });
@@ -406,5 +406,65 @@ describe('PageController — réglages modifiés ailleurs (popup)', () => {
         await controller._onStorageChanged({ endDate: {} }, 'local');
         expect(console.warn).toHaveBeenCalled();
         expect(controller.buildCount).toBe(1);
+    });
+});
+
+describe('PageController — reconstructions inutiles (B24)', () => {
+    test('B24 — données reçues identiques à celles affichées : graphiques conservés', async () => {
+        const { controller, evt, charts } = setup();
+        await controller.start();
+        expect(controller.buildCount).toBe(1);
+        evt.dispatch('data_loaded');
+        await controller.whenIdle();
+        expect(controller.buildCount).toBe(1);
+        expect(charts.created).toHaveLength(2);
+        expect(charts.created[0].destroy).not.toHaveBeenCalled();
+    });
+
+    test('données reçues différentes : graphiques reconstruits', async () => {
+        const { controller, evt, cacheStore } = setup();
+        await controller.start();
+        const updated = [...sampleTransactions(), { ...sampleTransactions()[0], id: 999, amount: -42 }];
+        cacheStore.get = (type) => ({ transactions: updated, categories: CATEGORIES })[type] ?? null;
+        evt.dispatch('data_loaded');
+        await controller.whenIdle();
+        expect(controller.buildCount).toBe(2);
+    });
+
+    test('graphiques retirés par Bankin entre-temps : reconstruits même si les données sont identiques', async () => {
+        const { controller, evt } = setup();
+        await controller.start();
+        document.querySelector('#budgetChartBlock').remove();
+        evt.dispatch('data_loaded');
+        await controller.whenIdle();
+        expect(controller.buildCount).toBe(2);
+    });
+
+    test('réglages modifiés : reconstruction même si les données sont identiques', async () => {
+        const { controller, settings } = setup();
+        await controller.start();
+        settings.getAllSettings = () => ({ accountsSelected: [101], startDate: '2024-02-01' });
+        await controller._onStorageChanged({ startDate: {} }, 'local');
+        expect(controller.buildCount).toBe(2);
+    });
+
+    test('une demande forcée reçue pendant une construction n\'est pas perdue', async () => {
+        const { controller } = setup();
+        await controller.start();
+        const running = controller.requestBuild(); // forcée
+        controller.requestBuild({ onlyIfChanged: true });
+        controller.requestBuild(); // forcée, pendant la construction en cours
+        await running;
+        expect(controller.buildCount).toBe(3);
+    });
+
+    test('seules des demandes « si changement » pendant une construction : rien de plus', async () => {
+        const { controller } = setup();
+        await controller.start();
+        const running = controller.requestBuild();
+        controller.requestBuild({ onlyIfChanged: true });
+        controller.requestBuild({ onlyIfChanged: true });
+        await running;
+        expect(controller.buildCount).toBe(2);
     });
 });
