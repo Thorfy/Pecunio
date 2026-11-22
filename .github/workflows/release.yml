@@ -7,7 +7,14 @@ name: Release Chrome extension
 #   Google), puis release GitHub publiée avec les notes du changelog.
 #   Si un contrôle échoue, rien n'est envoyé ni publié.
 # - Lancement manuel (« Run workflow ») : répétition générale, mêmes contrôles
-#   et zip en artefact, sans release GitHub ni envoi sur le store.
+#   et zip en artefact, et vérification en lecture seule de l'accès au Chrome
+#   Web Store ; ni envoi, ni publication, ni release GitHub.
+#
+# Accès au Chrome Web Store sans clé ni jeton à renouveler, comme ProperTease :
+# fédération d'identité GitHub → Google Cloud (compte de service lié au store),
+# puis appels directs à l'API v2 du store. Configuration (docs/RELEASE.md) :
+#   variables : GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT ;
+#   secret : CI_GOOGLE_PUBLISHER_ID (identifiant d'éditeur du compte développeur).
 on:
   push:
     tags:
@@ -32,23 +39,20 @@ jobs:
 
       - run: npm ci
 
-      # Avant les contrôles (plusieurs minutes) : un secret absent ferait échouer
-      # l'envoi au store seulement après eux
-      - name: Les secrets du Chrome Web Store sont configurés
-        if: github.event_name == 'push'
+      # Avant les contrôles (plusieurs minutes) : une configuration absente ferait
+      # échouer l'envoi au store seulement après eux
+      - name: L'accès au Chrome Web Store est configuré
         env:
-          CLIENT_ID: ${{ secrets.CI_GOOGLE_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CI_GOOGLE_CLIENT_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.CI_GOOGLE_REFRESH_TOKEN }}
           PUBLISHER_ID: ${{ secrets.CI_GOOGLE_PUBLISHER_ID }}
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
         run: |
           missing=""
-          [ -n "$CLIENT_ID" ] || missing="$missing CI_GOOGLE_CLIENT_ID"
-          [ -n "$CLIENT_SECRET" ] || missing="$missing CI_GOOGLE_CLIENT_SECRET"
-          [ -n "$REFRESH_TOKEN" ] || missing="$missing CI_GOOGLE_REFRESH_TOKEN"
-          [ -n "$PUBLISHER_ID" ] || missing="$missing CI_GOOGLE_PUBLISHER_ID"
+          [ -n "$PUBLISHER_ID" ] || missing="$missing secret:CI_GOOGLE_PUBLISHER_ID"
+          [ -n "$WIF_PROVIDER" ] || missing="$missing variable:GCP_WIF_PROVIDER"
+          [ -n "$SERVICE_ACCOUNT" ] || missing="$missing variable:GCP_SERVICE_ACCOUNT"
           if [ -n "$missing" ]; then
-            echo "::error::Secrets manquants (Settings → Secrets → Actions) :$missing"
+            echo "::error::Configuration manquante (Settings → Secrets and variables → Actions) :$missing"
             exit 1
           fi
 
@@ -137,39 +141,79 @@ jobs:
             --title "Pecunio $GITHUB_REF_NAME" \
             --notes-file release-notes.md
 
-  # Référence API :
-  # * https://developer.chrome.com/docs/webstore/using_webstore_api/
-  # * https://github.com/fregante/chrome-webstore-upload/blob/main/How%20to%20generate%20Google%20API%20keys.md
+  # Référence API v2 : https://developer.chrome.com/docs/webstore/api
+  # Fédération d'identité : https://github.com/google-github-actions/auth
   upload:
     name: Publier sur le Chrome Web Store
     runs-on: ubuntu-latest
-    # Seulement si tous les contrôles du job build sont passés
+    # Seulement si tous les contrôles du job build sont passés. Lancement manuel :
+    # vérification de l'accès seulement (lecture), rien n'est envoyé.
     needs: build
-    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write   # jeton GitHub échangé contre un jeton Google, sans clé
     env:
-      EXTENSION_ID: "jeomdpldhaigmdbjobamliaipijhmiie"
-      # chrome-webstore-upload-cli 4 : identifiants en variables d'environnement
-      # (les options --client-id… ont été retirées), API v2 du store, qui exige
-      # l'identifiant d'éditeur du compte développeur
-      CLIENT_ID: ${{ secrets.CI_GOOGLE_CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CI_GOOGLE_CLIENT_SECRET }}
-      REFRESH_TOKEN: ${{ secrets.CI_GOOGLE_REFRESH_TOKEN }}
-      PUBLISHER_ID: ${{ secrets.CI_GOOGLE_PUBLISHER_ID }}
+      ITEM: publishers/${{ secrets.CI_GOOGLE_PUBLISHER_ID }}/items/jeomdpldhaigmdbjobamliaipijhmiie
+      API: https://chromewebstore.googleapis.com
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - uses: actions/download-artifact@v4
+        if: github.event_name == 'push'
         with:
           name: chrome-extension
 
-      # Version fixée : la 4.0 a changé ses options sans prévenir (échec du tag v0.6.0)
-      - name: Install webstore cli
-        run: npm install -g chrome-webstore-upload-cli@4.0.2
+      - name: Authentification Google (fédération d'identité)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+
+      # Lecture seule : l'extension est accessible avec ce compte de service
+      - name: Accès à la fiche de l'extension
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$TOKEN"
+          status=$(curl -sS "$API/v2/$ITEM:fetchStatus" -H "Authorization: Bearer $TOKEN")
+          if echo "$status" | jq -e '.error' >/dev/null; then
+            echo "$status" | jq '.error | {code, status, message}'
+            echo "::error::Fiche inaccessible : compte de service non ajouté au tableau de bord du store, ou identifiant d'éditeur erroné (docs/RELEASE.md)."
+            exit 1
+          fi
+          echo "Fiche accessible."
+          echo "$status" | jq '{lastAsyncUploadState, publishedItemRevisionStatus: (.publishedItemRevisionStatus.state // null)}' || true
 
       # Publication automatique dès que la CI passe (décision du 22/11/2026) :
       # la version est soumise à l'examen de Google, puis publiée par le store.
-      # Sans commande, l'outil envoie puis publie
-      - name: Envoi et publication
-        run: chrome-webstore-upload --source pecunio-*-chrome.zip --extension-id "$EXTENSION_ID"
+      - name: Envoi et soumission à l'examen
+        if: github.event_name == 'push'
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$TOKEN"
+          zip=$(ls pecunio-*-chrome.zip)
+          echo "Envoi de $zip…"
+          up=$(curl -sS -X POST "$API/upload/v2/$ITEM:upload" -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/zip" --data-binary "@$zip")
+          echo "$up"
+          state=$(echo "$up" | jq -r '.uploadState // empty')
+          for i in $(seq 1 30); do
+            [ "$state" = "IN_PROGRESS" ] || break
+            sleep 10
+            st=$(curl -sS "$API/v2/$ITEM:fetchStatus" -H "Authorization: Bearer $TOKEN")
+            state=$(echo "$st" | jq -r '.. | .uploadState? // empty' | head -1)
+            echo "… $state"
+          done
+          if [ "$state" != "SUCCEEDED" ]; then echo "::error::Envoi refusé ($state) : voir la réponse ci-dessus."; exit 1; fi
+          pub=$(curl -sS -X POST "$API/v2/$ITEM:publish" -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" -d '{"publishType":"DEFAULT_PUBLISH","blockOnWarnings":true}')
+          echo "$pub"
+          if echo "$pub" | jq -e '.error' >/dev/null; then echo "::error::Soumission refusée : voir la réponse ci-dessus."; exit 1; fi
+          {
+            echo "### Pecunio ${GITHUB_REF_NAME} soumis au Chrome Web Store"
+            echo "État : \`$(echo "$pub" | jq -r '.state // "?"')\`. Publication après l'examen de Google."
+          } >> "$GITHUB_STEP_SUMMARY"

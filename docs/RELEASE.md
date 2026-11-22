@@ -18,7 +18,7 @@ contrôle échoue, rien n'est envoyé (décision du 22/11/2026,
 4. Ouvrir la PR ; la CI (lint, types, tests sous 3 fuseaux, build, scénarios e2e) doit être verte. Merger.
 5. Recette sur le vrai Bankin avec la version de `main` (`npm run build`, extension non empaquetée `.output/chrome-mv3`) : §7 de [AUDIT-MODERNISATION.md](AUDIT-MODERNISATION.md). Les tests utilisent un Bankin simulé : seule cette recette vérifie la version face au vrai site.
 
-Répétition générale possible à tout moment : onglet **Actions** → « Release Chrome extension » → **Run workflow** sur `main`. Mêmes contrôles et zip en artefact, sans release GitHub ni envoi sur le store.
+Répétition générale possible à tout moment : onglet **Actions** → « Release Chrome extension » → **Run workflow** sur `main`. Mêmes contrôles et zip en artefact, et vérification de l'accès au store en lecture seule ; ni envoi, ni release GitHub.
 
 ## 2. Tagger (publie la version)
 
@@ -35,7 +35,19 @@ Le workflow `.github/workflows/release.yml` :
 3. envoie le zip sur le Chrome Web Store **et le publie** (`--auto-publish`) : la version part à l'examen de Google, puis est publiée automatiquement ;
 4. publie la release GitHub avec le zip, les notes du changelog et la liste des PR générée par GitHub.
 
-Secrets nécessaires (Settings → Secrets → Actions) : `CI_GOOGLE_CLIENT_ID`, `CI_GOOGLE_CLIENT_SECRET`, `CI_GOOGLE_REFRESH_TOKEN` (voir les liens en tête du job `upload`) et `CI_GOOGLE_PUBLISHER_ID`, l'identifiant d'éditeur du compte développeur (il figure dans l'adresse du tableau de bord du Chrome Web Store), exigé par l'API v2 du store depuis `chrome-webstore-upload-cli` 4. Le workflow vérifie leur présence avant les contrôles.
+Accès au Chrome Web Store **sans clé ni jeton à renouveler**, comme ProperTease : GitHub Actions s'authentifie auprès de Google par fédération d'identité (le compte de service `cws-publisher@resonant-petal-394515.iam.gserviceaccount.com`, lié au store, accepte les jetons émis pour ce dépôt), puis le workflow appelle l'API v2 du store. Configuration (Settings → Secrets and variables → Actions), vérifiée en tête du workflow :
+- variables `GCP_WIF_PROVIDER` (`projects/867456897646/locations/global/workloadIdentityPools/github/providers/pecunio`) et `GCP_SERVICE_ACCOUNT` (l'adresse du compte de service) ;
+- secret `CI_GOOGLE_PUBLISHER_ID` : identifiant d'éditeur du compte développeur (dans l'adresse du tableau de bord du store).
+
+Mise en place côté Google (une fois, dans Google Cloud Shell, avec le compte du Chrome Web Store) : un fournisseur d'identité réservé à ce dépôt, et le droit pour ce dépôt d'emprunter le compte de service.
+
+```bash
+gcloud config set project resonant-petal-394515
+gcloud iam workload-identity-pools providers create-oidc pecunio --location=global --workload-identity-pool=github   --issuer-uri=https://token.actions.githubusercontent.com   --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"   --attribute-condition="assertion.repository=='Thorfy/Pecunio'"
+gcloud iam service-accounts add-iam-policy-binding cws-publisher@resonant-petal-394515.iam.gserviceaccount.com   --role=roles/iam.workloadIdentityUser   --member="principalSet://iam.googleapis.com/projects/867456897646/locations/global/workloadIdentityPools/github/attribute.repository/Thorfy/Pecunio"
+```
+
+Si Pecunio dépend d'un autre compte développeur que ProperTease, ajouter aussi l'adresse du compte de service dans la section **Compte** de son tableau de bord. Pour vérifier : onglet **Actions** → « Release Chrome extension » → **Run workflow** : l'étape « Accès à la fiche de l'extension » doit afficher « Fiche accessible » (lecture seule, rien n'est envoyé).
 
 ## 3. Après la publication
 
