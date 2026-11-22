@@ -395,6 +395,8 @@ export class PageController {
             return false;
         }
 
+        // Changement de mois : cartes de la construction précédente retirées
+        this._removeWrappers(['.pecunio-pace-wrapper']);
         this._destroyCharts();
         const data = this._chartData();
         const rowContainer = ExpenseTypeChart.prepareContainer(categoryBlock);
@@ -428,6 +430,8 @@ export class PageController {
             Logger.debug('Page de détail : mois, bloc ou catégorie introuvable');
             return false;
         }
+        // Changement de mois ou de catégorie : historique précédent retiré
+        this._removeWrappers(['.pecunio-history-wrapper']);
         this._destroyCharts();
         const data = this._chartData();
         const historyChart = new HistoryChart(data.transactions, data.categories, { categoryId, monthParams }, this.settings);

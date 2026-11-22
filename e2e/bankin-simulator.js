@@ -120,7 +120,7 @@ function renderPage(pathname) {
         return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bankin' - Connexion</title></head>
 <body><form id="signin"><input type="email" placeholder="Votre email"><button type="submit">Me connecter</button></form></body></html>`;
     }
-    const bodies = Object.fromEntries(['/accounts', '/categories', '/categories/2'].map((p) => [p, bodyFor(p)]));
+    const bodies = Object.fromEntries(['/accounts', '/categories', '/categories/2', '/categories/159'].map((p) => [p, bodyFor(p)]));
     return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bankin' (simulé)</title><style>${extraCss}</style></head>
 <body><div id="root" class="content h100"><section class="cntr mw100 w100 dashboard dtb h100"><section class="dtc vat h100">
 <table class="w100 h100"><tbody id="bankin-content">${bodyFor(pathname)}</tbody></table>

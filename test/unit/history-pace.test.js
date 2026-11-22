@@ -121,6 +121,11 @@ describe('Phrases de synthèse', () => {
             .toBe('Octobre 2026 face à la médiane des 12 mois précédents : sans écart');
         expect(CategoryHistoryChart.summary({ totals: [2600], median: 0, isIncome: true }, 'Octobre 2026', false).replace(/[\u202f\u00a0]/g, ' '))
             .toBe('Octobre 2026 : 2 600,00 € reçus');
+        // Mois en cours : pas d'écart trompeur avec un mois complet
+        const partial = { totals: [800, 76], median: 800, isIncome: false };
+        expect(CategoryHistoryChart.summary(partial, 'Novembre 2026', false, true).replace(/[\u202f\u00a0]/g, ' '))
+            .toBe('Novembre 2026 (en cours) : 76,00 € dépensés à ce jour ; médiane des 12 mois précédents : 800,00 €');
+        expect(CategoryHistoryChart.summary(partial, 'Novembre 2026', true, true)).toBe('Novembre 2026 (en cours)');
         expect(CategoryHistoryChart.title({ name: 'Logement' }, false)).toBe('Logement sur 12 mois');
         // Nuances des sous-catégories : rgb(…) de Bankin ou violet de Pecunio en hexadécimal
         expect(CategoryHistoryChart.withAlpha('rgb(104, 125, 0)', 0.5)).toBe('rgba(104, 125, 0, 0.5)');

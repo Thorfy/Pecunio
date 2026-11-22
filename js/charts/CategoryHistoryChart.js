@@ -30,6 +30,7 @@ export class CategoryHistoryChart extends BaseChartData {
         this.monthParams = monthParams;
         this.chartInstance = null;
         this.history = null;
+        this.now = new Date();
     }
 
     /** Mois affiché par Bankin : { year, month }, ou null. */
@@ -72,11 +73,18 @@ export class CategoryHistoryChart extends BaseChartData {
      * @param {ReturnType<typeof buildCategoryHistory>} history
      * @param {string} monthLabel
      * @param {boolean} hideAmounts
+     * @param {boolean} [inProgress] mois en cours : pas d'écart avec un mois complet
      */
-    static summary(history, monthLabel, hideAmounts) {
+    static summary(history, monthLabel, hideAmounts, inProgress = false) {
         const current = history.totals.at(-1);
-        const delta = history.median > 0 ? deltaText((current - history.median) / history.median) : null;
         const verb = history.isIncome ? 'reçus' : 'dépensés';
+        if (inProgress) {
+            const label = `${monthLabel} (en cours)`;
+            if (hideAmounts) return label;
+            const base = `${label} : ${formatEuros(current)} ${verb} à ce jour`;
+            return history.median > 0 ? `${base} ; médiane des 12 mois précédents : ${formatEuros(history.median)}` : base;
+        }
+        const delta = history.median > 0 ? deltaText((current - history.median) / history.median) : null;
         if (hideAmounts) return delta ? `${monthLabel} face à la médiane des 12 mois précédents : ${delta}` : monthLabel;
         const base = `${monthLabel} : ${formatEuros(current)} ${verb}`;
         return delta
@@ -99,7 +107,8 @@ export class CategoryHistoryChart extends BaseChartData {
         wrapper.appendChild(InjectedStyles.createTitle(CategoryHistoryChart.title(this.category, history.isIncome)));
         const summary = document.createElement('p');
         summary.className = 'pecunio-budget-summary';
-        summary.textContent = CategoryHistoryChart.summary(history, monthLabel, Config.isBlurry());
+        const inProgress = month.year === this.now.getFullYear() && month.month === this.now.getMonth() + 1;
+        summary.textContent = CategoryHistoryChart.summary(history, monthLabel, Config.isBlurry(), inProgress);
         wrapper.appendChild(summary);
         const canvasContainer = InjectedStyles.createCanvasContainer();
         canvasContainer.style.height = '300px';

@@ -226,6 +226,10 @@ describe('PageController — construction des graphiques', () => {
         expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'SankeyChart', 'MonthPaceChart']);
         expect(charts.created[0].args[2]).toEqual(['septembre', '2026']);
         expect(charts.created[2].args[2]).toEqual(['septembre', '2026']);
+        // Reconstruction (changement de mois) : une seule carte de rythme
+        await controller.requestBuild();
+        expect(document.querySelectorAll('.pecunio-pace-wrapper')).toHaveLength(1);
+        expect(charts.created[2].destroy).toHaveBeenCalled();
     });
 
     test("page de détail d'une catégorie : historique de la catégorie de l'adresse", async () => {
@@ -233,6 +237,18 @@ describe('PageController — construction des graphiques', () => {
         await controller.requestBuild();
         expect(kinds(charts.created)).toEqual(['CategoryHistoryChart']);
         expect(charts.created[0].args[2]).toEqual({ categoryId: 159, monthParams: ['septembre', '2026'] });
+    });
+
+    test("détail : changement de mois ou de catégorie, un seul historique à jour", async () => {
+        const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories/161', dom: CATEGORIES_DOM });
+        await controller.start();
+        await controller.requestBuild();
+        expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(1);
+        navigate(win, 'https://app2.bankin.com/categories/2');
+        await controller.whenIdle();
+        expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(1);
+        expect(charts.created.at(-1).args[2].categoryId).toBe(2);
+        expect(charts.created.slice(0, -1).every((c) => c.destroy.mock.calls.length >= 1)).toBe(true);
     });
 
     test('B16 — chaque reconstruction détruit les graphiques précédents', async () => {

@@ -133,6 +133,7 @@ test.describe('Page Catégories', () => {
         await expect(page.locator(`${SANKEY_CHART}:not([data-avant])`)).toBeVisible();
         await expect(page.locator(SANKEY_CHART)).toHaveCount(1);
         await expect(page.locator(EXPENSE_TYPE_CHART)).toHaveCount(1);
+        await expect(page.locator('.pecunio-pace-wrapper')).toHaveCount(1);
         expect(consoleErrors).toEqual([]);
     });
 
@@ -148,6 +149,11 @@ test.describe('Page Catégories', () => {
         // Onglet Revenus : historique des revenus sur 12 mois (lot UX-3a)
         await expect(page.locator('.pecunio-history-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-history-wrapper')).toContainText('Revenus sur 12 mois');
+
+        // Autre catégorie : l'historique est remplacé, pas ajouté
+        await page.evaluate(() => window.__bankinNavigate('/categories/159'));
+        await expect(page.locator('.pecunio-history-wrapper')).toContainText('Logement sur 12 mois');
+        await expect(page.locator('.pecunio-history-wrapper')).toHaveCount(1);
 
         // Retour sur Dépenses : les graphiques reviennent
         await page.evaluate(() => window.__bankinNavigate('/categories'));
