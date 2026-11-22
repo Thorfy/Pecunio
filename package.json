@@ -24,6 +24,7 @@
     "test:bugs": "vitest run --mode bugs",
     "test:e2e": "wxt build && playwright test",
     "snapshot:snippet": "node scripts/print-snapshot-snippet.mjs",
+    "screens": "wxt build && node scripts/capture-readme-screens.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
