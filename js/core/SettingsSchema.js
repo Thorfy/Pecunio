@@ -22,6 +22,9 @@
  * @property {boolean} [isBlurry] montants masqués
  * @property {'bar' | 'line'} [chartType] type du graphique temporel
  * @property {string[]} [hiddenCategories] catégories masquées dans les graphiques
+ * @property {'6m' | '12m' | '24m' | 'all'} [chartRange] période du graphique temporel (page Comptes)
+ * @property {boolean} [chartDetailed] graphique temporel : toutes les catégories (sinon les 5 principales + « Autres »)
+ * @property {'current' | 'last' | 'year' | 'custom'} [budgetPreset] préréglage de la comparaison du budget
  */
 
 const isDateOnly = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -45,6 +48,11 @@ export const SETTING_DEFINITIONS = {
         default: [],
         validate: (v) => Array.isArray(v) && v.every((name) => typeof name === 'string'),
     },
+    // Préférences d'affichage de la page Comptes (lot UX-2a) : valeurs par
+    // défaut utilisées tant qu'elles ne sont pas enregistrées, pas de migration
+    chartRange: { default: '12m', validate: (v) => typeof v === 'string' && ['6m', '12m', '24m', 'all'].includes(v) },
+    chartDetailed: { default: false, validate: isBoolean },
+    budgetPreset: { default: 'last', validate: (v) => typeof v === 'string' && ['current', 'last', 'year', 'custom'].includes(v) },
 };
 
 /** Noms de toutes les préférences. */

@@ -50,6 +50,33 @@ test.describe('Page Comptes', () => {
         expect(consoleErrors).toEqual([]);
     });
 
+    test('1b — période, vue détaillée et préréglages du budget (UX-2a)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        const range = (label) => page.locator('.pecunio-range-selector button', { hasText: label });
+
+        // 12 mois par défaut ; « 6 mois » enregistré et graphique redessiné
+        await expect(range('12 mois')).toHaveAttribute('aria-pressed', 'true');
+        await range('6 mois').click();
+        await expect(range('6 mois')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('.pecunio-detail-toggle')).toHaveText('Toutes les catégories');
+        await page.locator('.pecunio-detail-toggle').click();
+        await expect(page.locator('.pecunio-detail-toggle')).toHaveText('Vue simplifiée');
+        await expect(range('6 mois')).toHaveAttribute('aria-pressed', 'true');
+
+        // Comparaison du budget : « Mois dernier » par défaut, puis « Cette année »
+        const preset = (label) => page.locator('.pecunio-budget-presets button', { hasText: label });
+        await expect(preset('Mois dernier')).toHaveAttribute('aria-pressed', 'true');
+        await preset('Cette année').click();
+        await expect(preset('Cette année')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('.pecunio-budget-custom')).toBeHidden();
+        await preset('Personnaliser').click();
+        await expect(page.locator('.pecunio-budget-custom')).toBeVisible();
+        await expect(page.locator(BUDGET_CHART)).toBeVisible();
+        expect(consoleErrors).toEqual([]);
+    });
+
     test('9 — masquage des montants : flou appliqué puis retiré', async ({ context, bankin, consoleErrors }) => {
         const page = await context.newPage();
         await page.goto(bankinUrl('/accounts'));

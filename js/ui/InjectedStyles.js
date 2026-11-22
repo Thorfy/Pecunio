@@ -117,14 +117,73 @@ export class InjectedStyles {
 
             .pecunio-chart-toolbar {
                 display: flex;
+                flex-wrap: wrap;
+                align-items: center;
                 justify-content: flex-start;
+                gap: 8px;
                 margin-bottom: 8px;
+            }
+
+            /* Boutons groupés (périodes, préréglages), un seul actif (aria-pressed) */
+            .pecunio-segmented {
+                display: inline-flex;
+                border: 1px solid ${THEME.border};
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+            }
+
+            .pecunio-segmented button {
+                width: auto !important;
+                margin: 0 !important;
+                padding: 6px 12px;
+                border: none;
+                border-right: 1px solid ${THEME.border};
+                background-color: #fff !important;
+                color: ${THEME.textMuted};
+                font: 500 13px ${THEME.fontFamily};
+                cursor: pointer;
+            }
+
+            .pecunio-segmented button:last-child {
+                border-right: none;
+            }
+
+            .pecunio-segmented button[aria-pressed="true"] {
+                background-color: ${THEME.accent} !important;
+                color: #fff;
+            }
+
+            .pecunio-segmented button:focus-visible {
+                outline: 2px solid ${THEME.accent};
+                outline-offset: -2px;
+            }
+
+            .pecunio-budget-custom[hidden] {
+                display: none !important;
+            }
+
+            .pecunio-budget-summary {
+                margin: 4px 0 8px;
+                font-size: 13px;
+                color: ${THEME.textMuted};
+            }
+
+            .pecunio-chart-toolbar .pecunio-detail-toggle {
+                width: auto;
+                margin: 0;
+                padding: 6px 12px;
+                background-color: #f8f9fa !important;
+                color: #495057;
+                font-family: inherit;
+                line-height: 1.4;
             }
 
             /* Bankin stylise tous les <button> (pleine largeur, marges, fond violet en !important) */
             .pecunio-chart-toolbar .pecunio-chart-type-toggle {
                 width: auto;
-                margin: 0;
+                /* À droite de la barre d'outils */
+                margin: 0 0 0 auto;
                 padding: 6px 12px;
                 background-color: #f8f9fa !important;
                 color: #495057;

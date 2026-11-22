@@ -20,6 +20,9 @@ describe('SettingsSchema — schéma', () => {
             isBlurry: false,
             chartType: 'bar',
             hiddenCategories: [],
+            chartRange: '12m',
+            chartDetailed: false,
+            budgetPreset: 'last',
         });
         expect(Object.keys(defaultSettings())).toEqual(SETTING_NAMES);
     });
@@ -45,6 +48,11 @@ describe('SettingsSchema — schéma', () => {
         ['chartType', 'pie', false],
         ['hiddenCategories', ['Logement'], true],
         ['hiddenCategories', [1], false],
+        ['chartRange', '24m', true],
+        ['chartRange', '36m', false],
+        ['chartDetailed', true, true],
+        ['budgetPreset', 'year', true],
+        ['budgetPreset', 'semaine', false],
         ['accounts', [], false], // réglage supprimé (D14)
         ['inconnu', true, false],
     ])('%s = %j → valide : %s', (name, value, valid) => {

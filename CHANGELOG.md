@@ -10,6 +10,8 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 ## [Non publié]
 
 ### Ajouté
+- Graphique des dépenses : période au choix (6, 12, 24 mois ou tout), 12 mois par défaut, ligne du solde de chaque mois, vue simplifiée (5 catégories principales + « Autres ») ou toutes les catégories.
+- Comparaison du budget repensée : « Mois dernier », « Ce mois-ci » ou « Cette année » en un clic, dépenses triées en barres horizontales, total et écart affichés ; « Personnaliser » pour d'autres périodes.
 - Interface des graphiques entièrement en français : mois des axes (« janv. 2026 »), montants au format `-1 234,50 €`, libellés de la comparaison budget (« Tous les mois », « Réel févr. 2024 », « Médiane 2026 »).
 - Bouton « Afficher en courbes / en barres » au-dessus du graphique temporel, utilisable au clavier et par les lecteurs d'écran (remplace « Toggle chart type » dessiné dans le graphique).
 - Bandeau d'état dans la page Bankin : chargement des données en cours, erreur de session ou de réseau avec bouton « Recharger ».

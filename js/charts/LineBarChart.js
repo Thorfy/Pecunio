@@ -1,17 +1,29 @@
 import { BANKIN_SELECTORS } from '../bankin/BankinPage.js';
 import { getHiddenCategories, setCategoryHidden } from '../core/CategoryVisibility.js';
 import { Config } from '../core/Config.js';
-import { DateRange } from '../core/DateRange.js';
+import { defaultSettings } from '../core/SettingsSchema.js';
 import { Chart, DATE_LOCALE } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { THEME } from '../ui/theme.js';
 import { ColorParser } from '../utils/ColorParser.js';
 import { formatEuros, formatNumber } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
+import { BALANCE_LABEL, RANGE_LABELS, buildTimeline } from './timeline.js';
 
+/** Couleur de « Autres dépenses ». */
+const OTHERS_COLOR = 'rgb(173, 184, 197)';
+
+/**
+ * Graphique temporel de la page Comptes : revenus et dépenses par mois et par
+ * catégorie, avec le solde de chaque mois (lot UX-2a).
+ * Données : js/charts/timeline.js ; préférences : chartRange, chartDetailed, chartType.
+ */
 export class LineBarChart extends BaseChartData {
     constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
         super(transactions, categories, accountsSelected, settings, settingsInstance);
         this.chartInstance = null;
+        /** Dernières données calculées (mois, séries, solde). */
+        this.timeline = null;
     }
 
     // Le bouton ↻ de Bankin est géré par PageController (un seul écouteur, bug B4).
@@ -36,20 +48,81 @@ export class LineBarChart extends BaseChartData {
         return button;
     }
 
-    /** Enregistre l'autre type de graphique ; PageController redessine le graphique. */
-    async toggleChartType() {
-        const current = this.chartInstance?.config.type === 'line' ? 'line' : 'bar';
-        const next = current === 'line' ? 'bar' : 'line';
+    /**
+     * Boutons de période (6 mois, 12 mois, 24 mois, Tout), un seul actif.
+     * @param {string} current période affichée
+     * @param {(range: string) => void} onSelect
+     * @returns {HTMLElement}
+     */
+    static createRangeSelector(current, onSelect) {
+        const group = document.createElement('div');
+        group.className = 'pecunio-segmented pecunio-range-selector';
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', 'Période affichée');
+        for (const [range, label] of Object.entries(RANGE_LABELS)) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+            button.dataset.range = range;
+            button.setAttribute('aria-pressed', String(range === current));
+            button.addEventListener('click', () => {
+                if (range !== current) onSelect(range);
+            });
+            group.appendChild(button);
+        }
+        return group;
+    }
+
+    /** Texte du bouton de détail, selon la vue affichée. */
+    static detailToggleLabel(detailed) {
+        return detailed ? 'Vue simplifiée' : 'Toutes les catégories';
+    }
+
+    /**
+     * Bouton qui bascule entre la vue simplifiée et toutes les catégories.
+     * @param {boolean} detailed vue affichée
+     * @param {() => void} onToggle
+     */
+    static createDetailToggle(detailed, onToggle) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pecunio-button pecunio-button-secondary pecunio-detail-toggle';
+        button.textContent = LineBarChart.detailToggleLabel(detailed);
+        button.addEventListener('click', onToggle);
+        return button;
+    }
+
+    /**
+     * Préférence d'affichage (valeur par défaut du schéma si absente).
+     * @param {'chartType' | 'chartRange' | 'chartDetailed'} key
+     */
+    _option(key) {
+        const value = this.settingsInstance?.getSetting(key);
+        return value ?? defaultSettings()[key];
+    }
+
+    /**
+     * Enregistre une préférence d'affichage ; PageController redessine le graphique.
+     * @param {'chartType' | 'chartRange' | 'chartDetailed'} key
+     * @param {unknown} value
+     */
+    async _saveOption(key, value) {
         try {
             if (this.settingsInstance) {
-                await this.settingsInstance.setSetting('chartType', next);
+                await this.settingsInstance.setSetting(key, value);
             } else {
-                await chrome.storage.local.set({ chartType: next });
+                await chrome.storage.local.set({ [key]: value });
             }
             window.dispatchEvent(new CustomEvent('pecunio_chart_type_changed'));
         } catch (error) {
-            console.error('[LineBarChart] Changement de type impossible :', error);
+            console.error(`[LineBarChart] Préférence « ${key} » non enregistrée :`, error);
         }
+    }
+
+    /** Enregistre l'autre type de graphique (barres / courbes). */
+    async toggleChartType() {
+        const current = this.chartInstance?.config.type === 'line' ? 'line' : 'bar';
+        await this._saveOption('chartType', current === 'line' ? 'bar' : 'line');
     }
 
     /**
@@ -101,6 +174,11 @@ export class LineBarChart extends BaseChartData {
         return container;
     }
 
+    /** Titre du graphique, selon la période. */
+    static title(range) {
+        return range === 'all' ? 'Revenus et dépenses par mois' : `Revenus et dépenses — ${RANGE_LABELS[range]}`;
+    }
+
     /**
      * Crée et affiche le chart
      * @param {HTMLElement} container - Conteneur pour le chart
@@ -111,26 +189,20 @@ export class LineBarChart extends BaseChartData {
         const chartJsConfig = await this.getChartJsConfig();
         chartJsConfig.data = preparedData;
 
-        // Adapter l'axe X aux données réelles (pas de trou : min/max = plage des données)
-        const allX = preparedData.datasets.flatMap(d => (d.data || []).map(p => p.x)).filter(Boolean);
-        if (allX.length > 0 && chartJsConfig.options && chartJsConfig.options.scales && chartJsConfig.options.scales.x) {
-            const minT = Math.min(...allX.map(x => new Date(x).getTime()));
-            const maxT = Math.max(...allX.map(x => new Date(x).getTime()));
-            chartJsConfig.options.scales.x.min = minT;
-            chartJsConfig.options.scales.x.max = maxT;
+        // Axe X : exactement les mois de la période
+        const months = this.timeline?.months || [];
+        if (months.length > 0) {
+            chartJsConfig.options.scales.x.min = months[0];
+            chartJsConfig.options.scales.x.max = months.at(-1);
         }
-        // Titre ici pour éviter toute mutation dans le plugin (RangeError)
-        const dates = preparedData.datasets.flatMap(d => (d.data || []).map(p => p.x)).filter(Boolean);
-        if (dates.length > 0 && chartJsConfig.options && chartJsConfig.options.plugins && chartJsConfig.options.plugins.title) {
-            const minD = new Date(Math.min(...dates.map(d => new Date(d).getTime())));
-            const maxD = new Date(Math.max(...dates.map(d => new Date(d).getTime())));
-            const monthCount = maxD.getMonth() - minD.getMonth() + 12 * (maxD.getFullYear() - minD.getFullYear());
-            chartJsConfig.options.plugins.title.text = Config.isBlurry()
-                ? 'Dépenses' : `Dépenses sur ${monthCount} mois`;
-        }
+        const range = this._option('chartRange');
+        chartJsConfig.options.plugins.title.text = LineBarChart.title(range);
 
         const toolbar = document.createElement('div');
         toolbar.className = 'pecunio-chart-toolbar';
+        toolbar.appendChild(LineBarChart.createRangeSelector(range, (next) => this._saveOption('chartRange', next)));
+        const detailed = Boolean(this._option('chartDetailed'));
+        toolbar.appendChild(LineBarChart.createDetailToggle(detailed, () => this._saveOption('chartDetailed', !detailed)));
         toolbar.appendChild(LineBarChart.createChartTypeToggle(chartJsConfig.type, () => this.toggleChartType()));
         container.appendChild(toolbar);
 
@@ -148,72 +220,61 @@ export class LineBarChart extends BaseChartData {
         return this.chartInstance;
     }
 
+    /**
+     * Données Chart.js : une série par catégorie (ou les principales + « Autres »)
+     * et la ligne du solde mensuel.
+     */
     async prepareData() {
         const filteredTransactions = await this.applySettingOnData();
-        const transactionByCategory = this.mergeTransactionByCategoryLegacy(filteredTransactions, this.categories);
-        return this.getDataFormated(this.categories, transactionByCategory, true);
+        const byCategory = this.mergeTransactionByCategoryLegacy(filteredTransactions, this.categories);
+        this.timeline = buildTimeline({
+            categories: this.categories,
+            byCategory,
+            range: this._option('chartRange'),
+            detailed: Boolean(this._option('chartDetailed')),
+        });
+        return LineBarChart.toChartData(this.timeline, await getHiddenCategories());
     }
 
-    async getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
-        const data = { datasets: [] };
-        const hiddenCategories = await getHiddenCategories();
-
-        categoryData.forEach(category => {
-            const transactions = transactionByCategory[parseInt(category.id)];
-            
-            // Vérifier que transactions existe et est un tableau avant d'appeler forEach
-            if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-                // Si pas de transactions pour cette catégorie, créer un dataset vide
-                data.datasets.push({
-                    label: category.name,
-                    data: [],
-                    backgroundColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
-                    borderColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
-                    fill: false,
-                    tension: 0.3,
-                    hidden: hiddenCategories.has(category.name)
-                });
-                return; // Passer à la catégorie suivante
-            }
-            
-            const dateValueObject = [];
-            const transactionObject = {};
-
-            transactions.forEach(transaction => {
-                // Mois de rattachement Bankin (current_month), sans décalage de fuseau
-                const budgetDate = DateRange.getBudgetDate(transaction);
-                if (!budgetDate) {
-                    return; // Ignorer les transactions sans date valide
-                }
-                const stringDate = budgetDate.slice(0, 7);
-
-                if (isCumulative) {
-                    transactionObject[stringDate] = (transactionObject[stringDate] || 0) + transaction.amount;
-                } else {
-                    dateValueObject.push({ x: budgetDate, y: transaction.amount, name: transaction.name });
-                }
-            });
-
-            if (isCumulative) {
-                for (const date in transactionObject) {
-                    dateValueObject.push({ x: date, y: transactionObject[date] });
-                }
-            }
-
-            const color = ColorParser.parseColorCSS("categoryColor_" + category.id);
-
-            data.datasets.push({
-                label: category.name,
-                data: dateValueObject,
+    /**
+     * @param {ReturnType<typeof buildTimeline>} timeline
+     * @param {Set<string>} hiddenCategories
+     */
+    static toChartData({ months, series, balance }, hiddenCategories) {
+        const points = (values) => months.map((month, i) => ({ x: month, y: values[i] }));
+        /** @type {Record<string, unknown>[]} */
+        const datasets = series.map((s) => {
+            const color = s.id == null ? OTHERS_COLOR : ColorParser.parseColorCSS(`categoryColor_${s.id}`);
+            return {
+                label: s.label,
+                data: points(s.values),
                 backgroundColor: color,
                 borderColor: color,
                 fill: false,
                 tension: 0.3,
-                hidden: hiddenCategories.has(category.name)
-            });
+                stack: 'flux',
+                order: 1,
+                hidden: hiddenCategories.has(s.label),
+            };
         });
-
-        return data;
+        if (months.length > 0) {
+            datasets.push({
+                type: 'line',
+                label: BALANCE_LABEL,
+                data: points(balance),
+                borderColor: THEME.text,
+                backgroundColor: THEME.text,
+                borderWidth: 2,
+                pointRadius: 3,
+                tension: 0.3,
+                fill: false,
+                // Pile à part : le solde n'est pas empilé avec les catégories, et passe devant
+                stack: 'solde',
+                order: 0,
+                hidden: hiddenCategories.has(BALANCE_LABEL),
+            });
+        }
+        return { datasets };
     }
 
     /**
@@ -221,21 +282,9 @@ export class LineBarChart extends BaseChartData {
      * @returns {Promise<Object>} Configuration Chart.js avec type, data, options, plugins
      */
     async getChartJsConfig() {
-        // Utiliser l'instance Settings injectée si disponible, sinon fallback sur chrome.storage
-        let settings;
-        if (this.settingsInstance) {
-            await this.settingsInstance.waitForInitialization();
-            settings = {
-                startDate: this.settingsInstance.getSetting('startDate'),
-                endDate: this.settingsInstance.getSetting('endDate'),
-                chartType: this.settingsInstance.getSetting('chartType'),
-                isBlurry: this.settingsInstance.getSetting(Config.STORAGE_KEYS.IS_BLURRY)
-            };
-        } else {
-            settings = await chrome.storage.local.get(['startDate', 'endDate', 'chartType', Config.STORAGE_KEYS.IS_BLURRY]);
-        }
-        const initialChartType = settings.chartType ?? 'bar';
-        const cummulative = initialChartType === "line" ? false : true;
+        if (this.settingsInstance) await this.settingsInstance.waitForInitialization();
+        const initialChartType = this._option('chartType') === 'line' ? 'line' : 'bar';
+        const stacked = initialChartType === 'bar';
 
         const commonConfig = {
             responsive: true,
@@ -266,6 +315,7 @@ export class LineBarChart extends BaseChartData {
                 }
             },
             interaction: {
+                mode: 'index',
                 intersect: false,
             },
             scales: {
@@ -287,36 +337,36 @@ export class LineBarChart extends BaseChartData {
                             quarter: 'MMM yyyy',
                             year: 'yyyy'
                         },
-                        tooltipFormat: 'MMM yyyy'
+                        tooltipFormat: 'MMMM yyyy'
                     },
+                    // Barres centrées sur leur mois
+                    offset: true,
                     ticks: {
                         maxTicksLimit: 24
                     },
                     grid: {
-                        color: "#e9f5f9",
-                        tickColor: "#e9f5f9"
+                        color: THEME.grid,
+                        tickColor: THEME.grid
                     },
                     // Chart.js 4 : la couleur de l'axe est dans `border` (et non plus `grid.borderColor`)
                     border: {
-                        color: "#d3eaf2"
+                        color: THEME.border
                     },
                     display: true,
                     stacked: true,
                     title: {
-                        color: "#92cbdf",
                         display: false
                     }
                 },
                 y: {
                     display: true,
-                    stacked: cummulative,
+                    stacked,
                     grid: {
-                        color: "#e9f5f9",
-                        tickColor: "#e9f5f9"
+                        color: THEME.grid,
+                        tickColor: THEME.grid
                     },
-                    // Chart.js 4 : la couleur de l'axe est dans `border` (et non plus `grid.borderColor`)
                     border: {
-                        color: "#d3eaf2"
+                        color: THEME.border
                     },
                     ticks: {
                         callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value)))
