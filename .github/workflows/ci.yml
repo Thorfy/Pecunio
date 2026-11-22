@@ -31,3 +31,39 @@ jobs:
 
       - name: Construction du zip
         run: bash scripts/package.sh
+
+  test:
+    name: Tests unitaires (${{ matrix.tz }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Certains bugs de dates n'apparaissent qu'à l'est ou à l'ouest de UTC.
+        tz: [Europe/Paris, America/New_York, UTC]
+    env:
+      TZ: ${{ matrix.tz }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Vitest
+        if: matrix.tz != 'Europe/Paris'
+        run: npm test
+
+      - name: Vitest + couverture
+        if: matrix.tz == 'Europe/Paris'
+        run: npm run test:coverage
+
+      - name: Rapport de couverture
+        if: matrix.tz == 'Europe/Paris' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
