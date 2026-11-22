@@ -1,0 +1,24 @@
+{
+  "name": "pecunio",
+  "version": "0.5.3",
+  "private": true,
+  "description": "Extension Chrome qui enrichit Bankin avec des visualisations financières",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:manifest": "node scripts/check-manifest.mjs",
+    "check": "npm run check:manifest && npm run lint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1"
+  }
+}

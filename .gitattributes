@@ -1,0 +1,16 @@
+# Fins de ligne : LF partout dans le dépôt et la copie de travail,
+# quel que soit core.autocrlf sur la machine.
+* text=auto eol=lf
+
+# Binaires
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+
+# Librairies tierces minifiées : pas de diff ligne à ligne
+libs/** linguist-vendored -diff

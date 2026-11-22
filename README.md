@@ -45,3 +45,20 @@ Pecunio s'intègre directement dans l'interface Bankin. Une fois installé, vous
 - Sur la **page des catégories** : Diagramme de flux et répartition par type de dépenses
 
 Tous les graphiques sont interactifs et se mettent à jour selon vos filtres et sélections.
+
+## 🛠️ Développement
+
+Prérequis : Node.js 20+.
+
+```bash
+npm install              # outillage (ESLint, Prettier)
+npm run check            # cohérence manifest/pages HTML + lint
+npm run lint:fix         # corrections automatiques du lint
+bash scripts/package.sh  # zip de l'extension dans dist/ (Linux/macOS/CI)
+```
+
+Pour tester en local : `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier du dépôt.
+
+La CI (`.github/workflows/ci.yml`) lance ces vérifications sur chaque PR. Un tag `vX.Y.Z` (identique à la version du manifest) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
+
+Le plan de modernisation est décrit dans [docs/AUDIT-MODERNISATION.md](docs/AUDIT-MODERNISATION.md).
