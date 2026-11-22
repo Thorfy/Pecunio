@@ -110,6 +110,17 @@ export class InjectedStyles {
                 border-color: #adb5bd;
             }
 
+            .pecunio-chart-toolbar {
+                display: flex;
+                justify-content: flex-start;
+                margin-bottom: 8px;
+            }
+
+            .pecunio-chart-type-toggle:focus-visible {
+                outline: 2px solid #667eea;
+                outline-offset: 2px;
+            }
+
             .pecunio-canvas-container {
                 position: relative;
                 width: 100%;

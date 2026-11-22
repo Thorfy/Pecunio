@@ -1,4 +1,5 @@
 import { BankinPage } from '../bankin/BankinPage.js';
+import { formatEuros } from '../utils/format.js';
 import { Config } from '../core/Config.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
@@ -24,7 +25,7 @@ export class SankeyChart extends BaseChartData {
             type: 'sankey',
             data: {
                 datasets: [{
-                    label: 'My Dataset',
+                    label: 'Flux financiers',
                     data: data,
                     colorFrom: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
                     colorTo: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
@@ -49,7 +50,7 @@ export class SankeyChart extends BaseChartData {
                                 }
                                 const r = context.raw || {};
                                 if (r.from != null && r.to != null && r.flow != null) {
-                                    return `${r.from} → ${r.to}: ${Number(r.flow).toFixed(2)} €`;
+                                    return `${r.from} → ${r.to} : ${formatEuros(Number(r.flow))}`;
                                 }
                                 return context.formatted != null ? context.formatted : (context.label || '');
                             }
@@ -207,14 +208,14 @@ export class SankeyChart extends BaseChartData {
 
             if (!exceptionalCategories.includes(node.id) && totalAmount > 0) {
                 totalExpense += totalAmount;
-                sankeyData.push({ from: "Depenses", to: node.name, flow: totalAmount, id: node.id });
+                sankeyData.push({ from: "Dépenses", to: node.name, flow: totalAmount, id: node.id });
             }
         });
 
         if (totalBudget > totalExpense) {
             sankeyData.push({ from: "Budget", to: "Restant", flow: totalBudget - totalExpense, id: Config.CATEGORIES.BUDGET_CATEGORY_ID });
         }
-        sankeyData.push({ from: "Budget", to: "Depenses", flow: totalExpense, id: Config.CATEGORIES.EXPENSES_CATEGORY_ID });
+        sankeyData.push({ from: "Budget", to: "Dépenses", flow: totalExpense, id: Config.CATEGORIES.EXPENSES_CATEGORY_ID });
 
         return sankeyData;
     }

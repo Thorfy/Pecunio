@@ -3,11 +3,12 @@ import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { MONTH_NAMES, formatEuros } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
 export class BudgetChart extends BaseChartData {
     /**
-     * Libellé de l'infobulle d'une barre : « Série: -158.30 € ».
+     * Libellé de l'infobulle d'une barre : « Série : -158,30 € ».
      * Pour un graphique en barres, Chart.js fournit `context.parsed` sous forme
      * d'objet { x, y } : la valeur est `parsed.y` (bug B20 : NaN affiché).
      * @param {{ dataset?: { label?: string }, parsed?: number|{ y?: number }, raw?: unknown }} context
@@ -20,7 +21,7 @@ export class BudgetChart extends BaseChartData {
         const parsed = context?.parsed;
         const candidate = parsed != null && typeof parsed === 'object' ? parsed.y : (parsed ?? context?.raw);
         const value = typeof candidate === 'number' ? candidate : Number(candidate);
-        return candidate == null || !Number.isFinite(value) ? `${label}: —` : `${label}: ${value.toFixed(2)} €`;
+        return candidate == null || !Number.isFinite(value) ? `${label} : —` : `${label} : ${formatEuros(value)}`;
     }
 
     constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
@@ -38,7 +39,14 @@ export class BudgetChart extends BaseChartData {
         this.calcTypeSelector = null;
         this.budgetCtx = null;
         this.budgetChart = null;
-        this.monthsArray = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        this.monthsArray = [BudgetChart.ALL_MONTHS_LABEL, ...MONTH_NAMES.slice(1)];
+    }
+
+    static ALL_MONTHS_LABEL = 'Tous les mois';
+
+    /** Libellé du calcul : « Médiane » ou « Moyenne ». */
+    static calculationLabel(calculationType) {
+        return calculationType === 'average' ? 'Moyenne' : 'Médiane';
     }
 
     createUI(containerElementId) {
@@ -364,7 +372,7 @@ export class BudgetChart extends BaseChartData {
         // Logger.debug(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
 
         let primaryData, comparisonData, primaryLabel, comparisonLabel;
-        const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
+        const calcTypeString = BudgetChart.calculationLabel(calculationType);
 
         // Primary Data (Left Column)
         if (selectedMonthLeft === 'ALL') {
@@ -372,7 +380,7 @@ export class BudgetChart extends BaseChartData {
             primaryLabel = `${calcTypeString} ${selectedYearLeft}`;
         } else {
             primaryData = this.getActualSpendingForMonth(selectedYearLeft, selectedMonthLeft);
-            primaryLabel = `Actual ${this.getMonthName(selectedMonthLeft)} ${selectedYearLeft}`;
+            primaryLabel = `Réel ${this.getMonthName(selectedMonthLeft)} ${selectedYearLeft}`;
         }
 
         // Comparison Data (Right Column)
@@ -381,7 +389,7 @@ export class BudgetChart extends BaseChartData {
             comparisonLabel = `${calcTypeString} ${selectedYearRight}`;
         } else {
             comparisonData = this.getActualSpendingForMonth(selectedYearRight, selectedMonthRight);
-            comparisonLabel = `Actual ${this.getMonthName(selectedMonthRight)} ${selectedYearRight}`;
+            comparisonLabel = `Réel ${this.getMonthName(selectedMonthRight)} ${selectedYearRight}`;
         }
 
         const allCategoryNames = new Set();
@@ -449,9 +457,10 @@ export class BudgetChart extends BaseChartData {
             }
         }
 
-        const titleLeft = `${selectedYearLeft} ${monthValueLeft === "ALL" ? "All Months" : this.monthsArray[parseInt(monthValueLeft)]}`;
-        const titleRight = `${selectedYearRight} ${monthValueRight === "ALL" ? "All Months" : this.monthsArray[parseInt(monthValueRight)]}`;
-        const dynamicTitle = `Budget: ${titleLeft} vs ${titleRight} (${selectedCalcType.charAt(0).toUpperCase() + selectedCalcType.slice(1)})`;
+        const periodLabel = (year, monthValue) =>
+            monthValue === "ALL" ? `${year}, tous les mois` : `${this.monthsArray[parseInt(monthValue)]} ${year}`;
+        const dynamicTitle = `Budget : ${periodLabel(selectedYearLeft, monthValueLeft)} et ${periodLabel(selectedYearRight, monthValueRight)}`
+            + ` (${BudgetChart.calculationLabel(selectedCalcType).toLowerCase()})`;
 
         if (this.budgetChart) {
             this.budgetChart.data = newChartData;
@@ -474,7 +483,7 @@ export class BudgetChart extends BaseChartData {
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: Config.isBlurry() ? '' : 'Amount (€)'
+                                    text: Config.isBlurry() ? '' : 'Montant (€)'
                                 },
                                 ticks: {
                                     callback: (value) => (Config.isBlurry() ? '' : value)
@@ -483,7 +492,7 @@ export class BudgetChart extends BaseChartData {
                             x: {
                                 title: {
                                     display: false,
-                                    text: 'Categories'
+                                    text: 'Catégories'
                                 }
                             }
                         },

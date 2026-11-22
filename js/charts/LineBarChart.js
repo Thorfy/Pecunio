@@ -2,9 +2,10 @@ import { BANKIN_SELECTORS } from '../bankin/BankinPage.js';
 import { getHiddenCategories, setCategoryHidden } from '../core/CategoryVisibility.js';
 import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
-import { Chart } from '../lib/chart.js';
+import { Chart, DATE_LOCALE } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
 import { ColorParser } from '../utils/ColorParser.js';
+import { formatEuros } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
 export class LineBarChart extends BaseChartData {
@@ -14,6 +15,42 @@ export class LineBarChart extends BaseChartData {
     }
 
     // Le bouton ↻ de Bankin est géré par PageController (un seul écouteur, bug B4).
+
+    /** Texte du bouton de changement de type, selon le type affiché. */
+    static chartTypeToggleLabel(chartType) {
+        return chartType === 'line' ? 'Afficher en barres' : 'Afficher en courbes';
+    }
+
+    /**
+     * Bouton (HTML, accessible au clavier) qui bascule entre barres et courbes (D10).
+     * @param {'bar' | 'line'} chartType type affiché
+     * @param {() => void} onToggle
+     * @returns {HTMLButtonElement}
+     */
+    static createChartTypeToggle(chartType, onToggle) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pecunio-button pecunio-button-secondary pecunio-chart-type-toggle';
+        button.textContent = LineBarChart.chartTypeToggleLabel(chartType);
+        button.addEventListener('click', onToggle);
+        return button;
+    }
+
+    /** Enregistre l'autre type de graphique ; PageController redessine le graphique. */
+    async toggleChartType() {
+        const current = this.chartInstance?.config.type === 'line' ? 'line' : 'bar';
+        const next = current === 'line' ? 'bar' : 'line';
+        try {
+            if (this.settingsInstance) {
+                await this.settingsInstance.setSetting('chartType', next);
+            } else {
+                await chrome.storage.local.set({ chartType: next });
+            }
+            window.dispatchEvent(new CustomEvent('pecunio_chart_type_changed'));
+        } catch (error) {
+            console.error('[LineBarChart] Changement de type impossible :', error);
+        }
+    }
 
     /**
      * Conteneur de hauteur fixe pour le canvas du graphique temporel.
@@ -89,8 +126,13 @@ export class LineBarChart extends BaseChartData {
             const maxD = new Date(Math.max(...dates.map(d => new Date(d).getTime())));
             const monthCount = maxD.getMonth() - minD.getMonth() + 12 * (maxD.getFullYear() - minD.getFullYear());
             chartJsConfig.options.plugins.title.text = Config.isBlurry()
-                ? 'Dépenses' : `Depense sur ${monthCount} mois`;
+                ? 'Dépenses' : `Dépenses sur ${monthCount} mois`;
         }
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'pecunio-chart-toolbar';
+        toolbar.appendChild(LineBarChart.createChartTypeToggle(chartJsConfig.type, () => this.toggleChartType()));
+        container.appendChild(toolbar);
 
         // Conteneur de hauteur fixe : sans lui, Chart.js et le CSS du canvas
         // (height: 100%) se renvoient la hauteur à l'infini, le graphique oscille
@@ -102,9 +144,6 @@ export class LineBarChart extends BaseChartData {
         canvasContainer.appendChild(canvas);
 
         this.chartInstance = new Chart(canvas.getContext('2d'), chartJsConfig);
-        if (this.settingsInstance) {
-            this.chartInstance._settingsInstance = this.settingsInstance;
-        }
         BaseChartData._attachAmountVisibilityListener(this.chartInstance);
         return this.chartInstance;
     }
@@ -221,7 +260,7 @@ export class LineBarChart extends BaseChartData {
                             if (Config.isBlurry()) return context.dataset.label || '';
                             const label = context.dataset.label || '';
                             const value = context.parsed?.y ?? context.parsed;
-                            return value != null ? `${label}: ${Number(value).toFixed(2)} €` : label;
+                            return value != null ? `${label} : ${formatEuros(Number(value))}` : label;
                         }
                     }
                 }
@@ -232,6 +271,9 @@ export class LineBarChart extends BaseChartData {
             scales: {
                 x: {
                     type: 'time',
+                    adapters: {
+                        date: { locale: DATE_LOCALE }
+                    },
                     time: {
                         unit: 'month',
                         displayFormats: {
@@ -285,82 +327,7 @@ export class LineBarChart extends BaseChartData {
 
         return {
             type: initialChartType,
-            options: {
-                ...commonConfig,
-                plugins: {
-                    ...commonConfig.plugins,
-                    toggleTypeChart: {
-                        display: true,
-                    }
-                }
-            },
-            plugins: [{
-                id: 'toggleTypeChart',
-                afterInit: function (chart) {
-                    // Ajouter un event listener directement sur le canvas pour une meilleure fiabilité
-                    const canvas = chart.canvas;
-                    const legendWidth = 120;
-                    const legendHeight = 20;
-                    
-                    const handleClick = async (event) => {
-                        const rect = canvas.getBoundingClientRect();
-                        const x = event.clientX - rect.left;
-                        const y = event.clientY - rect.top;
-                        
-                        const withinLegendX = x >= 10 && x <= 10 + legendWidth;
-                        const withinLegendY = y >= 10 && y <= 10 + legendHeight;
-
-                        if (withinLegendX && withinLegendY) {
-                            try {
-                                const newChartType = chart.config.type === 'line' ? 'bar' : 'line';
-                                
-                                // Utiliser settingsInstance si disponible, sinon chrome.storage.local
-                                if (chart._settingsInstance) {
-                                    await chart._settingsInstance.setSetting('chartType', newChartType);
-                                } else {
-                                    await chrome.storage.local.set({ 'chartType': newChartType });
-                                }
-                                
-                                // Déclencher un événement personnalisé pour notifier le changement
-                                window.dispatchEvent(new CustomEvent('pecunio_chart_type_changed'));
-                            } catch (error) {
-                                console.error('[LineBarChart] Error toggling chart type:', error);
-                            }
-                        }
-                    };
-                    
-                    // Ajouter l'event listener
-                    canvas.addEventListener('click', handleClick);
-                    
-                    // Stocker la fonction de nettoyage pour pouvoir la supprimer si nécessaire
-                    chart._toggleChartHandler = handleClick;
-                },
-                beforeDraw: function (chart) {
-                    const canvas = chart.canvas;
-                    const ctx = canvas.getContext('2d');
-                    const legendWidth = 120;
-                    const legendHeight = 20;
-                    ctx.save();
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-                    ctx.fillRect(10, 10, legendWidth, legendHeight);
-                    ctx.fillStyle = 'black';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.font = '12px Arial';
-                    ctx.fillText('Toggle chart type', 10 + legendWidth / 2, 10 + legendHeight / 2);
-                    ctx.restore();
-                },
-                beforeDestroy: function (chart) {
-                    if (chart._toggleChartHandler && chart.canvas) {
-                        chart.canvas.removeEventListener('click', chart._toggleChartHandler);
-                        chart._toggleChartHandler = null;
-                    }
-                    if (chart._pecunioAmountVisibilityHandler) {
-                        window.removeEventListener('pecunio_amounts_visibility_changed', chart._pecunioAmountVisibilityHandler);
-                        chart._pecunioAmountVisibilityHandler = null;
-                    }
-                }
-            }]
+            options: commonConfig,
         };
     }
 }

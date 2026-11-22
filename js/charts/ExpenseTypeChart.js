@@ -1,6 +1,7 @@
 import { Config } from '../core/Config.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { formatEuros, formatPercent } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
 /**
@@ -221,8 +222,7 @@ export class ExpenseTypeChart extends BaseChartData {
                                 if (total === 0 || label === 'Aucune donnée') {
                                     return 'Aucune donnée disponible';
                                 }
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return `${labelWithoutIcon}: ${value.toFixed(2)} € (${percentage}%)`;
+                                return `${labelWithoutIcon} : ${formatEuros(value)} (${formatPercent((value / total) * 100)})`;
                             }
                         }
                     }

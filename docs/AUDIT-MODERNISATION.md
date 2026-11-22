@@ -73,8 +73,8 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D6 | Code mort : `getAllSetting`, `DataManager.filterTransactions`, `organizeTransactionsByCategory` (O(n × catégories²))… ✅ phase 0 : `LineBarChart.buildChart` ; ✅ 3c : le reste (`mergeTransactionByCategoryLegacy` est en fait utilisé par le graphique temporel, conservé) | ✅ 3c |
 | D7 | `Math.min(...dates)` sur des milliers d'éléments (dépassement de pile possible) | ✅ 2a |
 | D8 | Données bancaires complètes en `storage.local` (+ `unlimitedStorage`), jamais purgées — ✅ 4a : effacées (cache de l'API, rapport, en-têtes d'authentification) dès que Bankin affiche sa page de connexion ; données des très anciennes versions effacées par la migration | ✅ 4a |
-| D9 | Interface mi-française mi-anglaise (« Toggle chart type », « All Months », mois de l'axe en anglais) | 4 |
-| D10 | Bouton « Toggle chart type » dessiné dans le canvas : inaccessible au clavier, aux lecteurs d'écran et aux tests e2e | 4 |
+| D9 | Interface mi-française mi-anglaise (« Toggle chart type », « All Months », mois de l'axe en anglais) — ✅ 4c : graphiques en français (libellés, mois des axes, montants `1 234,50 €`) | ✅ 4c |
+| D10 | Bouton « Toggle chart type » dessiné dans le canvas : inaccessible au clavier, aux lecteurs d'écran et aux tests e2e — ✅ 4c : vrai bouton HTML « Afficher en courbes / en barres » | ✅ 4c |
 | D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques — ✅ 2b : bandeau « chargement de vos données… » après 1,5 s | 2b |
 | D12 | Description du manifest : « Pecunio overload Bankin website » | 6 |
 | D13 | 35 warnings ESLint (surtout `prefer-const`) | ✅ 3c |
@@ -170,13 +170,16 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 - Purge à la déconnexion (D8) : sur la page de connexion Bankin, effacement du cache de l'API, des données du rapport et des en-têtes d'authentification du service worker ; les préférences sont gardées. Section « Données et vie privée » dans le README.
 - « Réinitialiser les paramètres » (popup) affiche de nouveau toutes les catégories.
 
-**4b — Adaptateur Bankin** ✅ _(branche `feat/phase-4b-bankin-adapter`)_ :
+**4b — Adaptateur Bankin** ✅ _(#27)_ :
 - **Adaptateur `js/bankin/BankinPage.js`** : détection de page, tous les sélecteurs, lecture du mois affiché, blocs d'insertion, montants à flouter ; `PageController`, `AmountHider`, `LoadingScreen` et `SankeyChart` passent par lui. Plus aucun sélecteur Bankin dans `Config` (D1).
 - Sélecteurs du donut rattachés à `.categoryChart` (et non plus au bloc Pecunio dans lequel le donut est déplacé) : ils trouvent le donut avant comme après son déplacement.
 - **Tests de contrat** (`test/contract/`) sur des captures anonymisées des pages Comptes et Catégories (`test/fixtures/bankin-pages/`), y compris la construction des graphiques par `PageController`. Outil de capture `scripts/bankin-snapshot.js` (anonymisation dans le navigateur, testée) et `npm run snapshot:snippet` ; procédure dans `docs/TESTING.md`.
 - IDs de catégories : une seule source, `Config.CATEGORIES` (copie en dur retirée de `ReportFilters`).
 
-**4c — Finitions** : interface entièrement en français, dates des axes en `fr` (D9) ; « Toggle chart type » remplacé par un vrai bouton HTML accessible (D10).
+**4c — Finitions** ✅ _(branche `feat/phase-4c-french-ui`)_ :
+- Graphiques en français (D9) : mois des axes temporels (`date-fns/locale` `fr`), nombres des axes (`Chart.defaults.locale = 'fr-FR'`), montants des infobulles `-1 234,50 €` (`js/utils/format.js`) ; comparaison budget : « Tous les mois », « Janvier »…, « Réel févr. 2024 », « Médiane 2026 », « Montant (€) » ; « Dépenses sur N mois » ; nœud « Dépenses » du diagramme de flux accentué.
+- Bouton « Afficher en courbes / Afficher en barres » en HTML au-dessus du graphique temporel, utilisable au clavier et par les lecteurs d'écran (D10) ; plus de bouton dessiné dans le canvas ni d'écouteur de clic sur le canvas.
+- Inchangé : les en-têtes de colonnes de l'export CSV (format de données, déjà utilisé par des tableurs).
 
 ### Phase 5 — Tests d'intégration et e2e _(2 j)_
 - **POC en premier (½ j)** : vérifier que `webRequest.onBeforeSendHeaders` voit les requêtes interceptées par Playwright ; sinon le test injecte les headers dans `chrome.storage.session`.
@@ -185,7 +188,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
   1. Comptes → graphique temporel + budget affichés ;
   2. Catégories / Dépenses → types de dépenses + Sankey ; changement de mois → mise à jour ;
   3. Catégories / Revenus + changement de mois → aucun graphique de dépenses périmé (B6) ;
-  4. « Toggle chart type » × 2 puis ↻ → un seul rechargement, aucune erreur console (B4, B5) ;
+  4. « Afficher en courbes / en barres » × 2 puis ↻ → un seul rechargement, aucune erreur console (B4, B5) ;
   5. deux onglets Bankin → les deux affichent leurs graphiques (B1) ;
   6. page `/signin` → aucune erreur console (B12) ;
   7. popup : changement de dates → l'onglet Bankin se met à jour ;
@@ -207,7 +210,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
 | 3 Modules + WXT | 2–3 j | ✅ 3a (#16), 3b (#17), 3c (#23) | B15, B21–B24, D3–D6, D13 |
-| 4 Types + adaptateur | 2–3 j | 4a ✅ (#25), 4b ✅ PR à merger ; 4c à faire | D1, D8–D10, D14 |
+| 4 Types + adaptateur | 2–3 j | 4a ✅ (#25), 4b ✅ (#27), 4c ✅ PR à merger | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |
 
@@ -226,7 +229,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 ## 7. Recette manuelle (avant chaque merge de phase 2 à 4)
 
 Extension rechargée dans `chrome://extensions`, onglet Bankin rechargé, console ouverte :
-1. `/accounts` : les deux graphiques apparaissent ; ↻ après 2 « Toggle chart type » → un seul rechargement dans la console.
+1. `/accounts` : les deux graphiques apparaissent ; ↻ après 2 clics sur « Afficher en courbes / en barres » → un seul rechargement dans la console.
 2. `/categories` : donut + Sankey ; changer de mois deux fois.
 3. Onglet Revenus, changer de mois : pas de graphique de dépenses.
 4. Masquer / afficher les montants.
