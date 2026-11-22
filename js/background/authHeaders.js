@@ -13,6 +13,10 @@
  *
  * La popup n'est plus ouverte automatiquement à chaque page Bankin (bug B11) :
  * l'utilisateur l'ouvre depuis l'icône de l'extension.
+ *
+ * Déconnexion (D8) : quand un onglet affiche la page de connexion Bankin, son
+ * content script envoie `Config.RUNTIME_MESSAGES.SIGNED_OUT` et les en-têtes
+ * sont oubliés (mémoire et session).
  */
 import { Config } from '../core/Config.js';
 
@@ -59,7 +63,8 @@ export function startAuthHeaderRelay() {
     }
 
     chrome.webRequest.onBeforeSendHeaders.addListener(
-        (info) => {
+        // Écoute seule (pas de blocage) : le listener ne renvoie rien
+        /** @type {(info: chrome.webRequest.OnBeforeSendHeadersDetails) => any} */ ((info) => {
             const captured = {};
             for (const header of info.requestHeaders || []) {
                 if (requiredHeaders.includes(header.name)) captured[header.name] = header.value;
@@ -71,13 +76,21 @@ export function startAuthHeaderRelay() {
                 .set({ [SESSION_KEY]: headersCache })
                 .catch((error) => console.warn('[BG] Sauvegarde des en-têtes impossible :', error.message));
             broadcastHeaders(headersCache);
-        },
+        }),
         {
             urls: [`${Config.API.DOMAIN}/v2/accounts*`],
             types: ['main_frame', 'sub_frame', 'xmlhttprequest'],
         },
         ['requestHeaders'],
     );
+
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message?.type !== Config.RUNTIME_MESSAGES.SIGNED_OUT) return;
+        headersCache = null;
+        chrome.storage.session
+            .remove(SESSION_KEY)
+            .catch((error) => console.warn('[BG] Suppression des en-têtes impossible :', error.message));
+    });
 
     chrome.runtime.onConnect.addListener((port) => {
         const tabId = port.sender?.tab?.id;

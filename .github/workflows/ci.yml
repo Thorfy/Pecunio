@@ -26,6 +26,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Types (tsc, JSDoc)
+        run: npm run typecheck
+
       - name: Build et zip (WXT)
         run: npm run zip
 

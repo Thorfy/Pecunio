@@ -24,6 +24,10 @@ import { Logger } from './Logger.js';
  *   les graphiques de dépenses sont retirés des vues qui ne les concernent pas (B6).
  * - Les données ne sont chargées que sur les pages à graphiques (pas sur
  *   `/signin`), et les erreurs sont affichées à l'utilisateur (B12).
+ * - Sur la page de connexion (déconnexion ou session expirée), les données
+ *   bancaires conservées sont effacées : cache de l'API, données du rapport,
+ *   en-têtes d'authentification du service worker (D8). Les préférences sont
+ *   gardées.
  */
 export class PageController {
     static PAGE = Object.freeze({
@@ -78,10 +82,10 @@ export class PageController {
 
     /**
      * @param {object} deps
-     * @param {Settings} deps.settings
-     * @param {CacheStore} deps.cacheStore
-     * @param {Evt} deps.evt
-     * @param {() => DataManager} deps.createDataManager
+     * @param {import('./Settings.js').Settings} deps.settings
+     * @param {import('./CacheStore.js').CacheStore} deps.cacheStore
+     * @param {import('./Evt.js').Evt} deps.evt
+     * @param {() => import('./DataManager.js').DataManager} deps.createDataManager
      * @param {Window} [deps.win]
      * @param {object} [deps.charts] classes de graphiques (remplaçables dans les tests)
      */
@@ -163,8 +167,32 @@ export class PageController {
         const href = this.win.location.href;
         if (href === this._lastHref) return null;
         this._lastHref = href;
-        if (PageController.hasCharts(this.currentPage)) this._ensureDataManager();
+        const page = this.currentPage;
+        if (page === PageController.PAGE.SIGNIN) return this._purgeUserData().then(() => this.requestBuild());
+        if (PageController.hasCharts(page)) this._ensureDataManager();
         return this.requestBuild();
+    }
+
+    /**
+     * Efface les données bancaires conservées par l'extension (D8). Les erreurs
+     * sont journalisées sans interrompre la suite.
+     */
+    async _purgeUserData() {
+        this._clearLoadingBanner();
+        StatusBanner.hide('data-error');
+        if (this.dataManager) {
+            this.dataManager.dispose?.();
+            this.dataManager = null;
+        }
+        const results = await Promise.allSettled([
+            this.cacheStore.clear(),
+            chrome.storage.local.remove(Object.values(Config.REPORT.STORAGE_KEYS)),
+            chrome.runtime.sendMessage({ type: Config.RUNTIME_MESSAGES.SIGNED_OUT }),
+        ]);
+        for (const result of results) {
+            if (result.status === 'rejected') Logger.warn('Effacement des données incomplet :', result.reason?.message);
+        }
+        Logger.debug('Déconnexion : données effacées');
     }
 
     async _onStorageChanged(changes, area) {
@@ -182,16 +210,22 @@ export class PageController {
     /** Crée le DataManager au premier passage sur une page à graphiques. */
     _ensureDataManager() {
         if (this.dataManager) return;
-        this.dataManager = this.createDataManager();
+        const dataManager = this.createDataManager();
+        this.dataManager = dataManager;
 
         this._loadingTimer = this.win.setTimeout(() => {
             this._loadingTimer = null;
             StatusBanner.show(PageController.MESSAGES.LOADING, { type: 'info', key: 'loading' });
         }, PageController.LOADING_BANNER_DELAY_MS);
 
-        this.dataManager.waitForInitialization().then(
-            () => this._clearLoadingBanner(),
-            (error) => this._onDataError(error),
+        // Résultat ignoré si l'utilisateur s'est déconnecté entre-temps
+        dataManager.waitForInitialization().then(
+            () => {
+                if (this.dataManager === dataManager) this._clearLoadingBanner();
+            },
+            (error) => {
+                if (this.dataManager === dataManager) this._onDataError(error);
+            },
         );
     }
 

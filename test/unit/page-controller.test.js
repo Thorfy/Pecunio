@@ -100,10 +100,12 @@ const setup = ({ href = 'https://app2.bankin.com/accounts', dom = ACCOUNTS_DOM, 
     const cacheStore = {
         waitForInitialization: () => Promise.resolve(),
         get: (type) => ({ transactions, categories: CATEGORIES })[type] ?? null,
+        clear: vi.fn(() => Promise.resolve()),
     };
     const dataManager = {
         waitForInitialization: vi.fn(() => dataPromise ?? new Promise(() => {})),
         refreshData: vi.fn(() => Promise.resolve()),
+        dispose: vi.fn(),
     };
     const createDataManager = vi.fn(() => dataManager);
     const evt = new Evt();
@@ -211,6 +213,55 @@ describe('PageController — chargement des données (B12)', () => {
         controller.start();
         await vi.advanceTimersByTimeAsync(PageController.LOADING_BANNER_DELAY_MS * 2);
         expect(StatusBanner.isVisible()).toBe(false);
+    });
+});
+
+describe('PageController — déconnexion (D8)', () => {
+    test('D8 — sur /signin : cache, rapport et en-têtes effacés, préférences gardées', async () => {
+        Object.assign(chrome.storage.local._data, {
+            pecunio_report_mergedData: [{ id: 1 }],
+            pecunio_report_stats: {},
+            pecunio_report_params: {},
+            startDate: '2024-01-01',
+            hiddenCategories: ['Logement'],
+        });
+        const { controller, cacheStore } = setup({ href: 'https://app2.bankin.com/signin', dom: '' });
+        await controller.start();
+        expect(cacheStore.clear).toHaveBeenCalledWith();
+        expect(chrome.storage.local._data).toEqual({ startDate: '2024-01-01', hiddenCategories: ['Logement'] });
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'pecunio_signed_out' });
+    });
+
+    test('D8 — déconnexion depuis une page à graphiques : DataManager fermé puis recréé à la reconnexion', async () => {
+        const { controller, win, createDataManager, dataManager, cacheStore } = setup();
+        controller.start();
+        expect(createDataManager).toHaveBeenCalledTimes(1);
+        navigate(win, 'https://app2.bankin.com/signin');
+        await controller.whenIdle();
+        await vi.waitFor(() => expect(cacheStore.clear).toHaveBeenCalled());
+        expect(dataManager.dispose).toHaveBeenCalled();
+        navigate(win, 'https://app2.bankin.com/accounts');
+        expect(createDataManager).toHaveBeenCalledTimes(2);
+    });
+
+    test('D8 — l\'échec du chargement d\'avant la déconnexion n\'affiche pas d\'erreur', async () => {
+        let fail;
+        const dataPromise = new Promise((_resolve, reject) => { fail = reject; });
+        dataPromise.catch(() => {});
+        const { controller, win } = setup({ dataPromise });
+        controller.start();
+        navigate(win, 'https://app2.bankin.com/signin');
+        await vi.waitFor(() => expect(chrome.runtime.sendMessage).toHaveBeenCalled());
+        fail(new Error('Auth timeout'));
+        await vi.runOnlyPendingTimersAsync();
+        expect(StatusBanner.isVisible('data-error')).toBe(false);
+    });
+
+    test('D8 — un effacement en échec n\'empêche pas la suite', async () => {
+        const { controller, cacheStore } = setup({ href: 'https://app2.bankin.com/signin', dom: '' });
+        cacheStore.clear.mockRejectedValue(new Error('quota'));
+        await expect(controller.start()).resolves.toBeUndefined();
+        expect(chrome.runtime.sendMessage).toHaveBeenCalled();
     });
 });
 

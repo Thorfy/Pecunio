@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await cacheStore.waitForInitialization();
 
     const currentVersionImg = document.querySelector("#currentVersion");
-    const currentVersionBadge = document.querySelector("#currentVersionBadge");
+    const currentVersionBadge = /** @type {HTMLImageElement} */ (document.querySelector("#currentVersionBadge"));
     const cvSource = "https://img.shields.io/badge/installed-" + chrome.runtime.getManifest().version + "-blue";
     currentVersionImg.textContent = chrome.runtime.getManifest().version;
     currentVersionBadge.src = cvSource;
@@ -30,16 +30,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     chrome.action.setBadgeText({ text: '' });
 
     // Récupérer les éléments DOM
-    const startDate = document.querySelector('#startDate');
-    const endDate = document.querySelector('#endDate');
-    const noEndDateCheckbox = document.querySelector('#noEndDate');
-    const accountsInput = document.querySelector('#accountsInput');
-    const csvExport = document.querySelector("#exportCsv");
-    const exportPdf = document.querySelector("#exportPdf");
-    const pdfYear = document.querySelector("#pdfYear");
-    const pdfMonth = document.querySelector("#pdfMonth");
-    const refreshData = document.querySelector("#refreshData");
-    const refreshSettings = document.querySelector("#refreshSettings");
+    const startDate = /** @type {HTMLInputElement} */ (document.querySelector('#startDate'));
+    const endDate = /** @type {HTMLInputElement} */ (document.querySelector('#endDate'));
+    const noEndDateCheckbox = /** @type {HTMLInputElement} */ (document.querySelector('#noEndDate'));
+    const accountsInput = /** @type {HTMLSelectElement} */ (document.querySelector('#accountsInput'));
+    const csvExport = /** @type {HTMLButtonElement} */ (document.querySelector("#exportCsv"));
+    const exportPdf = /** @type {HTMLButtonElement} */ (document.querySelector("#exportPdf"));
+    const pdfYear = /** @type {HTMLSelectElement} */ (document.querySelector("#pdfYear"));
+    const pdfMonth = /** @type {HTMLSelectElement} */ (document.querySelector("#pdfMonth"));
+    const refreshData = /** @type {HTMLButtonElement} */ (document.querySelector("#refreshData"));
+    const refreshSettings = /** @type {HTMLButtonElement} */ (document.querySelector("#refreshSettings"));
 
     const PDF_MONTHS = ['Toute l\'année', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
@@ -56,8 +56,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         pdfYear.innerHTML = '';
         for (let y = currentYear; y >= minYear; y--) {
             const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = y;
+            opt.value = String(y);
+            opt.textContent = String(y);
             if (y === defaultYear) opt.selected = true;
             pdfYear.appendChild(opt);
         }
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         pdfMonth.innerHTML = '';
         PDF_MONTHS.forEach((label, index) => {
             const opt = document.createElement('option');
-            opt.value = index;
+            opt.value = String(index);
             opt.textContent = label;
             if (index === 0) opt.selected = true;
             pdfMonth.appendChild(opt);
@@ -225,7 +225,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             alert('Aucune donnée de transaction disponible. Veuillez d\'abord charger des données depuis Bankin.');
             return null;
         }
-        const { accountsSelected = null } = await chrome.storage.local.get('accountsSelected');
+        const stored = await chrome.storage.local.get('accountsSelected');
+        /** @type {number[] | null} */
+        const accountsSelected = Array.isArray(stored.accountsSelected) ? stored.accountsSelected : null;
         return {
             transactions,
             categories: cacheStore.get('categories') || [],
@@ -345,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async function () {
  */
 async function checkAndShowPinInstructions() {
     try {
-        const pinInstructionsSection = document.querySelector('#pinInstructionsSection');
+        const pinInstructionsSection = /** @type {HTMLElement} */ (document.querySelector('#pinInstructionsSection'));
         
         if (!pinInstructionsSection) {
             console.warn('[Popup] Section d\'instructions d\'épinglage non trouvée');

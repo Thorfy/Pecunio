@@ -53,9 +53,9 @@ export class ReviewPrompt {
     static async tryShow() {
         try {
             const data = await this._getStorageData();
-            const buildCount = (data[this.STORAGE_KEYS.BUILD_COUNT] || 0) + 1;
-            const state = data[this.STORAGE_KEYS.STATE] || this.STATE.NONE;
-            const dismissedAt = data[this.STORAGE_KEYS.DISMISSED_AT] || 0;
+            const buildCount = (Number(data[this.STORAGE_KEYS.BUILD_COUNT]) || 0) + 1;
+            const state = String(data[this.STORAGE_KEYS.STATE] || this.STATE.NONE);
+            const dismissedAt = Number(data[this.STORAGE_KEYS.DISMISSED_AT]) || 0;
 
             await this._setStorage({ [this.STORAGE_KEYS.BUILD_COUNT]: buildCount });
             Logger.debug(`[ReviewPrompt] Builds: ${buildCount}, State: ${state}`);
@@ -343,12 +343,10 @@ export class ReviewPrompt {
      * @returns {Promise<{ [key: string]: number | string }>}
      */
     static _getStorageData() {
-        return new Promise((resolve) => {
-            chrome.storage.local.get([
-                this.STORAGE_KEYS.BUILD_COUNT,
-                this.STORAGE_KEYS.STATE,
-                this.STORAGE_KEYS.DISMISSED_AT
-            ], resolve);
-        });
+        return chrome.storage.local.get([
+            this.STORAGE_KEYS.BUILD_COUNT,
+            this.STORAGE_KEYS.STATE,
+            this.STORAGE_KEYS.DISMISSED_AT,
+        ]);
     }
 }

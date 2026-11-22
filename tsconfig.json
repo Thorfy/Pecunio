@@ -1,0 +1,17 @@
+{
+  // Vérification des types du code JavaScript (JSDoc) avec TypeScript, sans
+  // compilation : `npm run typecheck`. Les fichiers restent en .js.
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "types": ["chrome"],
+    // Le code existant n'est pas encore annoté partout : on durcira progressivement
+    "strict": false,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+    "verbatimModuleSyntax": false
+  },
+  "include": ["js/**/*.js", "js/**/*.d.ts", "entrypoints/**/*.js", "wxt.config.js"]
+}

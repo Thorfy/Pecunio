@@ -1,3 +1,4 @@
+import { getHiddenCategories, setCategoryHidden } from '../core/CategoryVisibility.js';
 import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
@@ -123,8 +124,7 @@ export class LineBarChart extends BaseChartData {
 
     async getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
         const data = { datasets: [] };
-        const settingsList = categoryData.map(category => category.name);
-        const settings = await chrome.storage.local.get(settingsList);
+        const hiddenCategories = await getHiddenCategories();
 
         categoryData.forEach(category => {
             const transactions = transactionByCategory[parseInt(category.id)];
@@ -139,7 +139,7 @@ export class LineBarChart extends BaseChartData {
                     borderColor: ColorParser.parseColorCSS("categoryColor_" + category.id),
                     fill: false,
                     tension: 0.3,
-                    hidden: settings[category.name]
+                    hidden: hiddenCategories.has(category.name)
                 });
                 return; // Passer à la catégorie suivante
             }
@@ -177,7 +177,7 @@ export class LineBarChart extends BaseChartData {
                 borderColor: color,
                 fill: false,
                 tension: 0.3,
-                hidden: settings[category.name]
+                hidden: hiddenCategories.has(category.name)
             });
         });
 
@@ -214,10 +214,12 @@ export class LineBarChart extends BaseChartData {
                     text: ""
                 },
                 legend: {
-                    onClick: async function (evt, item) {
-                        const currentVal = await chrome.storage.local.get([item.text]);
-                        await chrome.storage.local.set({ [item.text]: !currentVal[item.text] });
-                        Chart.defaults.plugins.legend.onClick.call(this, evt, item, this);
+                    // Masque/affiche la catégorie et mémorise le choix (préférence hiddenCategories)
+                    onClick: function (evt, item, legend) {
+                        const hidden = !item.hidden;
+                        Chart.defaults.plugins.legend.onClick.call(this, evt, item, legend);
+                        setCategoryHidden(item.text, hidden).catch((error) =>
+                            console.warn('[LineBarChart] Visibilité non enregistrée :', error));
                     },
                 },
                 tooltip: {

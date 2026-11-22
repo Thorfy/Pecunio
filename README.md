@@ -21,6 +21,13 @@
 - **Masquage des montants** : Protégez votre vie privée en masquant les montants sensibles
 - **Export de données** : Exportez vos données pour analyse approfondie
 
+## 🔒 Données et vie privée
+
+- Pecunio lit vos données avec la session Bankin de votre navigateur ; rien n'est envoyé ailleurs que vers Bankin.
+- Les transactions, catégories et comptes sont gardés en cache sur votre ordinateur (`chrome.storage.local`) pour afficher les graphiques plus vite.
+- **Dès que Bankin affiche sa page de connexion** (déconnexion ou session expirée), Pecunio efface ce cache, les données du dernier rapport PDF et les en-têtes d'authentification. Seules vos préférences (période, comptes, catégories masquées, masquage des montants) sont conservées.
+- Les boutons « Réinitialiser » de la popup effacent à la demande les données ou les préférences.
+
 ## 📸 Aperçu
 
 <img width="387" height="594" alt="Capture d'écran 2025-09-05 121114" src="https://github.com/user-attachments/assets/f3c17660-2444-4fdb-9683-a892239f5216" />
@@ -55,9 +62,10 @@ npm install         # dépendances et outillage
 npm run dev         # build en continu + Chrome de développement avec l'extension chargée
 npm run build       # build de production dans .output/chrome-mv3
 npm run zip         # zip pour le Chrome Web Store dans .output/
-npm run check       # lint + tests + build
+npm run check       # lint + types + tests + build
 npm test            # tests unitaires
 npm run test:tz     # tests sous 3 fuseaux horaires
+npm run typecheck   # vérification des types (tsc sur le JSDoc)
 npm run lint:fix    # corrections automatiques du lint
 ```
 
@@ -76,6 +84,6 @@ Les tests sont décrits dans [docs/TESTING.md](docs/TESTING.md).
 
 Pour tester dans votre Chrome : `npm run build`, puis `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier **`.output/chrome-mv3`** (et non plus la racine du dépôt). Après chaque `npm run build`, cliquer sur ↻ dans `chrome://extensions` puis recharger l'onglet Bankin.
 
-La CI (`.github/workflows/ci.yml`) lance le lint, le build et les tests (sous Paris, New York et UTC) sur chaque PR. Un tag `vX.Y.Z` (identique à la version de `package.json`) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
+La CI (`.github/workflows/ci.yml`) lance le lint, la vérification des types, le build et les tests (sous Paris, New York et UTC) sur chaque PR. Un tag `vX.Y.Z` (identique à la version de `package.json`) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
 
 Le plan de modernisation est décrit dans [docs/AUDIT-MODERNISATION.md](docs/AUDIT-MODERNISATION.md).

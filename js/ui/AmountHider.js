@@ -61,7 +61,7 @@ export class AmountHider {
 
     _updateButtonIcon(blurred) {
         const url = blurred ? Config.getAssetURL('EYE_CLOSED') : Config.getAssetURL('EYE_OPEN');
-        document.querySelectorAll('.pecunio-hide-button').forEach(btn => { btn.src = url; });
+        document.querySelectorAll('img.pecunio-hide-button').forEach(btn => { /** @type {HTMLImageElement} */ (btn).src = url; });
     }
 
     _syncGlobalBlur(value) {
@@ -103,8 +103,8 @@ export class AmountHider {
         const all = document.querySelectorAll(Config.SELECTORS.BLURRY_SELECTORS);
         if (header) header.classList.add('pecunio-blurred');
         all.forEach(el => el.classList.add('pecunio-blurred'));
-        document.querySelectorAll('.pecunio-hide-button').forEach(btn => {
-            btn.src = Config.getAssetURL('EYE_CLOSED');
+        document.querySelectorAll('img.pecunio-hide-button').forEach(btn => {
+            /** @type {HTMLImageElement} */ (btn).src = Config.getAssetURL('EYE_CLOSED');
         });
     }
 }

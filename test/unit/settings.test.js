@@ -20,6 +20,7 @@ describe('Settings', () => {
         const settings = await settingsWith({ startDate: '2024-01-01', isBlurry: true, autreCle: 'x' });
         expect(settings.getSetting('startDate')).toBe('2024-01-01');
         expect(settings.getAllSettings()).toEqual({ startDate: '2024-01-01', isBlurry: true });
+        expect(chrome.storage.local._data.autreCle).toBe('x'); // clé non booléenne : laissée telle quelle
     });
 
     test('getAllSettings renvoie une copie', async () => {
@@ -41,7 +42,7 @@ describe('Settings', () => {
     test('setSettings refuse les valeurs de mauvais type', async () => {
         const settings = await settingsWith({});
         await settings.setSettings({ accountsSelected: 101, isBlurry: 'oui', noEndDate: 'non', endDate: '2024-03-01' });
-        expect(chrome.storage.local._data).toEqual({ endDate: '2024-03-01' });
+        expect(chrome.storage.local._data).toEqual({ endDate: '2024-03-01', settings_version: 2 });
     });
 
     test('lecture impossible → valeurs par défaut et erreur remontée', async () => {
@@ -53,7 +54,8 @@ describe('Settings', () => {
         });
         const settings = new Settings();
         await expect(settings.waitForInitialization()).rejects.toThrow('stockage indisponible');
-        expect(settings.getSetting('accounts')).toEqual([]);
+        expect(settings.getSetting('accountsSelected')).toBeNull();
+        expect(settings.getSetting('hiddenCategories')).toEqual([]);
     });
 
     test('lecture avant initialisation : avertissement', () => {
@@ -63,16 +65,17 @@ describe('Settings', () => {
     });
 
     // --- B13 ------------------------------------------------------------
-    test('B13 — effacer les réglages ne touche ni au cache, ni aux catégories masquées, ni au rapport', async () => {
+    test('B13 — effacer les réglages ne touche ni au cache, ni au rapport', async () => {
         const settings = await settingsWith({
             startDate: '2024-01-01',
             noEndDate: true,
-            Logement: true,
+            hiddenCategories: ['Logement'],
+            settings_version: 2,
             pecunio_report_params: {},
             cache_data_transactions: [],
         });
         await settings.clearAllSettings();
-        expect(chrome.storage.local._data).toEqual({ Logement: true, pecunio_report_params: {}, cache_data_transactions: [] });
+        expect(chrome.storage.local._data).toEqual({ settings_version: 2, pecunio_report_params: {}, cache_data_transactions: [] });
         expect(settings.getAllSettings()).toEqual({});
     });
 

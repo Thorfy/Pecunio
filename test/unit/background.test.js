@@ -110,9 +110,26 @@ describe('bg.js — en-têtes d\'authentification', () => {
     });
 });
 
+describe('bg.js — déconnexion (D8)', () => {
+    test('D8 — page de connexion Bankin : les en-têtes sont oubliés', async () => {
+        bankinRequest();
+        expect(chrome.storage.session._data.pecunio_auth_headers).toEqual(AUTH_HEADERS);
+        chrome.runtime.onMessage.dispatch({ type: 'pecunio_signed_out' }, {}, () => {});
+        await vi.waitFor(() => expect(chrome.storage.session._data.pecunio_auth_headers).toBeUndefined(), { timeout: 200 });
+        const port = openTab(5);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(port.postMessage).not.toHaveBeenCalled();
+    });
+
+    test('les autres messages sont ignorés', () => {
+        bankinRequest();
+        chrome.runtime.onMessage.dispatch({ type: 'autre' }, {}, () => {});
+        expect(chrome.storage.session._data.pecunio_auth_headers).toEqual(AUTH_HEADERS);
+    });
+});
+
 describe('bg.js — popup (B11)', () => {
     test('B11 — la popup n\'est plus ouverte automatiquement ni signalée par un badge', () => {
-        expect(chrome.runtime.onMessage.listenerCount).toBe(0);
         chrome.runtime.onMessage.dispatch({ action: 'openPopup' }, {}, () => {});
         expect(chrome.action.openPopup).not.toHaveBeenCalled();
         expect(chrome.action.setBadgeText).not.toHaveBeenCalled();

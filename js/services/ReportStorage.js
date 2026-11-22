@@ -8,12 +8,10 @@ import { Config } from '../core/Config.js';
 export class ReportStorage {
     /**
      * Charge les données du rapport depuis le stockage
-     * @returns {Promise<{mergedData: Array, stats: Object, params: Object}>}
+     * @returns {Promise<{mergedData: any[], stats: Record<string, any>, params: Record<string, any>}>}
      */
     static loadReportData() {
-        const keys = typeof Config !== 'undefined' && Config.REPORT && Config.REPORT.STORAGE_KEYS
-            ? Config.REPORT.STORAGE_KEYS
-            : { MERGED: 'pecunio_report_mergedData', STATS: 'pecunio_report_stats', PARAMS: 'pecunio_report_params' };
+        const keys = Config.REPORT.STORAGE_KEYS;
 
         return new Promise((resolve, reject) => {
             chrome.storage.local.get([keys.MERGED, keys.STATS, keys.PARAMS], (data) => {
@@ -26,7 +24,7 @@ export class ReportStorage {
                     return;
                 }
                 resolve({
-                    mergedData: data[keys.MERGED],
+                    mergedData: /** @type {any[]} */ (data[keys.MERGED]),
                     stats: data[keys.STATS] || {},
                     params: data[keys.PARAMS] || {}
                 });
