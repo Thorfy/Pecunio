@@ -98,7 +98,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | Tests unitaires | **Vitest** + happy-dom + faux `chrome.*` maison ✅ | Rapide, même configuration que le futur build Vite/WXT |
 | Tests e2e | **Playwright**, extension chargée, Bankin simulé par `context.route` + pages HTML anonymisées | Parcours réel sans compte Bankin, popup et rapport inclus |
 | Qualité | ESLint + Prettier + `.editorconfig` + `.gitattributes` ✅ | En place |
-| CI/CD | GitHub Actions : lint, types, tests, build, e2e ; release en brouillon sur tag ✅ (partiel) | Plus de version cassée publiée |
+| CI/CD | GitHub Actions : lint, types, tests, build, e2e ; publication automatique sur tag si tous les contrôles passent ✅ | Plus de version cassée publiée |
 
 Alternative si WXT est jugé trop structurant : Vite ou esbuild seul avec un manifest écrit à la main (plus simple, mais rechargement, zip et multi-entrées à faire soi-même).
 
@@ -203,9 +203,9 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 
 ### Phase 6 — CI/CD et release _(½ j)_ ✅ _(branche `ci/phase-6-release`)_
 - PR : lint, types, unitaires (3 fuseaux, seuil de couverture), build et zip, e2e — jobs `check`, `test` et `e2e` de `ci.yml` (en parallèle). ✅
-- Tag `vX.Y.Z` : tag = version de `package.json` (reprise dans le manifest) et section correspondante dans `CHANGELOG.md` vérifiés ; **tous** les contrôles relancés (dont fuseaux et e2e) ; zip ; **release GitHub en brouillon** (notes du changelog + PR générées) ; envoi au store en brouillon. Lancement manuel (« Run workflow ») = répétition générale sans release ni envoi. Procédure : `docs/RELEASE.md`. ✅
+- Tag `vX.Y.Z` : tag = version de `package.json` (reprise dans le manifest) et section correspondante dans `CHANGELOG.md` vérifiés ; **tous** les contrôles relancés (dont fuseaux et e2e) ; zip ; si tout passe, envoi au store **avec publication automatique** (`--auto-publish`, après l'examen de Google), puis release GitHub publiée (notes du changelog + PR générées) ; si un contrôle échoue, rien n'est envoyé. Lancement manuel (« Run workflow ») = répétition générale sans release ni envoi. Procédure : `docs/RELEASE.md`. ✅
 - Dependabot (npm + Actions, phase 3b) ✅ ; description du manifest corrigée (D12) ✅.
-- `--auto-publish` : **non réactivé**, la publication reste manuelle (décision du 22/11/2026).
+- `--auto-publish` : **réactivé** à la demande de l'utilisateur (22/11/2026) : chaque tag publie la version si la CI de release passe.
 
 ### Récapitulatif
 
@@ -230,7 +230,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | Build | ✅ WXT | — |
 | TypeScript | ✅ JSDoc + `checkJs` (pas de conversion en `.ts`) | — |
 | Données | ✅ Cache purgé à la déconnexion de Bankin ; durée de validité inchangée (10 min) | — |
-| Publication | ✅ Validation manuelle conservée : envoi au store en brouillon, publication depuis le tableau de bord (décidé le 22/11/2026) | — |
+| Publication | ✅ Publication automatique sur tag, si tous les contrôles de la release passent (lint, types, tests sous 3 fuseaux, e2e) ; la recette sur le vrai Bankin se fait avant de tagger (décidé le 22/11/2026) | — |
 
 ## 7. Recette manuelle (avant chaque merge de phase 2 à 4)
 

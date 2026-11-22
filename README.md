@@ -86,6 +86,6 @@ Les tests sont décrits dans [docs/TESTING.md](docs/TESTING.md).
 
 Pour tester dans votre Chrome : `npm run build`, puis `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier **`.output/chrome-mv3`** (et non plus la racine du dépôt). Après chaque `npm run build`, cliquer sur ↻ dans `chrome://extensions` puis recharger l'onglet Bankin.
 
-La CI (`.github/workflows/ci.yml`) lance le lint, la vérification des types, le build, les tests unitaires (sous Paris, New York et UTC) et les scénarios de bout en bout sur chaque PR. Un tag `vX.Y.Z` (identique à la version de `package.json`) relance tous les contrôles, crée une release GitHub en brouillon et envoie le zip sur le Chrome Web Store **en brouillon** ; la publication se fait à la main. Procédure : [docs/RELEASE.md](docs/RELEASE.md) ; historique : [CHANGELOG.md](CHANGELOG.md).
+La CI (`.github/workflows/ci.yml`) lance le lint, la vérification des types, le build, les tests unitaires (sous Paris, New York et UTC) et les scénarios de bout en bout sur chaque PR. Un tag `vX.Y.Z` (identique à la version de `package.json`) relance tous les contrôles et, s'ils passent, **publie** la version sur le Chrome Web Store (après l'examen de Google) puis la release GitHub. Procédure : [docs/RELEASE.md](docs/RELEASE.md) ; historique : [CHANGELOG.md](CHANGELOG.md).
 
 Le plan de modernisation est décrit dans [docs/AUDIT-MODERNISATION.md](docs/AUDIT-MODERNISATION.md).
