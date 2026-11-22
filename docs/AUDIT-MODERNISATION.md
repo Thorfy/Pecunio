@@ -30,28 +30,31 @@ _Version du 22/11/2026. Base auditée : `4fabb8c` (v0.5.3). Branche en cours : `
 
 ## 3. Registre des constats
 
-Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans Chrome (22/11/2026). Colonne « Phase » = phase qui le corrige.
+Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans Chrome (22/11/2026), **T** = reproduit par un test automatisé (`knownBug` dans `test/unit/`, phase 1). Colonne « Phase » = phase qui le corrige.
 
 ### 3.1 Bugs
 
 | # | Gravité | Constat | Source | Phase |
 |---|---|---|---|---|
-| B1 | 🔴 | **Authentification d'un seul onglet** : `bg.js` garde un unique `portEvent`, le dernier onglet Bankin connecté écrase les autres → « Auth timeout » dans les autres onglets | C | 2a |
-| B2 | 🔴 | **Headers non rejoués et perdus** : envoyés seulement lors d'une requête `/v2/accounts` ; si le content script se connecte après, ou si le service worker MV3 a été tué, attente jusqu'au timeout | C | 2a |
-| B3 | 🔴 | **Transactions en double** : `_fetchPaginatedData` appelle la page suivante dans son `try` ; un échec de la page N fait retélécharger la page N‑1 et réinsérer ses données. Les 4xx sont aussi retentées | C | 2a |
+| B1 | 🔴 | **Authentification d'un seul onglet** : `bg.js` garde un unique `portEvent`, le dernier onglet Bankin connecté écrase les autres → « Auth timeout » dans les autres onglets | C + T | 2a |
+| B2 | 🔴 | **Headers non rejoués et perdus** : envoyés seulement lors d'une requête `/v2/accounts` ; si le content script se connecte après, ou si le service worker MV3 a été tué, attente jusqu'au timeout | C + T | 2a |
+| B3 | 🔴 | **Transactions en double** : `_fetchPaginatedData` appelle la page suivante dans son `try` ; un échec de la page N fait retélécharger la page N‑1 et réinsérer ses données (test : `[1, 2, 1, 2, 3]`). Les 4xx (404…) sont aussi retentées | C + T | 2a |
 | B4 | 🔴 | **Rafraîchissement multiplié** : chaque `build()` ajoute un écouteur sur `.refreshIcon`. Après 2 clics sur « Toggle chart type », **un** clic sur ↻ vide le cache et recharge les données **3 fois**. (Pas de cumul entre pages : Bankin recrée le bouton à chaque navigation) | C + L | 2b |
 | B5 | 🟠 | **`build()` concurrents** : aucun verrou ; les 3 rafraîchissements de B4 lancent 3 constructions en parallèle, dont une échoue (`budgetChartBlock not found`) ; le compteur de ReviewPrompt compte deux fois le même build | C + L | 2b |
 | B6 | 🔴 | **Graphiques périmés sur l'onglet Revenus** : `/categories/2` n'est pas reconnu (comparaison exacte de `location.href`), les graphiques de dépenses restent affichés et ne suivent plus le mois choisi | L | 2b |
-| B7 | 🔴 | **CSV corrompu** : `encodeURI` laisse `#` → fichier tronqué ; guillemets non échappés ; formules Excel non neutralisées (`=`, `+`, `-`, `@`) ; nom de fichier avec des `/` | C | 2a |
-| B8 | 🔴 | **Export qui plante sans message** : `account.getDisplayName()` sur un compte supprimé (`{}`) → `TypeError`, avalée car levée dans un callback `chrome.storage` hors du `try/catch` de la popup | C | 2a |
-| B9 | 🟠 | **Dates décalées UTC/local** : rapport mensuel arrêté au 30 au lieu du 31 (et au 30/12 pour l'année) ; `DataManager.filterTransactions` exclut le jour de début ; `Config.toDateInputValue` donne la veille entre minuit et 1 h–2 h | C | 2a |
-| B10 | ❓ | **Dates ramenées au 1er du mois** : `current_month` vaut 0 par défaut et `getAdjustedDate` fait toujours `setDate(1)` → colonne Date du CSV toujours au 1er, filtres par jour qui fonctionnent au mois. **À confirmer** : voulu pour les graphiques ? (cf. §6) | C | 2a |
+| B7 | 🔴 | **CSV corrompu** : `encodeURI` laisse `#` → fichier tronqué ; guillemets non échappés ; formules Excel non neutralisées (`=`, `+`, `-`, `@`) ; nom de fichier avec des `/` | C + T | 2a |
+| B8 | 🔴 | **Export qui plante sans message** : `account.getDisplayName()` sur un compte supprimé (`{}`) → `TypeError`, avalée car levée dans un callback `chrome.storage` hors du `try/catch` de la popup | C + T | 2a |
+| B9 | 🟠 | **Dates décalées UTC/local** : rapport mensuel arrêté au 30 au lieu du 31 (et au 30/12 pour l'année) ; `DataManager.filterTransactions` exclut le jour de début **dans tout fuseau sauf UTC** ; `Config.toDateInputValue` donne la veille entre minuit et 1 h–2 h (France) ; à l'ouest de UTC, une dépense du 1er janvier est rangée en décembre (page Catégories) et tracée en **décembre de la même année** (graphique temporel) | C + T | 2a |
+| B10 | ❓ | **Dates ramenées au 1er du mois** : `current_month` vaut 0 par défaut et `getAdjustedDate` fait toujours `setDate(1)` → colonne Date du CSV toujours au 1er, filtres par jour qui fonctionnent au mois. **À confirmer** : voulu pour les graphiques ? (cf. §6) | C + T | 2a |
 | B11 | 🟠 | **Popup forcée à chaque page Bankin** : `openPopup` échoue sans geste utilisateur et laisse un badge « ! » permanent | C | 2b |
 | B12 | 🟠 | **Rejet non intercepté** : l'extension démarre même sur `/signin` et lève `AuthenticationError: Auth timeout` au bout de 10 s ; aucun retour visible à l'utilisateur | C + L | 2b |
-| B13 | 🟠 | **Settings utilisé comme cache** : chaque sauvegarde relit tout le stockage ; `clearAllSettings` vide tout `storage.local` ; le bouton ↻ écrit `cache_time_* = ""`, rejeté par la validation (warning à chaque clic) | C + L | 2a |
-| B14 | 🟠 | **Filtrage écrit 3 fois** avec des règles différentes (`DataManager`, `DataMerger`, `BaseChartData`) : l'export n'exclut pas les catégories d'exception, `DataMerger` ignore la date si une seule borne est fournie | C | 2a |
-| B15 | 🟠 | **`Evt` défaillant** : événements « collants » (un nouvel écouteur est rappelé pour un événement passé), `removeListener` sans effet, événements visibles et déclenchables par la page Bankin | C | 3 |
+| B13 | 🟠 | **Settings utilisé comme cache** : chaque sauvegarde relit tout le stockage ; `clearAllSettings` vide tout `storage.local` (y compris les catégories masquées et le rapport) ; le bouton ↻ écrit `cache_time_* = ""`, rejeté par la validation (warning à chaque clic) | C + L + T | 2a |
+| B14 | 🟠 | **Filtrage écrit 3 fois** avec des règles différentes (`DataManager`, `DataMerger`, `BaseChartData`) : l'export n'exclut pas les catégories d'exception, `DataMerger` ignore la date si une seule borne est fournie | C + T | 2a |
+| B15 | 🟠 | **`Evt` défaillant** : événements « collants » (un nouvel écouteur est rappelé pour un événement passé), `removeListener` sans effet, événements visibles et déclenchables par la page Bankin | C + T | 3 |
 | B16 | 🟡 | **Écouteur `storage.onChanged` par `BudgetChart`**, jamais retiré | C | 2b |
+| B17 | 🟠 | **Plantage du regroupement par catégorie** : `BaseChartData.mergeTransactionByCategory` fait `category.categories.forEach` sans vérifier ; une catégorie parente sans sous-catégories fait planter le Sankey | T | 2a |
+| B18 | 🟠 | **Sankey : remboursements comptés comme dépenses** : les montants sont additionnés en valeur absolue ; une dépense de 100 € remboursée de 40 € apparaît comme 140 € de dépenses au lieu de 60 € | T | 2a |
+| B19 | 🔴 | **Page Catégories vide si le navigateur n'est pas en français** : `applySettingOnDataByMonth` compare le nom du mois affiché par Bankin (« février ») au nom du mois dans la langue du navigateur (`toLocaleString('default')`) ; avec Chrome en anglais, aucune transaction ne correspond (non vérifié en réel : le Chrome testé est en français) | T | 2a |
 
 ### 3.2 Dette technique et qualité
 
@@ -70,6 +73,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques | 2b |
 | D12 | Description du manifest : « Pecunio overload Bankin website » | 6 |
 | D13 | 35 warnings ESLint (surtout `prefer-const`) | 3 |
+| D14 | Visibilité des catégories stockée sous des clés de premier niveau nommées d'après les catégories (`"Logement": true`) : collisions possibles avec les autres clés, nettoyage impossible | 4 |
 
 ### 3.3 Ce qui fonctionne (vérifié en réel)
 - Page Comptes : graphique « Dépense sur N mois » et « Comparaison Budget Médian ».
@@ -85,7 +89,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | Build | **[WXT](https://wxt.dev)** (Vite) | Manifest généré, entrypoints background / content / popup / report, rechargement à chaud, zip propre |
 | Langage | **TypeScript progressif** : `// @ts-check` + JSDoc, puis `.ts` module par module | Le JSDoc existe déjà ; typer l'API Bankin évite une classe entière de bugs |
 | Dépendances | npm : `chart.js@4`, `chartjs-chart-sankey`, `chartjs-adapter-date-fns`, `choices.js`, `html2pdf.js` | Versions tracées, mises à jour automatisées |
-| Tests unitaires | **Vitest** + happy-dom + faux `chrome.*` (`@webext-core/fake-browser`) | Rapide, même configuration que le build |
+| Tests unitaires | **Vitest** + happy-dom + faux `chrome.*` maison ✅ | Rapide, même configuration que le futur build Vite/WXT |
 | Tests e2e | **Playwright**, extension chargée, Bankin simulé par `context.route` + pages HTML anonymisées | Parcours réel sans compte Bankin, popup et rapport inclus |
 | Qualité | ESLint + Prettier + `.editorconfig` + `.gitattributes` ✅ | En place |
 | CI/CD | GitHub Actions : lint, types, tests, build, e2e ; release en brouillon sur tag ✅ (partiel) | Plus de version cassée publiée |
@@ -94,30 +98,27 @@ Alternative si WXT est jugé trop structurant : Vite ou esbuild seul avec un man
 
 ## 5. Plan par phases
 
-### Phase 0 — Base saine ✅ _(faite, ½ j)_
-Branche `chore/phase-0-tooling`, 4 commits, **pas encore poussée**.
+### Phase 0 — Base saine ✅ _(faite, ½ j — PR Thorfy/Pecunio#12, mergée)_
 - `.gitattributes` (LF), `.editorconfig`, `.gitignore`.
 - `package.json`, ESLint 9 (0 erreur, 35 warnings), Prettier (configuré, pas encore appliqué).
 - `scripts/check-manifest.mjs` : fichiers référencés présents, fichiers JS orphelins, versions cohérentes.
 - `scripts/package.sh` : zip limité aux fichiers de l'extension, contenu revérifié.
 - CI sur PR (manifest, lint, zip) ; release sur tag → envoi **en brouillon**, sans `--auto-publish`.
 
-**Reste à faire** : pousser, ouvrir la PR, vérifier que la CI passe sur GitHub (pas encore exécutée), merger.
-
-### Phase 1 — Filet de tests unitaires _(1,5–2 j)_
-But : couvrir la logique existante **sans la modifier**.
-- **Harnais Vitest** : charge les fichiers globaux dans l'ordre du manifest (helper unique), faux `chrome.storage` / `chrome.runtime`.
-- **Fixtures synthétiques** : générateur de transactions / catégories / comptes au format Bankin (pagination, `current_month`, compte supprimé, descriptions avec `#`, `"`, `=`). Aucune donnée réelle.
-- **Cibles** : modèles (`fromRaw`, validation), `DataValidators`, `DataMerger` (merge, filtres, CSV, stats), `BaseChartData` (filtres, agrégations, médiane/moyenne), calculs de `BudgetChart`, `ReportFilters`, `ReportChartDataBuilder`, `DataManager._fetchPaginatedData` (fetch simulé : pagination, retry, 401/403/404/500).
-- **Bugs documentés** : un test `test.fails` par bug testable unitairement (B3, B7, B8, B9, B10, B13, B14). Ils passeront au vert quand la phase 2 les corrigera.
-- **Fuseaux horaires** : suite lancée en `TZ=Europe/Paris`, `America/New_York`, `UTC`.
-- CI : job `test` + rapport de couverture.
-
-**Terminé quand** : la CI exécute les tests sur 3 fuseaux ; couverture ≥ 80 % sur `js/models`, `js/services`, `js/report`, et sur les fonctions de calcul de `js/charts`.
+### Phase 1 — Filet de tests unitaires ✅ _(faite, branche `test/phase-1-unit-tests`)_
+But : couvrir la logique existante **sans la modifier** (aucun fichier de l'extension modifié).
+- **Harnais Vitest 5** + happy-dom : un plugin de test expose les classes globales sur `globalThis`, les scripts sont importés dans l'ordre du manifest ; faux `chrome.*` maison (stockage callback + promesse, ports, événements).
+- **Fixtures synthétiques** (`test/fixtures/bankin.js`) : catégories, comptes, transactions, pages d'API paginées. Aucune donnée réelle.
+- **11 fichiers, 170 tests** : modèles, `DataValidators`, `DataMerger` (fusion, filtres, CSV, stats), rapport (`ReportFilters`, `ReportChartDataBuilder`, `ReportStorage`, `PdfExporter`), calculs de tous les graphiques, `DataManager` (pagination, retry, auth, cache), `Settings`, `Config`, `Evt`, `bg.js`.
+- **20 bugs documentés** par des tests `knownBug` (B1, B2, B3, B7, B8, B9, B13, B14, B15, B17, B18, B19) : ils décrivent le comportement attendu et échouent tant que le bug existe. `npm run test:bugs` affiche leurs vrais messages d'échec. B10 : test du comportement actuel + `todo` en attendant la décision.
+- **3 bugs découverts** par les tests : B17, B18, B19.
+- **Fuseaux horaires** : `npm run test:tz` (Paris, New York, UTC) ; matrice identique en CI.
+- **Couverture** (seuils bloquants en CI) : modèles 100 %, services ~98 %, rapport ~97 %, cœur ~92 %, `BaseChartData` ~89 %. Le rendu des graphiques et `js/ui` restent pour la phase 5.
+- Non couverts unitairement : B4–B6, B11, B12, B16 (cycle de vie dans la page Bankin) et la partie de B9 située dans `popup.js` (rapport PDF) → phase 2b / 5.
 
 ### Phase 2 — Fiabilité _(2–3 j, 2 PR)_
 
-**2a — Données et authentification** (B1–B3, B7–B10, B13, B14, D5, D7)
+**2a — Données et authentification** (B1–B3, B7–B10, B13, B14, B17–B19, D5, D7)
 - `bg.js` : `Map<tabId, port>`, headers stockés dans `chrome.storage.session`, rejoués à chaque connexion. Reprise de la version du stash, complétée.
 - Pagination itérative, retry par page, pas de retry sur les 4xx.
 - `CacheStore` séparé de `Settings` (reprise du stash) ; suppression ciblée des clés, plus de `storage.local.clear()`.
@@ -133,7 +134,7 @@ But : couvrir la logique existante **sans la modifier**.
 - Suppression de l'`openPopup` automatique ; bandeau visible pour les erreurs (auth expirée, API indisponible) et pendant le chargement.
 - Logger à niveaux, silencieux en production, sans données bancaires.
 
-**Terminé quand** : tous les `test.fails` de la phase 1 sont passés au vert ; la recette manuelle §7 est validée dans Chrome.
+**Terminé quand** : tous les tests `knownBug` de la phase 1 sont convertis en tests normaux et passent sous les 3 fuseaux ; la recette manuelle §7 est validée dans Chrome.
 
 ### Phase 3 — Modules et build _(2–3 j)_
 Restructuration **sans changement de comportement** (les tests des phases 1–2 servent de garde-fou).
@@ -177,12 +178,12 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 
 | Phase | Effort | Statut | Corrige |
 |---|---|---|---|
-| 0 Base saine | ½ j | ✅ à merger | — |
-| 1 Tests unitaires | 1,5–2 j | prochaine | documente B3, B7–B10, B13, B14 |
-| 2a Données & auth | 1,5 j | | B1–B3, B7–B10, B13, B14 |
+| 0 Base saine | ½ j | ✅ mergée (#12) | — |
+| 1 Tests unitaires | 1,5–2 j | ✅ PR à merger | documente B1–B3, B7–B10, B13–B15, B17–B19 |
+| 2a Données & auth | 1,5–2 j | prochaine | B1–B3, B7–B10, B13, B14, B17–B19 |
 | 2b Cycle de vie | 1–1,5 j | | B4–B6, B11, B12, B16 |
 | 3 Modules + WXT | 2–3 j | | B15, D3–D6, D13 |
-| 4 Types + adaptateur | 2–3 j | | D1, D8–D10 |
+| 4 Types + adaptateur | 2–3 j | | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |
 

@@ -1,0 +1,357 @@
+import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { CATEGORIES, sampleTransactions, tx } from '../fixtures/bankin.js';
+import { knownBug } from '../helpers/known-bug.js';
+import { loadContentScripts } from '../helpers/load.js';
+import { WEST_OF_UTC } from '../helpers/timezone.js';
+
+beforeAll(loadContentScripts);
+
+/** Faux Settings : seules les méthodes utilisées par les graphiques. */
+const fakeSettings = (values = {}) => ({
+    getSetting: (key) => values[key],
+    getEffectiveEndDate: () => values.endDate,
+    waitForInitialization: () => Promise.resolve(),
+});
+
+/**
+ * Force la langue utilisée par Date.prototype.toLocaleString('default', …),
+ * c'est-à-dire la langue du navigateur de l'utilisateur.
+ */
+const forceBrowserLocale = (locale) => {
+    const original = Date.prototype.toLocaleString;
+    vi.spyOn(Date.prototype, 'toLocaleString').mockImplementation(function (requested, options) {
+        return original.call(this, requested === 'default' ? locale : requested, options);
+    });
+};
+
+const ids = (transactions) => transactions.map((t) => t.id).sort((a, b) => a - b);
+
+describe('BaseChartData — utilitaires', () => {
+    test('lookup : chaque sous-catégorie pointe vers le nom de son parent', () => {
+        const chart = new BaseChartData([], CATEGORIES);
+        expect(chart.getCategoryNameById(188)).toBe('Alimentation & Restau.');
+        expect(chart.getCategoryNameById(168)).toBe('Alimentation & Restau.');
+        expect(chart.getCategoryNameById(4242)).toBeNull();
+    });
+
+    test('catégories absentes ou invalides', () => {
+        const chart = new BaseChartData(null, 'x');
+        expect(chart.transactions).toEqual([]);
+        expect(chart.categoryLookup.size).toBe(0);
+    });
+
+    test('médiane et moyenne ignorent les valeurs non numériques', () => {
+        expect(BaseChartData.calculateMedian([3, 1, 2])).toBe(2);
+        expect(BaseChartData.calculateMedian([4, 1, 3, 2])).toBe(2.5);
+        expect(BaseChartData.calculateMedian([1, 'x', NaN, 5])).toBe(3);
+        expect(BaseChartData.calculateMedian([])).toBe(0);
+        expect(BaseChartData.calculateMedian(['x'])).toBe(0);
+        expect(BaseChartData.calculateAverage([1, 2, 6])).toBe(3);
+        expect(BaseChartData.calculateAverage(null)).toBe(0);
+        expect(BaseChartData.calculateAverage([NaN])).toBe(0);
+    });
+
+    test('catégories d\'exception et catégories valides', () => {
+        const chart = new BaseChartData([], [...CATEGORIES, { id: 326, name: 'Exception', categories: [] }]);
+        expect(chart.isExceptionCategory(326)).toBe(true);
+        expect(chart.isExceptionCategory(188)).toBe(false);
+        expect(chart.getValidCategories().map((c) => c.id)).not.toContain(326);
+    });
+
+    test('getAdjustedDate ne modifie pas la transaction', () => {
+        const chart = new BaseChartData([], []);
+        const t = tx({ date: '2024-01-20', current_month: -1 });
+        const d = chart.getAdjustedDate(t);
+        expect([d.getFullYear(), d.getMonth() + 1]).toEqual([2023, 12]);
+        expect(t.date).toBe('2024-01-20');
+        expect(chart.getAdjustedDate({})).toBeNull();
+    });
+
+    test('formatDateToYearMonth et getMonthName', () => {
+        const chart = new BaseChartData([], []);
+        expect(chart.formatDateToYearMonth(new Date(2024, 2, 15, 12))).toBe('2024-03');
+        expect(chart.getMonthName(3)).toBe('Mar');
+        expect(chart.getMonthName(13)).toBe('');
+    });
+});
+
+describe('BaseChartData.applySettingOnData (période et comptes des réglages)', () => {
+    test('filtre par période et par compte', () => {
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES, [102], null, fakeSettings({ startDate: '2024-01-01', endDate: '2024-12-31' }));
+        expect(ids(chart.applySettingOnData())).toEqual([6]);
+    });
+
+    test('bornes inclusives', () => {
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES, null, null, fakeSettings({ startDate: '2024-02-05', endDate: '2024-02-14' }));
+        expect(ids(chart.applySettingOnData())).toEqual([8, 9, 10]);
+    });
+
+    test('une seule borne suffit', () => {
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES, null, null, fakeSettings({ startDate: '2024-03-01' }));
+        expect(ids(chart.applySettingOnData())).toEqual([12, 13]);
+    });
+
+    test('les options explicites priment sur les réglages', () => {
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES, null, null, fakeSettings({ startDate: '2030-01-01' }));
+        expect(chart.applySettingOnData({ startDate: '2024-03-01', endDate: null })).toHaveLength(2);
+    });
+
+    test('n\'exclut pas les catégories d\'exception (fait plus loin par chaque graphique)', () => {
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES, null, null, fakeSettings({}));
+        expect(ids(chart.applySettingOnData())).toContain(5);
+    });
+
+    test('ignore les transactions incomplètes ; pas de transactions → tableau vide', () => {
+        const chart = new BaseChartData([null, { date: '2024-01-01' }, tx({ id: 1 })], CATEGORIES, null, null, fakeSettings({}));
+        expect(ids(chart.applySettingOnData())).toEqual([1]);
+        const empty = new BaseChartData([], CATEGORIES, null, null, fakeSettings({}));
+        empty.transactions = null;
+        expect(empty.applySettingOnData()).toEqual([]);
+    });
+});
+
+describe('BaseChartData.applySettingOnDataByMonth (page Catégories)', () => {
+    test('sélectionne un mois avec le nom affiché par Bankin (navigateur en français)', () => {
+        forceBrowserLocale('fr-FR');
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES);
+        expect(ids(chart.applySettingOnDataByMonth('février', '2024'))).toEqual([7, 8, 9, 10, 11]);
+    });
+
+    test('tient compte de current_month', () => {
+        forceBrowserLocale('fr-FR');
+        const chart = new BaseChartData([tx({ id: 1, date: '2024-01-30', current_month: 1 })], CATEGORIES);
+        expect(ids(chart.applySettingOnDataByMonth('février', 2024))).toEqual([1]);
+    });
+
+    // --- B19 ------------------------------------------------------------
+    knownBug('B19 — attendu : les graphiques de la page Catégories fonctionnent avec un navigateur en anglais', () => {
+        forceBrowserLocale('en-US');
+        const chart = new BaseChartData(sampleTransactions(), CATEGORIES);
+        // Bankin affiche « février 2024 » quelle que soit la langue du navigateur.
+        expect(ids(chart.applySettingOnDataByMonth('février', '2024'))).toEqual([7, 8, 9, 10, 11]);
+    });
+
+    // --- B9 (ouest de UTC) ------------------------------------------------
+    (WEST_OF_UTC ? knownBug : test)('B9 — attendu : une transaction du 1er janvier est rangée en janvier', () => {
+        forceBrowserLocale('fr-FR');
+        const chart = new BaseChartData([tx({ id: 1, date: '2024-01-01' })], CATEGORIES);
+        expect(ids(chart.applySettingOnDataByMonth('janvier', '2024'))).toEqual([1]);
+    });
+});
+
+describe('BaseChartData.mergeTransactionByCategory', () => {
+    test('range chaque transaction dans sa sous-catégorie et dans son parent', () => {
+        const chart = new BaseChartData([], CATEGORIES);
+        const map = chart.mergeTransactionByCategory(sampleTransactions(), CATEGORIES);
+        expect(ids(map.get(188))).toEqual([3, 9, 13]);
+        expect(ids(map.get(168))).toEqual([3, 4, 9, 10, 13]);
+        expect(map.get(326)).toEqual([]);
+    });
+
+    test('version legacy : seulement le parent, exceptions exclues', () => {
+        const chart = new BaseChartData([], CATEGORIES);
+        const byCat = chart.mergeTransactionByCategoryLegacy(sampleTransactions(), CATEGORIES);
+        expect(ids(byCat[168])).toEqual([3, 4, 9, 10, 13]);
+        expect(byCat[160]).toEqual([]);
+        expect(byCat[188]).toBeUndefined();
+    });
+
+    // --- B17 ------------------------------------------------------------
+    knownBug('B17 — attendu : une catégorie parente sans sous-catégories ne fait pas planter le regroupement', () => {
+        const categories = [...CATEGORIES, { id: 500, name: 'Sans enfants' }];
+        const chart = new BaseChartData([], categories);
+        const map = chart.mergeTransactionByCategory([tx({ id: 1, categoryId: 188 })], categories);
+        expect(ids(map.get(168))).toEqual([1]);
+    });
+});
+
+describe('BudgetChart — calculs', () => {
+    const budget = async (transactions = sampleTransactions(), settings = {}) => {
+        const chart = new BudgetChart(transactions, CATEGORIES, null, {}, fakeSettings(settings));
+        await chart.initializationPromise;
+        return chart;
+    };
+
+    test('organise les montants par année, mois et catégorie parente, sans les exceptions', async () => {
+        const chart = await budget();
+        expect(chart.organizedData[2024][1]).toEqual({
+            "Entrées d'argent": [2500],
+            Logement: [-800],
+            'Alimentation & Restau.': [-120.5, -45],
+        });
+        expect(chart.organizedData[2024][2].Banque).toBeUndefined();
+    });
+
+    test('dépenses réelles d\'un mois', async () => {
+        const chart = await budget();
+        const spending = chart.getActualSpendingForMonth(2024, 2);
+        expect(spending['Alimentation & Restau.']).toBeCloseTo(-158.3);
+        expect(spending.Logement).toBe(-800);
+        expect(spending.Banque).toBe(0);
+        expect(chart.getActualSpendingForMonth(2030, 1).Logement).toBe(0);
+    });
+
+    test('médiane / moyenne mensuelle de l\'année en cours, jusqu\'au mois courant', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(2024, 2, 20));
+        const chart = await budget();
+        const median = chart.getCalculatedMonthlyValueForYear(2024, 'median');
+        const average = chart.getCalculatedMonthlyValueForYear(2024, 'average');
+        expect(median.Logement).toBe(-800);
+        expect(median['Alimentation & Restau.']).toBeCloseTo(-158.3);
+        expect(average['Alimentation & Restau.']).toBeCloseTo((-165.5 - 158.3 - 150) / 3);
+        expect(median.Banque).toBe(0);
+        expect(chart.getCalculatedMonthlyValueForYear(2019).Logement).toBe(0);
+    });
+
+    test('année passée : les mois sans dépense comptent pour 0 dans la médiane', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(2025, 5, 1));
+        const chart = await budget();
+        expect(chart.getCalculatedMonthlyValueForYear(2024).Logement).toBe(0);
+        expect(chart.getCalculatedMonthlyValueForYear(2024, 'average').Logement).toBe(-200);
+    });
+
+    test('historique d\'un mois sur les années précédentes', async () => {
+        const chart = await budget([tx({ date: '2022-03-10', amount: -100, categoryId: 180 }), tx({ date: '2023-03-10', amount: -300, categoryId: 180 }), tx({ date: '2024-03-10', amount: -999, categoryId: 180 })]);
+        expect(chart.getHistoricalCalculatedValueForMonth(3, 2024).Logement).toBe(-200);
+        expect(chart.getHistoricalCalculatedValueForMonth(3, 2024, 'average').Logement).toBe(-200);
+        expect(chart.getHistoricalCalculatedValueForMonth(4, 2024).Logement).toBe(0);
+    });
+
+    test('prepareData : deux séries comparées, catégories masquées retirées', async () => {
+        chrome.storage.local._data.Logement = true; // catégorie masquée par l'utilisateur
+        const chart = await budget();
+        const data = await chart.prepareData(2024, 2, 2024, 1);
+        expect(data.labels).toEqual(['Alimentation & Restau.', 'Banque', "Entrées d'argent"]);
+        expect(data.datasets[0].label).toBe('Actual Feb 2024');
+        expect(data.datasets[1].label).toBe('Actual Jan 2024');
+        expect(data.datasets[0].data[0]).toBeCloseTo(-158.3);
+        expect(data.datasets[1].data[0]).toBeCloseTo(-165.5);
+    });
+
+    test('prepareData : mode « toute l\'année »', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(2024, 2, 20));
+        const chart = await budget();
+        const data = await chart.prepareData(2024, 'ALL', 2024, 'ALL', 'average');
+        expect(data.datasets.map((d) => d.label)).toEqual(['Average 2024', 'Average 2024']);
+    });
+
+    test('aucune transaction dans la période → aucune donnée organisée', async () => {
+        const chart = await budget(sampleTransactions(), { startDate: '2030-01-01', endDate: '2030-12-31' });
+        expect(chart.organizedData).toEqual({});
+    });
+});
+
+describe('SankeyChart — données', () => {
+    const sankey = (transactions, month = 'janvier', year = '2024') => {
+        forceBrowserLocale('fr-FR');
+        return new SankeyChart(transactions, CATEGORIES, [month, year]).prepareData();
+    };
+    const flows = (data) => data.map(({ from, to, flow }) => [from, to, Math.round(flow * 100) / 100]);
+
+    test('revenus → Budget → Dépenses → catégories, avec le reste', async () => {
+        const data = await sankey(sampleTransactions());
+        expect(flows(data)).toEqual([
+            ['Salaires', 'Budget', 2500],
+            ['Alimentation & Restau.', 'Supermarché / Epicerie', 120.5],
+            ['Alimentation & Restau.', 'Restaurants', 45],
+            ['Depenses', 'Alimentation & Restau.', 165.5],
+            ['Logement', 'Loyer', 800],
+            ['Depenses', 'Logement', 800],
+            ['Budget', 'Restant', 1534.5],
+            ['Budget', 'Depenses', 965.5],
+        ]);
+    });
+
+    test('pas de « Restant » quand les dépenses dépassent le budget', async () => {
+        const data = await sankey([tx({ amount: -50, categoryId: 188, date: '2024-01-10' })]);
+        expect(flows(data)).toEqual([
+            ['Alimentation & Restau.', 'Supermarché / Epicerie', 50],
+            ['Depenses', 'Alimentation & Restau.', 50],
+            ['Budget', 'Depenses', 50],
+        ]);
+    });
+
+    test('données invalides', () => {
+        const chart = new SankeyChart([], CATEGORIES, []);
+        expect(chart.getDataFormated(null, new Map())).toEqual([]);
+        expect(chart.getDataFormated(CATEGORIES, {})).toEqual([]);
+        expect(chart.convertDataToSankeyFormat(null)).toEqual([]);
+        expect(chart.convertDataToSankeyFormat([null, { id: 1, name: 'x', transactions: 'bad', child: [{ name: 'y', transactions: 'bad' }] }])).toEqual([
+            { from: 'Budget', to: 'Depenses', flow: 0, id: 163 },
+        ]);
+    });
+
+    // --- B18 ------------------------------------------------------------
+    test('B18 — comportement actuel : un remboursement s\'ajoute aux dépenses', async () => {
+        const data = await sankey([tx({ amount: -100, categoryId: 188, date: '2024-01-10' }), tx({ amount: 40, categoryId: 188, date: '2024-01-12' })]);
+        expect(data.find((d) => d.from === 'Depenses').flow).toBe(140);
+    });
+
+    knownBug('B18 — attendu : un remboursement réduit la dépense de sa catégorie', async () => {
+        const data = await sankey([tx({ amount: -100, categoryId: 188, date: '2024-01-10' }), tx({ amount: 40, categoryId: 188, date: '2024-01-12' })]);
+        expect(data.find((d) => d.from === 'Depenses').flow).toBe(60);
+    });
+});
+
+describe('ExpenseTypeChart — données', () => {
+    const expenseType = (transactions, params = ['janvier', '2024']) => {
+        forceBrowserLocale('fr-FR');
+        return new ExpenseTypeChart(transactions, CATEGORIES, params).prepareData();
+    };
+
+    test('répartit les dépenses du mois par type, sans revenus ni exceptions', async () => {
+        const data = await expenseType(sampleTransactions());
+        expect(data.labels).toEqual(['🏠 Essentiel', '🎯 Plaisir']);
+        expect(data.datasets[0].data).toEqual([920.5, 45]);
+        expect(data.expenseTypes).toEqual(['ESSENTIAL', 'PLEASURE']);
+    });
+
+    test('aucune dépense → graphique « Aucune donnée »', async () => {
+        const data = await expenseType([tx({ amount: 100 })]);
+        expect(data.labels).toEqual(['Aucune donnée']);
+    });
+
+    test('sans paramètres : toutes les transactions ; type inconnu affiché tel quel', async () => {
+        const data = await expenseType([tx({ amount: -5, expense_type: 'MYSTERE' })], null);
+        expect(data.labels).toEqual(['📦 MYSTERE']);
+    });
+
+    test('couleurs', () => {
+        const chart = new ExpenseTypeChart([], CATEGORIES, null);
+        expect(chart._darkenColor('rgba(100, 200, 50, 0.8)', 0.5)).toBe('rgba(50, 100, 25, 0.8)');
+        expect(chart._darkenColor('red', 0.5)).toBe('red');
+        expect(chart._generateColors(2)).toHaveLength(2);
+        expect(chart._generateColors(1, ['INCONNU'])).toEqual(['rgba(199, 199, 199, 0.8)']);
+    });
+});
+
+describe('LineBarChart — données', () => {
+    test('cumule les montants par mois pour chaque catégorie parente', async () => {
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const data = await chart.prepareData();
+        const alimentation = data.datasets.find((d) => d.label === 'Alimentation & Restau.');
+        expect(alimentation.data.map(({ x, y }) => [x, Math.round(y * 100) / 100])).toEqual([
+            ['2024-01', -165.5],
+            ['2024-02', -158.3],
+            ['2024-03', -150],
+        ]);
+        expect(data.datasets.find((d) => d.label === 'Banque').data).toEqual([]);
+    });
+
+    test('masque les catégories masquées par l\'utilisateur', async () => {
+        chrome.storage.local._data.Logement = true;
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const data = await chart.prepareData();
+        expect(data.datasets.find((d) => d.label === 'Logement').hidden).toBe(true);
+    });
+
+    // --- B9 (ouest de UTC) ------------------------------------------------
+    (WEST_OF_UTC ? knownBug : test)('B9 — attendu : une dépense du 1er janvier 2024 est tracée en 2024-01', async () => {
+        const chart = new LineBarChart([tx({ date: '2024-01-01', categoryId: 188 })], CATEGORIES, null, {}, fakeSettings({}));
+        const data = await chart.prepareData();
+        expect(data.datasets.find((d) => d.label === 'Alimentation & Restau.').data[0].x).toBe('2024-01');
+    });
+});

@@ -88,6 +88,20 @@ export default [
         },
     },
     {
+        // Tests (Vitest, modules ES) : accès aux classes globales de l'extension
+        files: ['test/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                ...globals.webextensions,
+                ...projectGlobals,
+            },
+        },
+    },
+    {
         // Outillage (Node, modules ES)
         files: ['*.config.js', 'scripts/**/*.{js,mjs}'],
         languageOptions: {

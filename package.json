@@ -13,12 +13,20 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:manifest": "node scripts/check-manifest.mjs",
-    "check": "npm run check:manifest && npm run lint"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:tz": "node scripts/test-timezones.mjs",
+    "test:bugs": "vitest run --mode bugs",
+    "check": "npm run check:manifest && npm run lint && npm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.5",
     "globals": "^17.14.0",
-    "prettier": "^3.10.1"
+    "happy-dom": "^21.0.4",
+    "prettier": "^3.10.1",
+    "vitest": "^5.1.1"
   }
 }
