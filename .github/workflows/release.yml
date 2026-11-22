@@ -1,0 +1,71 @@
+name: Release Chrome extension
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+jobs:
+  build:
+    name: Vérifier et construire le zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Le tag correspond à la version du manifest
+        run: |
+          manifest_version=$(node -p "require('./manifest.json').version")
+          if [ "v${manifest_version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} ≠ version du manifest v${manifest_version}"
+            exit 1
+          fi
+
+      - run: npm run check
+
+      - name: Construction du zip
+        run: bash scripts/package.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension-${{ github.ref_name }}
+          path: dist/*.zip
+
+  # Référence API :
+  # * https://developer.chrome.com/docs/webstore/using_webstore_api/
+  # * https://github.com/fregante/chrome-webstore-upload/blob/main/How%20to%20generate%20Google%20API%20keys.md
+  upload:
+    name: Envoyer sur le Chrome Web Store (sans publier)
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      EXTENSION_ID: "jeomdpldhaigmdbjobamliaipijhmiie"
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension-${{ github.ref_name }}
+
+      - name: Install webstore cli
+        run: npm install -g chrome-webstore-upload-cli
+
+      # La version est envoyée en brouillon : la publication se fait à la main
+      # depuis le tableau de bord du Chrome Web Store, une fois la version testée.
+      # (Remettre --auto-publish quand la CI aura des tests d'intégration.)
+      - name: Upload
+        run: |-
+          chrome-webstore-upload upload \
+            --source pecunio-*.zip \
+            --extension-id "$EXTENSION_ID" \
+            --client-id "${{ secrets.CI_GOOGLE_CLIENT_ID }}" \
+            --client-secret "${{ secrets.CI_GOOGLE_CLIENT_SECRET }}" \
+            --refresh-token "${{ secrets.CI_GOOGLE_REFRESH_TOKEN }}"
