@@ -44,16 +44,7 @@ export class ExpenseTypeChart extends BaseChartData {
      * @returns {HTMLElement} Conteneur de ligne pour les charts
      */
     static prepareContainer(categBlock) {
-        InjectedStyles.inject();
-        InjectedStyles.cleanupPecunioElements(categBlock);
-
-        let chartsRowContainer = /** @type {HTMLElement | null} */ (categBlock.querySelector('.pecunio-charts-row'));
-        if (!chartsRowContainer) {
-            chartsRowContainer = InjectedStyles.createChartsRow();
-        }
-        InjectedStyles.organizeDonutContent(categBlock, chartsRowContainer);
-        
-        return chartsRowContainer;
+        return InjectedStyles.prepareChartsRow(categBlock);
     }
 
     /**

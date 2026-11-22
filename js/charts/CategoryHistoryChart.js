@@ -1,3 +1,4 @@
+import { BankinPage } from '../bankin/BankinPage.js';
 import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
@@ -63,6 +64,15 @@ export class CategoryHistoryChart extends BaseChartData {
         return color;
     }
 
+    /**
+     * Comme sur la page Catégories : donut de Bankin dans une carte, l'historique
+     * à côté (renvoie la ligne où placer l'historique).
+     * @param {Element} categoryBlock
+     */
+    static prepareContainer(categoryBlock) {
+        return InjectedStyles.prepareChartsRow(categoryBlock, { detail: true });
+    }
+
     /** Titre de la carte. */
     static title(category, isIncome) {
         return isIncome ? 'Revenus sur 12 mois' : `${category.name} sur 12 mois`;
@@ -111,11 +121,18 @@ export class CategoryHistoryChart extends BaseChartData {
         summary.textContent = CategoryHistoryChart.summary(history, monthLabel, Config.isBlurry(), inProgress);
         wrapper.appendChild(summary);
         const canvasContainer = InjectedStyles.createCanvasContainer();
-        canvasContainer.style.height = '300px';
+        // Hauteur proche de celle du donut de Bankin voisin
+        canvasContainer.style.height = '360px';
         const canvas = InjectedStyles.createCanvas();
         canvasContainer.appendChild(canvas);
         wrapper.appendChild(canvasContainer);
         container.appendChild(wrapper);
+
+        // Panneau du donut de Bankin à sa taille (classe h100 : toute la hauteur
+        // de la page), comme sur la page Catégories
+        const fitPanels = () => new BankinPage(document).categoryChartPanels().forEach((panel) => panel.classList.remove('h100'));
+        fitPanels();
+        setTimeout(fitPanels, 1000);
 
         // Couleur de Bankin de la catégorie (de la parente pour une sous-catégorie seule)
         const colorId = this.category.parentId ?? this.category.id;

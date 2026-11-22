@@ -149,6 +149,7 @@ test.describe('Page Catégories', () => {
         // Onglet Revenus : historique des revenus sur 12 mois (lot UX-3a)
         await expect(page.locator('.pecunio-history-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-history-wrapper')).toContainText('Revenus sur 12 mois');
+        await expectDonutBesideHistory(page);
 
         // Autre catégorie : l'historique est remplacé, pas ajouté
         await page.evaluate(() => window.__bankinNavigate('/categories/159'));
@@ -159,9 +160,27 @@ test.describe('Page Catégories', () => {
         await page.evaluate(() => window.__bankinNavigate('/categories'));
         await expect(page.locator(SANKEY_CHART)).toBeVisible();
         await expect(page.locator('.pecunio-history-wrapper')).toHaveCount(0);
+        await expect(page.locator('.pecunio-charts-row--detail')).toHaveCount(0);
+
+        // Onglet Revenus ouvert directement : même mise en page
+        const direct = await context.newPage();
+        await direct.goto(bankinUrl('/categories/2'));
+        await expect(direct.locator('.pecunio-history-wrapper canvas')).toBeVisible();
+        await expectDonutBesideHistory(direct);
         expect(consoleErrors).toEqual([]);
     });
 });
+
+/** Détail d'une catégorie : donut de Bankin dans une carte, à sa taille, l'historique à côté. */
+async function expectDonutBesideHistory(page) {
+    const donut = page.locator('.pecunio-charts-row--detail > .pecunio-donut-wrapper');
+    await expect(donut).toContainText('Catégories');
+    await expect(page.locator('.categoryChart .h100')).toHaveCount(0);
+    const history = page.locator('.pecunio-charts-row--detail > .pecunio-history-wrapper');
+    const [d, h] = [await donut.boundingBox(), await history.boundingBox()];
+    expect(Math.abs(d.y - h.y)).toBeLessThan(2);
+    expect(h.x).toBeGreaterThanOrEqual(d.x + d.width);
+}
 
 test.describe('Plusieurs onglets et connexion', () => {
     test('5 — deux onglets Bankin affichent tous les deux leurs graphiques (B1)', async ({ context, bankin, consoleErrors }) => {

@@ -434,9 +434,10 @@ export class PageController {
         this._removeWrappers(['.pecunio-history-wrapper']);
         this._destroyCharts();
         const data = this._chartData();
+        const row = HistoryChart.prepareContainer(categoryBlock);
         const historyChart = new HistoryChart(data.transactions, data.categories, { categoryId, monthParams }, this.settings);
         this.charts.push(historyChart);
-        await historyChart.render(categoryBlock);
+        await historyChart.render(row);
         return true;
     }
 

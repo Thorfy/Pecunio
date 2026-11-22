@@ -237,6 +237,8 @@ describe('PageController — construction des graphiques', () => {
         await controller.requestBuild();
         expect(kinds(charts.created)).toEqual(['CategoryHistoryChart']);
         expect(charts.created[0].args[2]).toEqual({ categoryId: 159, monthParams: ['septembre', '2026'] });
+        // À côté du donut de Bankin, comme sur la page Catégories
+        expect(document.querySelector('.pecunio-charts-row > .pecunio-history-wrapper')).not.toBeNull();
     });
 
     test("détail : changement de mois ou de catégorie, un seul historique à jour", async () => {

@@ -315,9 +315,23 @@ export class InjectedStyles {
                 min-width: 0;
             }
 
+            /* Page de détail d'une catégorie : donut étroit, historique à côté */
+            .pecunio-charts-row--detail > .pecunio-donut-wrapper {
+                flex: 0 0 340px;
+            }
+            .pecunio-charts-row--detail > .pecunio-history-wrapper {
+                flex: 1 1 0;
+                min-width: 0;
+                margin-bottom: 0;
+            }
+
             @media (max-width: 1024px) {
                 .pecunio-charts-row {
                     flex-direction: column;
+                }
+                .pecunio-charts-row--detail > .pecunio-donut-wrapper,
+                .pecunio-charts-row--detail > .pecunio-history-wrapper {
+                    flex: 1 1 100%;
                 }
                 .pecunio-donut-wrapper,
                 .pecunio-expense-type-wrapper {
@@ -551,6 +565,24 @@ export class InjectedStyles {
     /**
      * Organise le contenu existant dans un wrapper donut
      */
+    /**
+     * Ligne de cartes du bloc des catégories : donut de Bankin dans une carte
+     * « Catégories », puis les cartes Pecunio. `detail` : page de détail d'une
+     * catégorie (donut étroit à côté de l'historique).
+     * @param {Element} categBlock
+     * @param {{ detail?: boolean }} [options]
+     * @returns {HTMLElement}
+     */
+    static prepareChartsRow(categBlock, { detail = false } = {}) {
+        this.inject();
+        this.cleanupPecunioElements(categBlock);
+        let row = /** @type {HTMLElement | null} */ (categBlock.querySelector('.pecunio-charts-row'));
+        if (!row) row = this.createChartsRow();
+        row.classList.toggle('pecunio-charts-row--detail', detail);
+        this.organizeDonutContent(categBlock, row);
+        return row;
+    }
+
     static organizeDonutContent(container, chartsRowContainer) {
         let donutWrapper = container.querySelector('.pecunio-donut-wrapper');
         
@@ -560,10 +592,9 @@ export class InjectedStyles {
             donutWrapper.appendChild(donutTitle);
             
             const existingContent = Array.from(container.children);
+            // Contenu de Bankin seulement : les cartes Pecunio restent en place
             existingContent.forEach(child => {
-                if (!child.classList.contains('pecunio-charts-row') && 
-                    !child.classList.contains('pecunio-expense-type-wrapper') &&
-                    !child.classList.contains('pecunio-sankey-wrapper')) {
+                if (![...child.classList].some((c) => c.startsWith('pecunio-'))) {
                     donutWrapper.appendChild(child);
                 }
             });
