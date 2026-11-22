@@ -1,9 +1,11 @@
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { ACCOUNTS, CATEGORIES, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { knownBug } from '../helpers/known-bug.js';
-import { loadContentScripts } from '../helpers/load.js';
+import { loadContentScripts, loadScripts } from '../helpers/load.js';
 
-beforeAll(loadContentScripts);
+beforeAll(async () => {
+    await loadContentScripts();
+    await loadScripts(['js/report/ReportFilters.js']);
+});
 
 const merger = (transactions = sampleTransactions(), options = {}) =>
     new DataMerger(
@@ -71,51 +73,61 @@ describe('DataMerger.mergeData', () => {
         expect(rows.map((r) => r.transactionId)).toEqual([6]);
     });
 
-    test('filtre par période quand les deux bornes sont fournies (au mois près, cf. B10)', () => {
-        const rows = merger(sampleTransactions(), { startDate: '2024-02-01', endDate: '2024-02-29' }).mergeData();
-        expect(rows.map((r) => r.transactionId).sort((a, b) => a - b)).toEqual([7, 8, 9, 10, 11]);
+    test('filtre par période, bornes incluses, au jour près', () => {
+        const rows = merger(sampleTransactions(), { startDate: '2024-02-05', endDate: '2024-02-14' }).mergeData();
+        expect(rows.map((r) => r.transactionId).sort((a, b) => a - b)).toEqual([8, 9, 10]);
     });
 
     // --- B8 -------------------------------------------------------------
-    test('B8 — comportement actuel : un compte supprimé fait planter la fusion', () => {
-        expect(() => merger([tx({ accountId: 999 })]).mergeData()).toThrow(TypeError);
-    });
-
-    knownBug('B8 — attendu : une transaction d\'un compte supprimé est exportée avec un nom de repli', () => {
+    test('B8 — une transaction d\'un compte supprimé est exportée avec un nom de repli', () => {
         const [row] = merger([tx({ accountId: 999 })]).mergeData();
         expect(row.accountId).toBe(999);
-        expect(row.accountName).toBeTruthy();
+        expect(row.accountName).toBe(DataMerger.UNKNOWN_ACCOUNT);
     });
 
-    // --- B10 ------------------------------------------------------------
-    test('B10 — comportement actuel : la date exportée est ramenée au début du mois', () => {
+    // --- B10 (décision : vraie date + mois de rattachement) ---------------
+    test('B10 — la date exportée est la date réelle de la transaction', () => {
         const [row] = merger([tx({ date: '2024-03-15' })]).mergeData();
-        expect(row.date.slice(0, 7)).toBe('2024-03');
-        expect(row.date).not.toBe('2024-03-15');
+        expect(row.date).toBe('2024-03-15');
+        expect(row.budgetMonth).toBe('2024-03');
     });
 
-    test.todo('B10 — à décider : la date exportée doit-elle rester la date réelle de la transaction ?');
+    test('B10 — le mois de rattachement Bankin est exporté à côté de la date réelle', () => {
+        const [row] = merger([tx({ date: '2024-01-28', current_month: 1 })]).mergeData();
+        expect(row).toMatchObject({ date: '2024-01-28', budgetMonth: '2024-02' });
+    });
+
+    test('B10 — la période porte sur le mois de rattachement', () => {
+        const transactions = [tx({ id: 1, date: '2024-01-28', current_month: 1 }), tx({ id: 2, date: '2024-01-28' })];
+        const rows = merger(transactions, { startDate: '2024-02-01', endDate: '2024-02-29' }).mergeData();
+        expect(rows.map((r) => r.transactionId)).toEqual([1]);
+    });
 
     // --- B14 ------------------------------------------------------------
-    test('B14 — comportement actuel : l\'export inclut les catégories d\'exception', () => {
-        const ids = merger().mergeData().map((r) => r.categoryId);
-        expect(ids).toContain(326);
-        expect(ids).toContain(282);
+    test('B14 — l\'export CSV garde toutes les catégories (le rapport exclut les exceptions ensuite)', () => {
+        const rows = merger().mergeData();
+        expect(rows.map((r) => r.categoryId)).toContain(326);
+        const reportRows = ReportFilters.applyReportFilters(rows);
+        for (const excluded of Config.CATEGORIES.EXCEPTION_IDS) {
+            expect(reportRows.map((r) => r.categoryId)).not.toContain(excluded);
+        }
     });
 
-    knownBug('B14 — attendu : l\'export exclut les mêmes catégories que les graphiques', () => {
-        const ids = merger().mergeData().map((r) => r.categoryId);
-        for (const excluded of Config.CATEGORIES.EXCEPTION_IDS) expect(ids).not.toContain(excluded);
-    });
-
-    test('B14 — comportement actuel : une seule borne de date est ignorée', () => {
-        const rows = merger(sampleTransactions(), { startDate: '2024-03-01' }).mergeData();
-        expect(rows).toHaveLength(13);
-    });
-
-    knownBug('B14 — attendu : la date de début s\'applique même sans date de fin', () => {
+    test('B14 — la date de début s\'applique même sans date de fin', () => {
         const rows = merger(sampleTransactions(), { startDate: '2024-03-01' }).mergeData();
         expect(rows.map((r) => r.transactionId).sort((a, b) => a - b)).toEqual([12, 13]);
+    });
+
+    test('B14 — la date de fin s\'applique même sans date de début', () => {
+        const rows = merger(sampleTransactions(), { endDate: '2024-01-12' }).mergeData();
+        expect(rows.map((r) => r.transactionId).sort((a, b) => a - b)).toEqual([2, 3]);
+    });
+
+    test('B14 — même résultat que le filtre des graphiques pour la même période', () => {
+        const options = { startDate: '2024-01-10', endDate: '2024-02-20', accountsSelected: [101] };
+        const exported = merger(sampleTransactions(), options).mergeData().map((r) => r.transactionId);
+        const charted = TransactionFilter.apply(sampleTransactions(), options).map((t) => t.id);
+        expect(exported.sort((a, b) => a - b)).toEqual(charted.sort((a, b) => a - b));
     });
 });
 
@@ -135,6 +147,7 @@ describe('DataMerger — CSV', () => {
     const row = (overrides = {}) => ({
         transactionId: 1,
         date: '2024-03-15',
+        budgetMonth: '2024-03',
         amount: -12.5,
         description: 'Courses',
         accountId: 101,
@@ -147,14 +160,15 @@ describe('DataMerger — CSV', () => {
         ...overrides,
     });
 
-    /** Découpe une ligne CSV RFC 4180 (guillemets doublés). */
-    const parseCsvLine = (line) => {
-        const cells = [];
+    /** Découpe un CSV RFC 4180 en lignes de cellules (guillemets doublés, sauts de ligne cités). */
+    const parseCsv = (csv) => {
+        const rows = [];
+        let cells = [];
         let cell = '';
         let quoted = false;
-        for (let i = 0; i < line.length; i++) {
-            const c = line[i];
-            if (quoted && c === '"' && line[i + 1] === '"') {
+        for (let i = 0; i < csv.length; i++) {
+            const c = csv[i];
+            if (quoted && c === '"' && csv[i + 1] === '"') {
                 cell += '"';
                 i++;
             } else if (c === '"') {
@@ -162,12 +176,35 @@ describe('DataMerger — CSV', () => {
             } else if (c === ',' && !quoted) {
                 cells.push(cell);
                 cell = '';
+            } else if (c === '\r' && csv[i + 1] === '\n' && !quoted) {
+                cells.push(cell);
+                rows.push(cells);
+                cells = [];
+                cell = '';
+                i++;
             } else {
                 cell += c;
             }
         }
         cells.push(cell);
-        return cells;
+        rows.push(cells);
+        return rows;
+    };
+
+    /** Capture le fichier CSV produit par exportToCSV (contenu et nom). */
+    const captureExport = async (transactions) => {
+        let blob = null;
+        let filename = '';
+        vi.spyOn(URL, 'createObjectURL').mockImplementation((b) => {
+            blob = b;
+            return 'blob:pecunio-test';
+        });
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+            filename = this.getAttribute('download');
+        });
+        const count = merger(transactions).exportToCSV();
+        return { text: await blob.text(), filename, count, type: blob.type };
     };
 
     test('en-tête et une ligne par transaction, séparées par CRLF', () => {
@@ -175,51 +212,73 @@ describe('DataMerger — CSV', () => {
         const lines = csv.split('\r\n');
         expect(lines).toHaveLength(3);
         expect(lines[0]).toBe(
-            'Transaction ID,Date,Amount,Description,Account ID,Account Name,Category ID,Category Name,Parent Category ID,Parent Category Name,Expense Type',
+            'Transaction ID,Date,Budget Month,Amount,Description,Account ID,Account Name,Category ID,Category Name,Parent Category ID,Parent Category Name,Expense Type',
         );
-        expect(parseCsvLine(lines[1])).toEqual([
-            '1', '2024-03-15', '-12.5', 'Courses', '101', 'Compte courant', '188', 'Supermarché', '168', 'Alimentation', 'ESSENTIAL',
+        expect(parseCsv(lines[1])[0]).toEqual([
+            '1', '2024-03-15', '2024-03', '-12.5', 'Courses', '101', 'Compte courant', '188', 'Supermarché', '168', 'Alimentation', 'ESSENTIAL',
         ]);
     });
 
+    test('cellules : nombres bruts, textes cités, valeurs absentes vides', () => {
+        expect(DataMerger.escapeCsvCell(-12.5)).toBe('-12.5');
+        expect(DataMerger.escapeCsvCell(NaN)).toBe('');
+        expect(DataMerger.escapeCsvCell(null)).toBe('');
+        expect(DataMerger.escapeCsvCell(undefined)).toBe('');
+        expect(DataMerger.escapeCsvCell('Courses')).toBe('"Courses"');
+    });
+
     // --- B7 -------------------------------------------------------------
-    knownBug('B7 — attendu : un guillemet dans la description ne décale pas les colonnes', () => {
+    test('B7 — un guillemet dans la description ne décale pas les colonnes', () => {
         const csv = merger().convertToCSV([row({ description: 'Boutique "Le Coin"' })]);
-        const cells = parseCsvLine(csv.split('\r\n')[1]);
-        expect(cells).toHaveLength(11);
-        expect(cells[3]).toBe('Boutique "Le Coin"');
+        const cells = parseCsv(csv)[1];
+        expect(cells).toHaveLength(12);
+        expect(cells[4]).toBe('Boutique "Le Coin"');
     });
 
-    knownBug('B7 — attendu : les formules Excel sont neutralisées', () => {
-        const csv = merger().convertToCSV([row({ description: '=HYPERLINK("http://exemple.invalid")' })]);
-        const cells = parseCsvLine(csv.split('\r\n')[1]);
-        expect(cells[3].startsWith('=')).toBe(false);
+    test('B7 — virgules et retours à la ligne restent dans leur cellule', () => {
+        const csv = merger().convertToCSV([row({ description: 'Ligne 1, suite\r\nLigne 2' })]);
+        const rows = parseCsv(csv);
+        expect(rows).toHaveLength(2);
+        expect(rows[1][4]).toBe('Ligne 1, suite\r\nLigne 2');
     });
 
-    knownBug('B7 — attendu : un « # » dans une description ne tronque pas le fichier exporté', () => {
-        let href = '';
-        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
-            href = this.getAttribute('href');
-        });
-        merger([tx({ description: 'Commande #42' }), tx({ description: 'Après' })]).exportToCSV();
-        // Le navigateur considère tout ce qui suit un « # » brut comme un fragment d'URL.
-        expect(href).not.toContain('#');
+    test.each(['=HYPERLINK("http://exemple.invalid")', '+33 1', '-retrait', '@SUM(A1)', '\tcmd'])(
+        'B7 — formule neutralisée : %s',
+        (description) => {
+            const cells = parseCsv(merger().convertToCSV([row({ description })]))[1];
+            expect(cells[4]).toBe(`'${description}`);
+        },
+    );
+
+    test('B7 — un « # » dans une description ne tronque pas le fichier exporté', async () => {
+        const { text, count } = await captureExport([tx({ description: 'Commande #42' }), tx({ description: 'Après' })]);
+        const rows = parseCsv(text.replace(/^\uFEFF/, ''));
+        expect(count).toBe(2);
+        expect(rows).toHaveLength(3);
+        expect(rows[1][4]).toBe('Commande #42');
+        expect(rows[2][4]).toBe('Après');
     });
 
-    knownBug('B7 — attendu : le nom de fichier ne contient pas de « / »', () => {
-        let filename = '';
-        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
-            filename = this.getAttribute('download');
-        });
-        vi.spyOn(Date.prototype, 'toLocaleDateString').mockReturnValue('15/03/2024');
-        merger([tx()]).exportToCSV();
-        expect(filename).not.toContain('/');
+    test('B7 — fichier UTF-8 avec BOM (accents lisibles dans Excel)', async () => {
+        const { text, type } = await captureExport([tx({ description: 'Café' })]);
+        expect(text.charCodeAt(0)).toBe(0xfeff);
+        expect(type).toBe('text/csv;charset=utf-8');
     });
 
-    test('exportToCSV déclenche un téléchargement', () => {
+    test('B7 — le nom de fichier est daté au format AAAA-MM-JJ, sans « / »', async () => {
+        vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] });
+        vi.setSystemTime(new Date(2024, 2, 15, 10));
+        const { filename } = await captureExport([tx()]);
+        expect(filename).toBe('transaction_export_2024-03-15.csv');
+    });
+
+    test('exportToCSV déclenche un seul téléchargement et nettoie le lien', async () => {
         const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:pecunio-test');
+        const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         merger([tx()]).exportToCSV();
         expect(click).toHaveBeenCalledTimes(1);
         expect(document.querySelectorAll('a[download]')).toHaveLength(0);
+        await vi.waitFor(() => expect(revoke).toHaveBeenCalledWith('blob:pecunio-test'));
     });
 });
