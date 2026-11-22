@@ -35,7 +35,7 @@ Le workflow `.github/workflows/release.yml` :
 3. envoie le zip sur le Chrome Web Store **et le publie** (`--auto-publish`) : la version part à l'examen de Google, puis est publiée automatiquement ;
 4. publie la release GitHub avec le zip, les notes du changelog et la liste des PR générée par GitHub.
 
-Secrets nécessaires (Settings → Secrets → Actions) : `CI_GOOGLE_CLIENT_ID`, `CI_GOOGLE_CLIENT_SECRET`, `CI_GOOGLE_REFRESH_TOKEN` (voir les liens en tête du job `upload`).
+Secrets nécessaires (Settings → Secrets → Actions) : `CI_GOOGLE_CLIENT_ID`, `CI_GOOGLE_CLIENT_SECRET`, `CI_GOOGLE_REFRESH_TOKEN` (voir les liens en tête du job `upload`) et `CI_GOOGLE_PUBLISHER_ID`, l'identifiant d'éditeur du compte développeur (il figure dans l'adresse du tableau de bord du Chrome Web Store), exigé par l'API v2 du store depuis `chrome-webstore-upload-cli` 4. Le workflow vérifie leur présence avant les contrôles.
 
 ## 3. Après la publication
 
