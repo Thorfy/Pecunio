@@ -1,8 +1,10 @@
+import { Config } from '../core/Config.js';
+
 /**
  * ReportFilters - Filtrage et statistiques pour le rapport PDF
  * Réutilise Config.CATEGORIES.EXCEPTION_IDS pour cohérence avec l'app
  */
-class ReportFilters {
+export class ReportFilters {
     /**
      * Filtre les données comme l'app : exclut les catégories (virements internes, etc.)
      * @param {Array<Object>} mergedData - Données fusionnées (mergeData du DataMerger)

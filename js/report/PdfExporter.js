@@ -1,8 +1,12 @@
+import { Config } from '../core/Config.js';
+
+/* global html2pdf -- librairie chargée par une balise <script> dans la page du rapport */
+
 /**
  * PdfExporter - Génération du PDF du rapport
  * Remplace les canvas par des images, capture avec html2pdf, restaure les canvas
  */
-class PdfExporter {
+export class PdfExporter {
     /**
      * @param {HTMLElement} container - Élément racine à exporter (#report-container)
      * @param {Object} options - Options (filename, imageQuality, etc.)

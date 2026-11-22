@@ -1,5 +1,12 @@
-class AmountHider {
-    constructor() {
+import { Config } from '../core/Config.js';
+import { InjectedStyles } from './InjectedStyles.js';
+
+export class AmountHider {
+    /**
+     * @param {import('../core/Settings.js').Settings} settings préférences (état du masquage)
+     */
+    constructor(settings) {
+        this.settings = settings;
         this.insertButton();
     }
 
@@ -19,8 +26,8 @@ class AmountHider {
                 container.append(button);
             }
             this.loadEvent();
-        } else if (settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) {
-            AmountHider.refreshBlur();
+        } else if (this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) {
+            AmountHider.refreshBlur(this.settings);
         }
     }
 
@@ -34,7 +41,7 @@ class AmountHider {
     loadEvent() {
         this.loadElement();
         this.disableBlurry();
-        if (settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) this.enableBlurry();
+        if (this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) this.enableBlurry();
         const toggle = () => {
             if (this.isBlurry()) return this.disableBlurry();
             return this.enableBlurry();
@@ -63,7 +70,7 @@ class AmountHider {
     }
 
     enableBlurry() {
-        settingClass.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: true });
+        this.settings.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: true });
         this.loadElement();
         this._applyBlurState(true);
         this._updateButtonIcon(true);
@@ -71,7 +78,7 @@ class AmountHider {
     }
 
     disableBlurry() {
-        settingClass.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: false });
+        this.settings.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: false });
         this.loadElement();
         this._applyBlurState(false);
         this._updateButtonIcon(false);
@@ -82,15 +89,16 @@ class AmountHider {
         this.loadElement();
         return this.spanHeaderAmmount
             ? this.spanHeaderAmmount.classList.contains('pecunio-blurred')
-            : settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY);
+            : this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY);
     }
 
     /**
      * Réapplique le flou à tous les éléments ciblés (liste analyse, graphiques).
      * À appeler après un changement de page ou injection de contenu (ex: charts).
      */
-    static refreshBlur() {
-        if (!settingClass.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) return;
+    /** @param {import('../core/Settings.js').Settings} settings */
+    static refreshBlur(settings) {
+        if (!settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) return;
         const header = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
         const all = document.querySelectorAll(Config.SELECTORS.BLURRY_SELECTORS);
         if (header) header.classList.add('pecunio-blurred');

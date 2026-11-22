@@ -11,7 +11,7 @@
  *   Les graphiques et les filtres de période utilisent la date budgétaire ;
  *   l'export affiche la date réelle et le mois de rattachement (décision B10).
  */
-class DateRange {
+export class DateRange {
     static MONTH_NAMES_FR = [
         'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
         'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',

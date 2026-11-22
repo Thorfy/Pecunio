@@ -14,28 +14,29 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
 
-      - name: Le tag correspond à la version du manifest
+      # WXT reprend la version de package.json dans le manifest
+      - name: Le tag correspond à la version de package.json
         run: |
-          manifest_version=$(node -p "require('./manifest.json').version")
-          if [ "v${manifest_version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} ≠ version du manifest v${manifest_version}"
+          version=$(node -p "require('./package.json').version")
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} ≠ version de package.json v${version}"
             exit 1
           fi
 
       - run: npm run check
 
-      - name: Construction du zip
-        run: bash scripts/package.sh
+      - name: Construction du zip (WXT)
+        run: npm run zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: chrome-extension-${{ github.ref_name }}
-          path: dist/*.zip
+          path: .output/pecunio-*-chrome.zip
 
   # Référence API :
   # * https://developer.chrome.com/docs/webstore/using_webstore_api/
@@ -49,7 +50,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - uses: actions/download-artifact@v4
         with:
@@ -64,7 +65,7 @@ jobs:
       - name: Upload
         run: |-
           chrome-webstore-upload upload \
-            --source pecunio-*.zip \
+            --source pecunio-*-chrome.zip \
             --extension-id "$EXTENSION_ID" \
             --client-id "${{ secrets.CI_GOOGLE_CLIENT_ID }}" \
             --client-secret "${{ secrets.CI_GOOGLE_CLIENT_SECRET }}" \

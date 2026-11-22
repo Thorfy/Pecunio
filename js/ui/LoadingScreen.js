@@ -1,8 +1,10 @@
+import { evt } from '../core/events.js';
+
 /**
  * LoadingScreen - Composant d'écran de chargement
  * Affiche un indicateur de chargement pendant le traitement des données
  */
-class LoadingScreen {
+export class LoadingScreen {
     /**
      * Affiche l'écran de chargement
      */

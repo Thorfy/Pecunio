@@ -1,3 +1,16 @@
+import { BudgetChart } from '../charts/BudgetChart.js';
+import { ExpenseTypeChart } from '../charts/ExpenseTypeChart.js';
+import { LineBarChart } from '../charts/LineBarChart.js';
+import { SankeyChart } from '../charts/SankeyChart.js';
+import { Chart } from '../lib/chart.js';
+import { AmountHider } from '../ui/AmountHider.js';
+import { LoadingScreen } from '../ui/LoadingScreen.js';
+import { ReviewPrompt } from '../ui/ReviewPrompt.js';
+import { StatusBanner } from '../ui/StatusBanner.js';
+import { Config } from './Config.js';
+import { AuthenticationError } from './DataManager.js';
+import { Logger } from './Logger.js';
+
 /**
  * PageController - Cycle de vie de Pecunio dans les pages Bankin
  *
@@ -12,7 +25,7 @@
  * - Les données ne sont chargées que sur les pages à graphiques (pas sur
  *   `/signin`), et les erreurs sont affichées à l'utilisateur (B12).
  */
-class PageController {
+export class PageController {
     static PAGE = Object.freeze({
         ACCOUNTS: 'accounts',
         CATEGORIES: 'categories',
@@ -78,8 +91,6 @@ class PageController {
         this.evt = evt;
         this.createDataManager = createDataManager;
         this.win = win;
-        // Identifiants nus (et non globalThis.X) : dans un content script, les classes
-        // déclarées par les autres fichiers ne sont pas des propriétés de globalThis.
         this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart };
 
         this.dataManager = null;
@@ -251,8 +262,8 @@ class PageController {
 
         this.buildCount++;
         this.win.setTimeout(() => {
-            new AmountHider();
-            AmountHider.refreshBlur();
+            new AmountHider(this.settings);
+            AmountHider.refreshBlur(this.settings);
         }, Config.INTERVALS.HIDDER_DELAY);
         ReviewPrompt.tryShow();
     }

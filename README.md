@@ -48,21 +48,34 @@ Tous les graphiques sont interactifs et se mettent à jour selon vos filtres et 
 
 ## 🛠️ Développement
 
-Prérequis : Node.js 20+.
+Prérequis : Node.js 22+. L'extension est construite avec [WXT](https://wxt.dev) (Vite).
 
 ```bash
-npm install              # outillage (ESLint, Prettier, Vitest)
-npm run check            # cohérence manifest/pages HTML + lint + tests
-npm test                 # tests unitaires
-npm run test:tz          # tests sous 3 fuseaux horaires
-npm run lint:fix         # corrections automatiques du lint
-bash scripts/package.sh  # zip de l'extension dans dist/ (Linux/macOS/CI)
+npm install         # dépendances et outillage
+npm run dev         # build en continu + Chrome de développement avec l'extension chargée
+npm run build       # build de production dans .output/chrome-mv3
+npm run zip         # zip pour le Chrome Web Store dans .output/
+npm run check       # lint + tests + build
+npm test            # tests unitaires
+npm run test:tz     # tests sous 3 fuseaux horaires
+npm run lint:fix    # corrections automatiques du lint
 ```
+
+Organisation :
+
+| Dossier | Contenu |
+|---|---|
+| `entrypoints/` | points d'entrée WXT : service worker, content script, popup, page du rapport |
+| `js/` | code de l'extension en modules ES (cœur, modèles, graphiques, interface) |
+| `public/` | fichiers copiés tels quels (images, html2pdf) |
+| `test/` | tests Vitest |
+
+Le manifest est généré par WXT à partir de `wxt.config.js` et de `entrypoints/` ; la version vient de `package.json`.
 
 Les tests sont décrits dans [docs/TESTING.md](docs/TESTING.md).
 
-Pour tester en local : `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier du dépôt.
+Pour tester dans votre Chrome : `npm run build`, puis `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier **`.output/chrome-mv3`** (et non plus la racine du dépôt). Après chaque `npm run build`, cliquer sur ↻ dans `chrome://extensions` puis recharger l'onglet Bankin.
 
-La CI (`.github/workflows/ci.yml`) lance ces vérifications et les tests (sous Paris, New York et UTC) sur chaque PR. Un tag `vX.Y.Z` (identique à la version du manifest) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
+La CI (`.github/workflows/ci.yml`) lance le lint, le build et les tests (sous Paris, New York et UTC) sur chaque PR. Un tag `vX.Y.Z` (identique à la version de `package.json`) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
 
 Le plan de modernisation est décrit dans [docs/AUDIT-MODERNISATION.md](docs/AUDIT-MODERNISATION.md).

@@ -118,16 +118,11 @@ beforeEach(() => {
     vi.useFakeTimers();
     vi.spyOn(LoadingScreen, 'show').mockImplementation(() => {});
     vi.spyOn(ReviewPrompt, 'tryShow').mockImplementation(() => Promise.resolve());
-    vi.stubGlobal(
-        'AmountHider',
-        class {
-            static refreshBlur() {}
-        },
-    );
+    vi.spyOn(AmountHider.prototype, 'insertButton').mockImplementation(() => {});
+    vi.spyOn(AmountHider, 'refreshBlur').mockImplementation(() => {});
 });
 
 afterEach(() => {
-    vi.unstubAllGlobals();
     StatusBanner.hide();
     document.body.innerHTML = '';
 });

@@ -1,4 +1,10 @@
-class SankeyChart extends BaseChartData {
+import { Config } from '../core/Config.js';
+import { Chart } from '../lib/chart.js';
+import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { ColorParser } from '../utils/ColorParser.js';
+import { BaseChartData } from './base/BaseChartData.js';
+
+export class SankeyChart extends BaseChartData {
     constructor(transactions, categories, params, settingsInstance = null) {
         super(transactions, categories, null, null, settingsInstance);
         this.params = params;

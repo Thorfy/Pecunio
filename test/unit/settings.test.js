@@ -5,7 +5,7 @@ import { loadContentScripts } from '../helpers/load.js';
 beforeAll(loadContentScripts);
 
 beforeEach(() => {
-    globalThis.evt = new Evt();
+    evt.cleanup();
 });
 
 const settingsWith = async (local) => {

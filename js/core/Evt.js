@@ -1,8 +1,10 @@
+import { Logger } from './Logger.js';
+
 /**
  * Evt - Gestionnaire d'événements centralisé
  * Responsable de la communication entre les différents composants de l'extension
  */
-class Evt {
+export class Evt {
     constructor() {
         this._eventDispatched = {};
         this._key = 'Event_';

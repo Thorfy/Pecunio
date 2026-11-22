@@ -1,4 +1,11 @@
-class LineBarChart extends BaseChartData {
+import { Config } from '../core/Config.js';
+import { DateRange } from '../core/DateRange.js';
+import { Chart } from '../lib/chart.js';
+import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { ColorParser } from '../utils/ColorParser.js';
+import { BaseChartData } from './base/BaseChartData.js';
+
+export class LineBarChart extends BaseChartData {
     constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
         super(transactions, categories, accountsSelected, settings, settingsInstance);
         this.chartInstance = null;

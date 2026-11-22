@@ -1,8 +1,10 @@
+import { DateRange } from './DateRange.js';
+
 /**
  * Config - Configuration centralisée de l'extension
  * Contient toutes les constantes et paramètres de configuration
  */
-class Config {
+export class Config {
     // Configuration de l'API Bankin
     static API = {
         DOMAIN: "https://sync.bankin.com",

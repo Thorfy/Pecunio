@@ -1,3 +1,6 @@
+import { Config } from '../core/Config.js';
+import { Logger } from '../core/Logger.js';
+
 /**
  * ReviewPrompt - Modale d'invitation à laisser un avis Chrome Web Store.
  * S'affiche sur les pages Bankin (comptes / catégories) après plusieurs utilisations
@@ -5,11 +8,13 @@
  *
  * Dépendance globale : Config (optionnel, pour Config.REVIEW.DEBUG).
  */
-class ReviewPrompt {
+export class ReviewPrompt {
     static STORE_URL = 'https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie/reviews';
     static MIN_BUILDS_BEFORE_PROMPT = 5;
     static DISMISS_DELAY_DAYS = 14;
     static SHOW_DELAY_MS = 2000;
+    /** Une modale est déjà programmée (évite les doublons, bug B21). */
+    static _scheduled = false;
     static MS_PER_DAY = 1000 * 60 * 60 * 24;
 
     static STORAGE_KEYS = {
@@ -56,9 +61,14 @@ class ReviewPrompt {
             Logger.debug(`[ReviewPrompt] Builds: ${buildCount}, State: ${state}`);
 
             if (!this._shouldShow(buildCount, state, dismissedAt)) return;
-            if (document.querySelector(`#${this.DOM.OVERLAY_ID}`)) return;
+            // Une seule modale, même si plusieurs constructions arrivent pendant le délai (bug B21)
+            if (this._scheduled || document.querySelector(`#${this.DOM.OVERLAY_ID}`)) return;
 
-            setTimeout(() => this._render(), this.SHOW_DELAY_MS);
+            this._scheduled = true;
+            setTimeout(() => {
+                this._scheduled = false;
+                if (!document.querySelector(`#${this.DOM.OVERLAY_ID}`)) this._render();
+            }, this.SHOW_DELAY_MS);
         } catch (err) {
             console.warn('[ReviewPrompt] Error:', err);
         }

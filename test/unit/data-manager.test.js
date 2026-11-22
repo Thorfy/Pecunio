@@ -33,7 +33,7 @@ const mockFetch = (routes) => {
 };
 
 beforeEach(() => {
-    globalThis.evt = new Evt();
+    evt.cleanup();
 });
 
 describe('DataManager._fetchPaginatedData', () => {

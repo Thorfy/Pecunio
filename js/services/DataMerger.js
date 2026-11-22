@@ -1,8 +1,14 @@
+import { DateRange } from '../core/DateRange.js';
+import { TransactionFilter } from '../core/TransactionFilter.js';
+import { Account } from '../models/Account.js';
+import { Category } from '../models/Category.js';
+import { Transaction } from '../models/Transaction.js';
+
 /**
  * DataMerger - Service pour fusionner et traiter les données de transactions
  * Responsable de la transformation et de l'export des données
  */
-class DataMerger {
+export class DataMerger {
     constructor(transactions, categorizations, accounts, startDate = null, endDate = null, accountsSelected = null) {
         this.transactions = this._validateAndTransformTransactions(transactions);
         this.accounts = this._validateAndTransformAccounts(accounts);

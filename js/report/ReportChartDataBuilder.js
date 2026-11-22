@@ -2,7 +2,7 @@
  * ReportChartDataBuilder - Construction des données pour les graphiques du rapport PDF
  * Prend des lignes fusionnées (mergedData) et produit les structures attendues par Chart.js
  */
-class ReportChartDataBuilder {
+export class ReportChartDataBuilder {
     static EXPENSE_TYPE_LABELS = {
         ESSENTIAL: 'Essentiel',
         PLEASURE: 'Plaisir',

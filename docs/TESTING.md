@@ -16,10 +16,9 @@ npm run test:bugs      # exécute les tests de bugs connus comme des tests norma
 
 | Dossier / fichier | Rôle |
 |---|---|
-| `vitest.config.js` | Environnement happy-dom, seuils de couverture |
-| `test/setup/legacy-globals-plugin.js` | Expose les classes globales de l'extension sur `globalThis` (le code n'est pas encore en modules ES) |
+| `vitest.config.js` | Environnement happy-dom, seuils de couverture, résolution ESM de Chart.js |
 | `test/setup/vitest.setup.js` | Faux `chrome` neuf pour chaque test, console silencieuse (`PECUNIO_TEST_LOGS=1` pour la réafficher) |
-| `test/helpers/load.js` | `loadContentScripts()` charge les scripts dans l'ordre de `manifest.json` ; `loadScripts([...])` pour un sous-ensemble |
+| `test/helpers/load.js` | `loadContentScripts()` importe tous les modules de `js/` et expose leurs exports sur `globalThis` (transition) ; `loadScripts([...])` pour un sous-ensemble |
 | `test/helpers/fake-chrome.js` | `chrome.storage` (callback et promesse), `runtime` (ports, messages), `webRequest`, `tabs`, `action` |
 | `test/helpers/known-bug.js` | `knownBug(...)` pour les bugs du registre |
 | `test/helpers/timezone.js` | `EAST_OF_UTC`, `WEST_OF_UTC`, `NOT_UTC` pour les tests dépendant du fuseau |
@@ -34,6 +33,7 @@ import { tx } from '../fixtures/bankin.js';
 import { loadContentScripts } from '../helpers/load.js';
 
 beforeAll(loadContentScripts); // Transaction, DataMerger, etc. deviennent globaux
+// (ou, pour un nouveau test : import { Transaction } from '../../js/models/Transaction.js';)
 
 test('une dépense est négative', () => {
     expect(Transaction.fromRaw(tx({ amount: -12 })).isExpense()).toBe(true);

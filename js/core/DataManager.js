@@ -1,7 +1,11 @@
+import { Config } from './Config.js';
+import { evt } from './events.js';
+import { TransactionFilter } from './TransactionFilter.js';
+
 /**
  * Erreurs typées pour DataManager
  */
-class DataManagerError extends Error {
+export class DataManagerError extends Error {
     constructor(message, code, details = {}) {
         super(message);
         this.name = 'DataManagerError';
@@ -10,14 +14,14 @@ class DataManagerError extends Error {
     }
 }
 
-class AuthenticationError extends DataManagerError {
+export class AuthenticationError extends DataManagerError {
     constructor(message, details = {}) {
         super(message, 'AUTH_ERROR', details);
         this.name = 'AuthenticationError';
     }
 }
 
-class ValidationError extends DataManagerError {
+export class ValidationError extends DataManagerError {
     constructor(message, dataType, invalidData = null) {
         super(message, 'VALIDATION_ERROR', { dataType, invalidData });
         this.name = 'ValidationError';
@@ -26,7 +30,7 @@ class ValidationError extends DataManagerError {
     }
 }
 
-class APIError extends DataManagerError {
+export class APIError extends DataManagerError {
     constructor(message, statusCode, url, details = {}) {
         super(message, 'API_ERROR', { statusCode, url, ...details });
         this.name = 'APIError';
@@ -38,7 +42,7 @@ class APIError extends DataManagerError {
 /**
  * Validateurs de données pour DataManager
  */
-class DataValidators {
+export class DataValidators {
     /**
      * Valide une transaction
      * @param {Object} transaction - Transaction à valider
@@ -191,17 +195,17 @@ class DataValidators {
  * DataManager - Gestionnaire centralisé des données
  * Responsable de la récupération, du cache et de la transformation des données
  */
-class DataManager {
+export class DataManager {
     static REQUIRED_HEADERS = Config.API.REQUIRED_HEADERS;
     static DOMAIN = Config.API.DOMAIN;
     static ENDPOINTS = Config.API.ENDPOINTS;
     static CACHE_DURATION = Config.API.CACHE_DURATION;
 
     /**
-     * @param {{ cacheStore?: CacheStore }} [deps] cache API (par défaut, l'instance globale `cacheStore`)
+     * @param {{ cacheStore: import('./CacheStore.js').CacheStore }} deps cache de l'API
      */
-    constructor({ cacheStore: store = typeof cacheStore !== 'undefined' ? cacheStore : null } = {}) {
-        this.cacheStore = store;
+    constructor({ cacheStore } = {}) {
+        this.cacheStore = cacheStore;
         this.port = chrome.runtime.connect();
         this.authHeader = null;
         this.cachedData = {

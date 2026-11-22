@@ -1,18 +1,28 @@
 import { defineConfig } from 'vitest/config';
-import { legacyGlobals } from './test/setup/legacy-globals-plugin.js';
 
 export default defineConfig({
-    plugins: [legacyGlobals()],
+    // Chart.js 3 et ses plugins n'ont pas de champ « exports » : sans cela, Node
+    // charge la version UMD de chart.js et le plugin Sankey la version ESM
+    // (deux instances incompatibles). On résout comme Vite le fait pour le build.
+    resolve: {
+        mainFields: ['module', 'main'],
+    },
     test: {
+        server: {
+            deps: {
+                inline: ['chart.js', 'chartjs-chart-sankey', 'chartjs-adapter-date-fns'],
+            },
+        },
         environment: 'happy-dom',
         include: ['test/**/*.test.js'],
         setupFiles: ['test/setup/vitest.setup.js'],
         restoreMocks: true,
         coverage: {
             provider: 'v8',
-            include: ['js/**/*.js', 'bg.js'],
+            include: ['js/**/*.js'],
+            exclude: ['js/lib/**'],
             reporter: ['text', 'html', 'json-summary'],
-            // Seuils sur la logique de calcul et de données (phase 1).
+            // Seuils sur la logique de calcul et de données.
             // Le rendu des graphiques et l'interface (js/ui, render/createUI des
             // graphiques) seront couverts par les tests d'intégration (phase 5).
             thresholds: {

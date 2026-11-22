@@ -1,8 +1,13 @@
+import { Config } from '../core/Config.js';
+import { Chart } from '../lib/chart.js';
+import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { BaseChartData } from './base/BaseChartData.js';
+
 /**
  * ExpenseTypeChart - Graphique pour visualiser la répartition des expense_type
  * Affiche un graphique en donut/pie pour montrer la distribution des types de dépenses
  */
-class ExpenseTypeChart extends BaseChartData {
+export class ExpenseTypeChart extends BaseChartData {
     constructor(transactions, categories, params, settingsInstance = null) {
         super(transactions, categories, null, null, settingsInstance);
         this.params = params; // [mois, année] pour filtrer par période

@@ -11,26 +11,23 @@ concurrency:
 
 jobs:
   check:
-    name: Lint & cohérence du manifest
+    name: Lint & build de l'extension
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
 
-      - name: Manifest et pages HTML
-        run: npm run check:manifest
-
       - name: ESLint
         run: npm run lint
 
-      - name: Construction du zip
-        run: bash scripts/package.sh
+      - name: Build et zip (WXT)
+        run: npm run zip
 
   test:
     name: Tests unitaires (${{ matrix.tz }})
@@ -47,7 +44,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci

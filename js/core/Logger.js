@@ -1,3 +1,5 @@
+import { Config } from './Config.js';
+
 /**
  * Logger - Journalisation à niveaux
  *
@@ -9,7 +11,7 @@
  * Ne jamais y passer de données bancaires (transactions, montants, libellés) :
  * la console est visible par toute extension ou personne ayant accès au poste.
  */
-class Logger {
+export class Logger {
     static PREFIX = '[Pecunio]';
 
     static isDebugEnabled() {

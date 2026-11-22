@@ -1,25 +1,14 @@
-// Chargement des scripts de l'extension dans un test.
+// Chargement des modules de l'extension dans un test.
 //
-// Les scripts sont importés un par un, dans l'ordre réel de l'extension
-// (manifest.json pour le content script). Grâce au plugin legacy-globals,
-// chaque classe déclarée devient une propriété de globalThis, exactement
-// comme dans Chrome.
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+// Les modules sont importés normalement ; leurs exports sont en plus exposés
+// sur globalThis pour que les tests existants puissent écrire `Transaction`,
+// `DataMerger`, etc. sans import. Les nouveaux tests peuvent importer
+// directement les modules dont ils ont besoin.
 
-// Vitest s'exécute depuis la racine du dépôt (là où se trouve vitest.config.js).
-const root = process.cwd();
-const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
+/** Tous les modules de l'extension (hors points d'entrée WXT). */
+const ALL_MODULES = import.meta.glob('/js/**/*.js');
 
-/**
- * Scripts du content script, dans l'ordre du manifest, sans les librairies
- * tierces ni `injected.js` (qui démarre l'extension).
- */
-export const CONTENT_SCRIPTS = manifest.content_scripts[0].js.filter(
-    (file) => !file.startsWith('libs/') && file !== 'injected.js',
-);
-
-/** Scripts chargés par report.html (hors librairies et report.js). */
+/** Modules utilisés par la page du rapport. */
 export const REPORT_SCRIPTS = [
     'js/core/Config.js',
     'js/core/Logger.js',
@@ -29,17 +18,21 @@ export const REPORT_SCRIPTS = [
 ];
 
 /**
- * Importe des scripts de l'extension dans l'ordre donné.
+ * Importe des modules et expose leurs exports sur globalThis.
  * @param {string[]} files chemins relatifs à la racine du dépôt
  */
 export async function loadScripts(files) {
     for (const file of files) {
-        await import(/* @vite-ignore */ `/${file}`);
+        const loader = ALL_MODULES[`/${file}`];
+        if (!loader) throw new Error(`Module inconnu : ${file}`);
+        Object.assign(globalThis, await loader());
     }
 }
 
-/** Charge tout le content script et crée l'instance globale `evt`. */
+/**
+ * Charge tous les modules de l'extension. Expose notamment l'instance
+ * partagée `evt` (js/core/events.js), celle qu'utilisent Settings et DataManager.
+ */
 export async function loadContentScripts() {
-    await loadScripts(CONTENT_SCRIPTS);
-    globalThis.evt = new globalThis.Evt();
+    await loadScripts(Object.keys(ALL_MODULES).map((path) => path.slice(1)));
 }

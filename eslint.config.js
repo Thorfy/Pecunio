@@ -1,89 +1,45 @@
 // Configuration ESLint (flat config).
 //
-// Le code de l'extension n'utilise pas encore de modules : chaque fichier est un
-// script classique et les classes sont partagées via le scope global, dans
-// l'ordre défini par manifest.json / popup.html / report.html.
-// On déclare donc ces classes comme globales connues. Cette liste disparaîtra
-// avec la migration vers les modules ES (phase 3 du plan de modernisation).
+// Le code de l'extension est en modules ES : chaque dépendance est importée
+// explicitement, `no-undef` signale tout identifiant non importé.
 import js from '@eslint/js';
 import globals from 'globals';
 
-/** Classes et instances partagées entre les scripts de l'extension. */
-const projectGlobals = Object.fromEntries(
+/**
+ * Classes de l'extension encore exposées en global aux tests
+ * (test/helpers/load.js) ; les tests pourront importer explicitement à terme.
+ */
+const testGlobals = Object.fromEntries(
     [
-        // core
-        'Config',
-        'Logger',
-        'PageController',
-        'DateRange',
-        'TransactionFilter',
-        'CacheStore',
-        'Evt',
-        'Settings',
-        'DataManager',
-        'DataManagerError',
-        'AuthenticationError',
-        'ValidationError',
-        'APIError',
-        'DataValidators',
-        // models
-        'Transaction',
-        'Account',
-        'Category',
-        // services
-        'DataMerger',
-        'ReportStorage',
-        // charts
-        'BaseChartData',
-        'BudgetChart',
-        'LineBarChart',
-        'SankeyChart',
-        'ExpenseTypeChart',
-        // report
-        'ReportFilters',
-        'ReportChartDataBuilder',
-        'PdfExporter',
-        // ui / utils
-        'InjectedStyles',
-        'LoadingScreen',
-        'AmountHider',
-        'ReviewPrompt',
-        'StatusBanner',
-        'ColorParser',
-        // instances créées par injected.js / popup.js
-        'evt',
-        'settingClass',
-        'cacheStore',
-        'dataManager',
-        // librairies tierces chargées depuis libs/
-        'Chart',
-        'Choices',
-        'html2pdf',
+        'Config', 'Logger', 'PageController', 'DateRange', 'TransactionFilter', 'CacheStore', 'Evt', 'Settings',
+        'DataManager', 'DataManagerError', 'AuthenticationError', 'ValidationError', 'APIError', 'DataValidators',
+        'Transaction', 'Account', 'Category', 'DataMerger', 'ReportStorage',
+        'BaseChartData', 'BudgetChart', 'LineBarChart', 'SankeyChart', 'ExpenseTypeChart',
+        'ReportFilters', 'ReportChartDataBuilder', 'PdfExporter',
+        'InjectedStyles', 'LoadingScreen', 'AmountHider', 'ReviewPrompt', 'StatusBanner', 'ColorParser',
+        'evt', 'settingClass',
     ].map((name) => [name, 'readonly']),
 );
 
 export default [
     {
-        ignores: ['libs/**', 'node_modules/**', 'dist/**', '.output/**', 'coverage/**'],
+        ignores: ['libs/**', 'public/**', 'node_modules/**', 'dist/**', '.output/**', '.wxt/**', 'coverage/**'],
     },
     js.configs.recommended,
     {
-        // Code de l'extension (scripts classiques, navigateur + API chrome.*)
-        files: ['bg.js', 'injected.js', 'popup.js', 'report.js', 'js/**/*.js'],
+        // Code de l'extension (modules ES, navigateur + API chrome.*)
+        files: ['js/**/*.js', 'entrypoints/**/*.js'],
         languageOptions: {
-            ecmaVersion: 2022,
-            sourceType: 'script',
+            ecmaVersion: 'latest',
+            sourceType: 'module',
             globals: {
                 ...globals.browser,
                 ...globals.webextensions,
-                ...projectGlobals,
             },
         },
         rules: {
-            // Les déclarations de haut niveau sont volontairement globales (cf. ci-dessus)
-            'no-unused-vars': ['warn', { vars: 'local', args: 'none', caughtErrors: 'none' }],
-            'no-redeclare': ['error', { builtinGlobals: false }],
-            // Règles signalées sans bloquer, à durcir au fil des phases
+            'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
+            // Règles signalées sans bloquer, à durcir en phase 3c
             'no-prototype-builtins': 'warn',
             'no-empty': 'warn',
             'no-useless-escape': 'warn',
@@ -95,7 +51,7 @@ export default [
         },
     },
     {
-        // Tests (Vitest, modules ES) : accès aux classes globales de l'extension
+        // Tests (Vitest, modules ES)
         files: ['test/**/*.js'],
         languageOptions: {
             ecmaVersion: 'latest',
@@ -104,7 +60,7 @@ export default [
                 ...globals.browser,
                 ...globals.node,
                 ...globals.webextensions,
-                ...projectGlobals,
+                ...testGlobals,
             },
         },
     },

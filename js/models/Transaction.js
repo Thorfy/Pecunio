@@ -1,8 +1,10 @@
+import { DateRange } from '../core/DateRange.js';
+
 /**
  * Transaction - Modèle représentant une transaction bancaire
  * Contient toutes les informations d'une transaction
  */
-class Transaction {
+export class Transaction {
     constructor(id, amount, accountId, date, description, categoryId, current_month, expense_type) {
         this.id = id;
         this.amount = amount;

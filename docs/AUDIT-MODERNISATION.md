@@ -56,6 +56,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B18 | 🟠 | **Sankey : remboursements comptés comme dépenses** : les montants sont additionnés en valeur absolue ; une dépense de 100 € remboursée de 40 € apparaît comme 140 € de dépenses au lieu de 60 € | T | ✅ 2a |
 | B19 | 🔴 | **Page Catégories vide si le navigateur n'est pas en français** : `applySettingOnDataByMonth` compare le nom du mois affiché par Bankin (« février ») au nom du mois dans la langue du navigateur (`toLocaleString('default')`) ; avec Chrome en anglais, aucune transaction ne correspond (non vérifié en réel : le Chrome testé est en français) | T | ✅ 2a |
 | B20 | 🟠 | **Infobulle du graphique « Comparaison Budget Médian » : montants NaN** : `Number(context.parsed)` alors que Chart.js fournit un objet `{ x, y }` pour un graphique en barres (signalé par l'utilisateur le 22/11/2026, présent depuis février 2026) | L + T | ✅ 2a |
+| B21 | 🟡 | **Modale « Un petit avis ? » affichée en double** : la vérification « déjà affichée » précède le délai de 2 s ; deux constructions rapprochées (chargement puis arrivée des données) programment chacune une modale (vu en recette de la phase 3a sur une installation neuve) | L + T | ✅ 3a |
 
 ### 3.2 Dette technique et qualité
 
@@ -63,8 +64,8 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 |---|---|---|
 | D1 | Couplage fort au DOM Bankin : classes CSS utilitaires (`.dbl.fs14.fw7.lh18.elp`…), IDs de catégories en dur (`326, 282, 2, 163`) | 4 |
 | D2 | 134 `console.*` en production, dont des transactions brutes (données bancaires dans la console) — ✅ 2b : `Logger` (debug silencieux par défaut), plus de transactions dans la console | 2b |
-| D3 | Classes globales + ordre de chargement maintenu à 3 endroits | 3 |
-| D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 | 3 |
+| D3 | Classes globales + ordre de chargement maintenu à 3 endroits | ✅ 3a |
+| D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 — ✅ 3a : npm (mêmes versions) ; mise à jour en 3b | 3b |
 | D5 | Wrappers callback → Promise inutiles en MV3 ; popup encore en callbacks | 2a / 3 |
 | D6 | Code mort : `getAllSetting`, `mergeTransactionByCategoryLegacy`, `DataManager.filterTransactions`, `organizeTransactionsByCategory` (O(n × catégories²)). ✅ `LineBarChart.buildChart` déjà retiré | 3 |
 | D7 | `Math.min(...dates)` sur des milliers d'éléments (dépassement de pile possible) | ✅ 2a |
@@ -87,7 +88,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 
 | Sujet | Choix | Pourquoi |
 |---|---|---|
-| Build | **[WXT](https://wxt.dev)** (Vite) | Manifest généré, entrypoints background / content / popup / report, rechargement à chaud, zip propre |
+| Build | **[WXT](https://wxt.dev)** (Vite) ✅ | Manifest généré, entrypoints background / content / popup / report, rechargement à chaud, zip propre |
 | Langage | **TypeScript progressif** : `// @ts-check` + JSDoc, puis `.ts` module par module | Le JSDoc existe déjà ; typer l'API Bankin évite une classe entière de bugs |
 | Dépendances | npm : `chart.js@4`, `chartjs-chart-sankey`, `chartjs-adapter-date-fns`, `choices.js`, `html2pdf.js` | Versions tracées, mises à jour automatisées |
 | Tests unitaires | **Vitest** + happy-dom + faux `chrome.*` maison ✅ | Rapide, même configuration que le futur build Vite/WXT |
@@ -141,14 +142,19 @@ Réalisé (2b) : `injected.js` réduit à la création des services ; tout le cy
 
 **Terminé quand** : tous les tests `knownBug` de la phase 1 sont convertis en tests normaux et passent sous les 3 fuseaux ; la recette manuelle §7 est validée dans Chrome.
 
-### Phase 3 — Modules et build _(2–3 j)_
-Restructuration **sans changement de comportement** (les tests des phases 1–2 servent de garde-fou).
-- Migration WXT : `entrypoints/background`, `content`, `popup/`, `report/`.
-- `export` / `import` partout ; dépendances injectées à la place des globales (`evt`, `settingClass`, `dataManager`) ; liste des globales retirée de `eslint.config.js`.
-- `Evt` (événements DOM) remplacé par un émetteur en mémoire (B15).
-- Libs via npm, `libs/` supprimé ; `check-manifest.mjs` et `package.sh` remplacés par le build WXT.
-- Suppression du code mort (D6), warnings ESLint à zéro et passage des règles en `error` (D13).
-- **Sous-étape séparée** : Chart.js 3 → 4 (+ plugins), avec comparaison visuelle avant/après.
+### Phase 3 — Modules et build _(2–3 j, 3 PR)_
+Restructuration **sans changement de comportement** (les tests des phases 1–2 servent de garde-fou). Décidé : **WXT**.
+
+**3a — Modules ES + WXT** ✅ _(branche `refactor/phase-3a-wxt-modules`)_
+- `export` / `import` partout ; plus aucune classe globale. Instances injectées (`settings`, `cacheStore`) ou partagées par module (`evt` dans `js/core/events.js`).
+- Build WXT : `entrypoints/background.js`, `content.js`, `popup/`, `report/` ; manifest généré (`wxt.config.js`, version de `package.json`) ; `public/` pour les images et html2pdf.
+- Librairies via npm **aux mêmes versions** (Chart.js 3.7.1, sankey 0.12.0, adaptateur date-fns 2.0.0, Choices 11.0.2) ; `libs/` supprimé sauf html2pdf (`public/libs/`, chargé par balise script dans le rapport).
+- `check-manifest.mjs` et `package.sh` remplacés par `wxt build` / `wxt zip` ; CI et release adaptées (Node 22).
+- Tests : plus de plugin « legacy », les modules sont importés ; leurs exports restent exposés en global pendant la transition.
+
+**3b — Dépendances** : Chart.js 3 → 4 (+ sankey, adaptateur de dates), html2pdf via npm, Dependabot ; comparaison visuelle avant/après.
+
+**3c — Nettoyage** : `Evt` remplacé par un émetteur en mémoire (B15) ; code mort (D6) ; warnings ESLint à zéro et règles en `error` (D13) ; tests sans exports globaux.
 
 **Terminé quand** : le zip WXT se charge dans Chrome et la recette §7 passe ; 0 warning ESLint.
 
@@ -186,8 +192,8 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 0 Base saine | ½ j | ✅ mergée (#12) | — |
 | 1 Tests unitaires | 1,5–2 j | ✅ mergée (#13) | documente B1–B3, B7–B10, B13–B15, B17–B19 |
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
-| 2b Cycle de vie | 1–1,5 j | ✅ PR à merger | B4–B6, B11, B12, B16, D2, D11 |
-| 3 Modules + WXT | 2–3 j | prochaine | B15, D3–D6, D13 |
+| 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
+| 3 Modules + WXT | 2–3 j | 3a ✅ PR à merger | B15, D3–D6, D13 |
 | 4 Types + adaptateur | 2–3 j | | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |

@@ -1,13 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import { CONTENT_SCRIPTS, loadContentScripts } from '../helpers/load.js';
+import { loadContentScripts } from '../helpers/load.js';
 
 describe('harnais de test', () => {
-    test('charge tout le content script dans l\'ordre du manifest', async () => {
+    test('expose les classes de l\'extension et l\'instance partagée evt', async () => {
         await loadContentScripts();
-        expect(CONTENT_SCRIPTS[0]).toBe('js/core/Config.js');
-        for (const name of ['Config', 'Evt', 'Settings', 'DataManager', 'DataValidators', 'Transaction', 'DataMerger', 'BaseChartData', 'BudgetChart', 'SankeyChart', 'ExpenseTypeChart', 'LineBarChart']) {
+        for (const name of ['Config', 'Evt', 'Settings', 'DataManager', 'DataValidators', 'Transaction', 'DataMerger', 'BaseChartData', 'BudgetChart', 'SankeyChart', 'ExpenseTypeChart', 'LineBarChart', 'PageController', 'Chart']) {
             expect(typeof globalThis[name], name).toBe('function');
         }
-        expect(globalThis.evt).toBeInstanceOf(globalThis.Evt);
+        const { evt } = await import('/js/core/events.js');
+        expect(globalThis.evt).toBe(evt);
+        expect(evt).toBeInstanceOf(globalThis.Evt);
     });
 });
