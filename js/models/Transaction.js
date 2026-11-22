@@ -74,29 +74,4 @@ export class Transaction {
     getAdjustedDate() {
         return DateRange.toLocalDate(this.getBudgetDate());
     }
-
-    /**
-     * Vérifie si la transaction est un revenu
-     * @returns {boolean}
-     */
-    isIncome() {
-        return this.amount > 0;
-    }
-
-    /**
-     * Retourne le mois de la transaction (1-12)
-     * @returns {number}
-     */
-    getMonth() {
-        return this.getAdjustedDate().getMonth() + 1;
-    }
-
-    /**
-     * Retourne une représentation string de la transaction
-     * @returns {string}
-     */
-    toString() {
-        return `Transaction(id: ${this.id}, amount: ${this.amount}, date: ${this.date}, description: "${this.description}")`;
-    }
-
 } 

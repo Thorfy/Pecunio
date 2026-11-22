@@ -36,7 +36,6 @@ describe('Transaction', () => {
         const t = Transaction.fromRaw(tx({ date: '2024-01-20', current_month: 1 }));
         const d = t.getAdjustedDate();
         expect([d.getFullYear(), d.getMonth() + 1]).toEqual([2024, 2]);
-        expect(t.getMonth()).toBe(2);
     });
 });
 
@@ -45,7 +44,6 @@ describe('Account', () => {
         const a = Account.fromRaw({ id: 101, name: 'Compte courant' });
         expect(a.isValid()).toBe(true);
         expect(a.getDisplayName()).toBe('Compte courant');
-        expect(a.toString()).toContain('Compte courant');
     });
 
     test('fromRaw refuse un compte sans nom ou sans id', () => {

@@ -29,14 +29,6 @@ export class Account {
     }
 
     /**
-     * Retourne une représentation string du compte
-     * @returns {string}
-     */
-    toString() {
-        return `Account(id: ${this.id}, name: "${this.name}")`;
-    }
-
-    /**
      * Retourne le nom du compte pour l'affichage
      * @returns {string}
      */

@@ -21,13 +21,4 @@ export class Category {
         }
         return new Category(rawCategory.id, rawCategory.name, parentId);
     }
-
-    /**
-     * Retourne une représentation string de la catégorie
-     * @returns {string}
-     */
-    toString() {
-        return `Category(id: ${this.id}, name: "${this.name}", parentId: ${this.parentId})`;
-    }
-
 } 
