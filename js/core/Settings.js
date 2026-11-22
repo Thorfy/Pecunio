@@ -1,35 +1,37 @@
 import { evt } from './events.js';
 import { Logger } from './Logger.js';
+import { SETTING_NAMES, defaultSettings, isValidSetting, migrateSettings } from './SettingsSchema.js';
+
+/** @typedef {import('./SettingsSchema.js').UserSettings} UserSettings */
 
 /**
  * Settings - Préférences utilisateur (période, comptes, affichage)
- * Le cache de l'API Bankin est géré par CacheStore.
+ *
+ * Le schéma (valeurs par défaut, validation, migrations) est dans
+ * SettingsSchema.js. Le cache de l'API Bankin est géré par CacheStore.
  */
 export class Settings {
-    /**
-     * Préférences utilisateur. Le cache de l'API Bankin (cache_data_* / cache_time_*)
-     * est géré à part par CacheStore.
-     */
-    static ALL_SETTING_NAMES = [
-        'startDate',
-        'endDate',
-        'noEndDate',
-        'accounts',
-        'accountsSelected',
-        'isBlurry',
-        'chartType'
-    ];
+    /** Noms de toutes les préférences (voir SettingsSchema). */
+    static ALL_SETTING_NAMES = SETTING_NAMES;
 
     constructor() {
+        /** @type {UserSettings} */
         this.settings = {};
         this.isInitialized = false;
         this.initializationPromise = this._initialize();
     }
 
     /**
-     * Initialise les paramètres
+     * Migre le stockage si nécessaire, puis charge les préférences.
      */
     async _initialize() {
+        try {
+            const migration = await migrateSettings();
+            if (migration.migrated) Logger.debug(`[Settings] Stockage migré de v${migration.from} à v${migration.to}`);
+        } catch (error) {
+            // Une migration ratée ne doit pas empêcher l'extension de fonctionner
+            console.warn('[Settings] Migration impossible :', error);
+        }
         try {
             await this.loadSettings();
             this.isInitialized = true;
@@ -48,7 +50,7 @@ export class Settings {
     }
 
     /**
-     * Charge tous les paramètres depuis le stockage Chrome
+     * Charge toutes les préférences depuis le stockage Chrome
      */
     async loadSettings() {
         try {
@@ -57,14 +59,16 @@ export class Settings {
             Logger.debug('[Settings] Settings loaded successfully');
         } catch (error) {
             console.error('[Settings] Error loading settings:', error);
-            // Utiliser des valeurs par défaut en cas d'erreur
-            this.settings = this._getDefaultSettings();
+            this.settings = defaultSettings();
             throw error;
         }
     }
 
     /**
-     * Récupère un paramètre spécifique
+     * Valeur enregistrée d'une préférence (undefined si jamais enregistrée).
+     * @template {keyof UserSettings} K
+     * @param {K} key
+     * @returns {UserSettings[K]}
      */
     getSetting(key) {
         if (!this.isInitialized) {
@@ -75,25 +79,26 @@ export class Settings {
     }
 
     /**
-     * Récupère tous les paramètres
+     * Copie des préférences enregistrées.
+     * @returns {UserSettings}
      */
     getAllSettings() {
         if (!this.isInitialized) {
             console.warn('[Settings] Attempting to get all settings before initialization');
         }
-        return { ...this.settings }; // Retourner une copie pour éviter les modifications externes
+        return { ...this.settings };
     }
 
     /**
-     * Met à jour un ou plusieurs paramètres
+     * Met à jour une ou plusieurs préférences (les valeurs invalides ou
+     * inconnues du schéma sont ignorées avec un avertissement).
+     * @param {Partial<UserSettings>} settings
      */
     async setSettings(settings) {
         try {
-            // Valider les paramètres avant de les sauvegarder
             const validatedSettings = this._validateSettings(settings);
-            
             await this._setChromeStorage(validatedSettings);
-            await this.loadSettings(); // Recharger pour synchroniser l'état interne (émet settings_reloaded)
+            await this.loadSettings(); // émet settings_reloaded
             Logger.debug('[Settings] Settings updated successfully:', Object.keys(validatedSettings));
         } catch (error) {
             console.error('[Settings] Error updating settings:', error);
@@ -102,15 +107,18 @@ export class Settings {
     }
 
     /**
-     * Met à jour un paramètre unique
+     * Met à jour une préférence.
+     * @template {keyof UserSettings} K
+     * @param {K} key
+     * @param {UserSettings[K]} value
      */
     async setSetting(key, value) {
         return this.setSettings({ [key]: value });
     }
 
     /**
-     * Efface les préférences utilisateur, sans toucher au cache des données,
-     * aux catégories masquées ni au rapport (bug B13).
+     * Efface les préférences utilisateur, sans toucher au cache des données
+     * ni au rapport (bug B13).
      */
     async clearAllSettings() {
         try {
@@ -125,44 +133,27 @@ export class Settings {
     }
 
     /**
-     * Valide les paramètres avant sauvegarde
+     * Garde les préférences connues du schéma et valides.
+     * @param {Record<string, unknown>} settings
+     * @returns {Partial<UserSettings>}
      */
     _validateSettings(settings) {
+        /** @type {Record<string, unknown>} */
         const validated = {};
-        
         for (const [key, value] of Object.entries(settings)) {
-            if (key === 'accountsSelected' && !Array.isArray(value)) {
-                console.warn(`[Settings] Invalid accountsSelected, expected array, got ${typeof value}`);
+            if (!isValidSetting(key, value)) {
+                console.warn(`[Settings] Valeur refusée pour « ${key} » :`, value);
                 continue;
             }
-            
-            if ((key === 'isBlurry' || key === 'noEndDate') && typeof value !== 'boolean') {
-                console.warn(`[Settings] Invalid ${key}, expected boolean, got ${typeof value}`);
-                continue;
-            }
-            
             validated[key] = value;
         }
-        
         return validated;
     }
 
     /**
-     * Retourne les paramètres par défaut
-     */
-    _getDefaultSettings() {
-        return {
-            startDate: null,
-            endDate: null,
-            accounts: [],
-            accountsSelected: null,
-            isBlurry: false,
-            noEndDate: false
-        };
-    }
-
-    /**
-     * Wrapper pour chrome.storage.local.get avec gestion d'erreurs
+     * Lecture du stockage avec gestion de chrome.runtime.lastError.
+     * @param {string[]} keys
+     * @returns {Promise<Record<string, any>>}
      */
     _getChromeStorage(keys) {
         return new Promise((resolve, reject) => {
@@ -177,7 +168,9 @@ export class Settings {
     }
 
     /**
-     * Wrapper pour chrome.storage.local.set avec gestion d'erreurs
+     * Écriture du stockage avec gestion de chrome.runtime.lastError.
+     * @param {Record<string, unknown>} items
+     * @returns {Promise<void>}
      */
     _setChromeStorage(items) {
         return new Promise((resolve, reject) => {

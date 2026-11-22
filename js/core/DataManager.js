@@ -35,6 +35,8 @@ export class APIError extends DataManagerError {
         this.name = 'APIError';
         this.statusCode = statusCode;
         this.url = url;
+        /** Erreur temporaire : une nouvelle tentative a des chances de réussir (5xx, 429). */
+        this.retryable = false;
     }
 }
 
@@ -201,7 +203,7 @@ export class DataManager {
     static CACHE_DURATION = Config.API.CACHE_DURATION;
 
     /**
-     * @param {{ cacheStore: import('./CacheStore.js').CacheStore }} deps cache de l'API
+     * @param {{ cacheStore?: import('./CacheStore.js').CacheStore }} [deps] cache de l'API
      */
     constructor({ cacheStore } = {}) {
         this.cacheStore = cacheStore;
@@ -214,6 +216,15 @@ export class DataManager {
             cacheTime: {}
         };
         this.initializationPromise = this._initializeAuth();
+    }
+
+    /** Ferme la connexion au service worker (déconnexion de Bankin). */
+    dispose() {
+        try {
+            this.port.disconnect();
+        } catch {
+            // port déjà fermé
+        }
     }
 
     /**

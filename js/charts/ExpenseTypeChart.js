@@ -49,7 +49,7 @@ export class ExpenseTypeChart extends BaseChartData {
         InjectedStyles.inject();
         InjectedStyles.cleanupPecunioElements(categBlock);
 
-        let chartsRowContainer = categBlock.querySelector('.pecunio-charts-row');
+        let chartsRowContainer = /** @type {HTMLElement | null} */ (categBlock.querySelector('.pecunio-charts-row'));
         if (!chartsRowContainer) {
             chartsRowContainer = InjectedStyles.createChartsRow();
         }

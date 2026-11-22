@@ -14,7 +14,8 @@ export default defineConfig({
     manifest: {
         name: 'Pecunio',
         description: 'Pecunio overload Bankin website', // à reformuler en phase 6 (D12)
-        author: 'Remy Lefebvre',
+        // Chrome accepte une chaîne ; les types du manifest attendent { email }
+        author: /** @type {any} */ ('Remy Lefebvre'),
         icons: { 64: 'asset/icon.png' },
         permissions: ['webRequest', 'storage', 'unlimitedStorage'],
         host_permissions: ['https://*.bankin.com/*'],

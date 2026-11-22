@@ -67,7 +67,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
     }
 
     function renderIncomeVsExpenseChart(incomeExpenseStats) {
-        const canvas = document.getElementById('chart-income-expense');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-income-expense'));
         if (!canvas) return;
         if (incomeVsExpenseChartInstance) {
             incomeVsExpenseChartInstance.destroy();
@@ -103,7 +103,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
 
     function renderCategoryChart(chartType) {
         if (!categoryChartData || !categoryChartData.labels.length) return;
-        const canvas = document.getElementById('chart-category');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-category'));
         if (categoryChartInstance) {
             categoryChartInstance.destroy();
             categoryChartInstance = null;
@@ -142,7 +142,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
     }
 
     function renderEvolutionChart(chartType) {
-        const canvas = document.getElementById('chart-evolution');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-evolution'));
         if (!canvas || !evolutionChartData || !evolutionChartData.labels.length || !evolutionChartData.datasets.length) return;
         if (evolutionChartInstance) {
             evolutionChartInstance.destroy();
@@ -165,7 +165,6 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 400 },
-                stacked: isBar,
                 plugins: { legend: { position: 'bottom' } },
                 scales: {
                     x: { grid: { color: LIGHT_GRID } },
@@ -176,7 +175,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
     }
 
     function renderSankeyChart() {
-        const canvas = document.getElementById('chart-sankey');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-sankey'));
         if (!canvas || !sankeyChartData || !sankeyChartData.data.length) return;
         if (sankeyChartInstance) {
             sankeyChartInstance.destroy();
@@ -192,13 +191,13 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
                     data: sankeyChartData.data,
                     colorFrom: (ctx) => {
                         try {
-                            const d = ctx.dataset && ctx.dataset.data && ctx.dataset.data[ctx.dataIndex];
+                            const d = /** @type {any} */ (ctx.dataset && ctx.dataset.data && ctx.dataset.data[ctx.dataIndex]);
                             return (d && d.id != null && colorMap[d.id]) ? colorMap[d.id] : defaultColor;
                         } catch (_) { return defaultColor; }
                     },
                     colorTo: (ctx) => {
                         try {
-                            const d = ctx.dataset && ctx.dataset.data && ctx.dataset.data[ctx.dataIndex];
+                            const d = /** @type {any} */ (ctx.dataset && ctx.dataset.data && ctx.dataset.data[ctx.dataIndex]);
                             return (d && d.id != null && colorMap[d.id]) ? colorMap[d.id] : defaultColor;
                         } catch (_) { return defaultColor; }
                     },
@@ -216,7 +215,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
     }
 
     function renderPolarChart() {
-        const canvas = document.getElementById('chart-polar');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-polar'));
         if (!canvas || !polarChartData || !polarChartData.labels.length) return;
         if (polarChartInstance) {
             polarChartInstance.destroy();
@@ -253,7 +252,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
         renderIncomeVsExpenseChart(incomeExpenseStats);
 
         const expenseType = ReportChartDataBuilder.buildExpenseTypeData(filteredData);
-        const ctxDonut = document.getElementById('chart-expense-type').getContext('2d');
+        const ctxDonut = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-expense-type')).getContext('2d');
         if (expenseType.labels.length) {
             new Chart(ctxDonut, {
                 type: 'doughnut',
@@ -276,10 +275,10 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
             });
         }
 
-        const chartTypeSelect = document.getElementById('chart-category-type');
+        const chartTypeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('chart-category-type'));
         renderCategoryChart((chartTypeSelect && chartTypeSelect.value) || 'bar');
         if (chartTypeSelect) {
-            chartTypeSelect.addEventListener('change', function () { renderCategoryChart(this.value); });
+            chartTypeSelect.addEventListener('change', () => renderCategoryChart(chartTypeSelect.value));
         }
 
         const sectionSankey = document.getElementById('section-sankey');
@@ -301,10 +300,10 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
         const sectionEvolution = document.getElementById('section-evolution');
         if (evolutionChartData && evolutionChartData.labels.length && evolutionChartData.datasets.length) {
             if (sectionEvolution) sectionEvolution.style.display = '';
-            const evolutionTypeSelect = document.getElementById('chart-evolution-type');
+            const evolutionTypeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('chart-evolution-type'));
             renderEvolutionChart((evolutionTypeSelect && evolutionTypeSelect.value) || 'bar');
             if (evolutionTypeSelect) {
-                evolutionTypeSelect.addEventListener('change', function () { renderEvolutionChart(this.value); });
+                evolutionTypeSelect.addEventListener('change', () => renderEvolutionChart(evolutionTypeSelect.value));
             }
         } else {
             if (sectionEvolution) sectionEvolution.style.display = 'none';
@@ -314,7 +313,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
     function renderTable(filteredData) {
         const tbody = document.getElementById('transactions-tbody');
         tbody.innerHTML = '';
-        const sorted = [...filteredData].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const sorted = [...filteredData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         sorted.forEach(row => {
             const tr = document.createElement('tr');
             const amountClass = row.amount >= 0 ? 'amount-positive' : 'amount-negative';
@@ -342,7 +341,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
         if (sankeyChartInstance) charts.push(sankeyChartInstance);
         if (polarChartInstance) charts.push(polarChartInstance);
         if (incomeVsExpenseChartInstance) charts.push(incomeVsExpenseChartInstance);
-        const donutCanvas = document.getElementById('chart-expense-type');
+        const donutCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-expense-type'));
         const donutChart = donutCanvas && typeof Chart !== 'undefined' ? Chart.getChart(donutCanvas) : null;
         if (donutChart) charts.push(donutChart);
         return charts;
@@ -350,7 +349,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
 
     function downloadPdf() {
         const container = document.getElementById('report-container');
-        const bar = document.querySelector('.actions-bar');
+        const bar = /** @type {HTMLElement} */ (document.querySelector('.actions-bar'));
         const msg = document.getElementById('status-msg');
         if (bar) bar.style.display = 'none';
         msg.textContent = 'Préparation du PDF…';
@@ -397,7 +396,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
                         <button type="button" class="btn btn-secondary" onclick="window.close()">Fermer</button>
                     </div>
                 `;
-                const ab = document.querySelector('.actions-bar');
+                const ab = /** @type {HTMLElement} */ (document.querySelector('.actions-bar'));
                 if (ab) ab.style.display = 'none';
             });
     }

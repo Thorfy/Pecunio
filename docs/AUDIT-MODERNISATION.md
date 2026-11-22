@@ -72,13 +72,13 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D5 | Wrappers callback → Promise inutiles en MV3 ; popup encore en callbacks | 2a / 3 |
 | D6 | Code mort : `getAllSetting`, `DataManager.filterTransactions`, `organizeTransactionsByCategory` (O(n × catégories²))… ✅ phase 0 : `LineBarChart.buildChart` ; ✅ 3c : le reste (`mergeTransactionByCategoryLegacy` est en fait utilisé par le graphique temporel, conservé) | ✅ 3c |
 | D7 | `Math.min(...dates)` sur des milliers d'éléments (dépassement de pile possible) | ✅ 2a |
-| D8 | Données bancaires complètes en `storage.local` (+ `unlimitedStorage`), jamais purgées | 4 |
+| D8 | Données bancaires complètes en `storage.local` (+ `unlimitedStorage`), jamais purgées — ✅ 4a : effacées (cache de l'API, rapport, en-têtes d'authentification) dès que Bankin affiche sa page de connexion ; données des très anciennes versions effacées par la migration | ✅ 4a |
 | D9 | Interface mi-française mi-anglaise (« Toggle chart type », « All Months », mois de l'axe en anglais) | 4 |
 | D10 | Bouton « Toggle chart type » dessiné dans le canvas : inaccessible au clavier, aux lecteurs d'écran et aux tests e2e | 4 |
 | D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques — ✅ 2b : bandeau « chargement de vos données… » après 1,5 s | 2b |
 | D12 | Description du manifest : « Pecunio overload Bankin website » | 6 |
 | D13 | 35 warnings ESLint (surtout `prefer-const`) | ✅ 3c |
-| D14 | Visibilité des catégories stockée sous des clés de premier niveau nommées d'après les catégories (`"Logement": true`) : collisions possibles avec les autres clés, nettoyage impossible | 4 |
+| D14 | Visibilité des catégories stockée sous des clés de premier niveau nommées d'après les catégories (`"Logement": true`) : collisions possibles avec les autres clés, nettoyage impossible — ✅ 4a : préférence `hiddenCategories`, anciennes clés migrées | ✅ 4a |
 
 ### 3.3 Ce qui fonctionne (vérifié en réel)
 - Page Comptes : graphique « Dépense sur N mois » et « Comparaison Budget Médian ».
@@ -162,11 +162,17 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 **Terminé quand** : le zip WXT se charge dans Chrome et la recette §7 passe ; 0 warning ESLint.
 
 ### Phase 4 — Types, adaptateur Bankin, finitions _(2–3 j)_
-- TypeScript : types de l'API Bankin et des réglages ; `tsc --noEmit` en CI.
-- Schéma unique des réglages avec valeurs par défaut et **numéro de version + migrations** du stockage.
-- **Adaptateur `BankinPage`** : tous les sélecteurs, la détection de page, la lecture du mois actif ; tests de contrat sur des snapshots HTML anonymisés (alerte dès que Bankin change son interface). IDs de catégories en configuration (D1).
-- Interface entièrement en français, dates des axes en `fr` (D9) ; « Toggle chart type » remplacé par un vrai bouton HTML accessible (D10).
-- Purge des données en cache à la déconnexion Bankin (à décider, §6) et mention dans la politique de confidentialité (D8).
+
+**4a — Types et réglages** ✅ _(branche `feat/phase-4a-types-settings`)_ :
+- TypeScript en JSDoc + `checkJs` (pas de `.ts`) : `npm run typecheck` (`tsc`, 0 erreur) dans `npm run check` et en CI ; types de l'API Bankin dans `js/types/bankin.d.ts`.
+- Schéma unique des réglages (`js/core/SettingsSchema.js`) : valeurs par défaut, validation, **numéro de version `settings_version` + migration** v1 → v2 au démarrage.
+- Visibilité des catégories dans la préférence `hiddenCategories` (`js/core/CategoryVisibility.js`) ; réglage inutilisé `accounts` supprimé (D14).
+- Purge à la déconnexion (D8) : sur la page de connexion Bankin, effacement du cache de l'API, des données du rapport et des en-têtes d'authentification du service worker ; les préférences sont gardées. Section « Données et vie privée » dans le README.
+- « Réinitialiser les paramètres » (popup) affiche de nouveau toutes les catégories.
+
+**4b — Adaptateur Bankin** : **adaptateur `BankinPage`** : tous les sélecteurs, la détection de page, la lecture du mois actif ; tests de contrat sur des snapshots HTML anonymisés (alerte dès que Bankin change son interface). IDs de catégories en configuration (D1).
+
+**4c — Finitions** : interface entièrement en français, dates des axes en `fr` (D9) ; « Toggle chart type » remplacé par un vrai bouton HTML accessible (D10).
 
 ### Phase 5 — Tests d'intégration et e2e _(2 j)_
 - **POC en premier (½ j)** : vérifier que `webRequest.onBeforeSendHeaders` voit les requêtes interceptées par Playwright ; sinon le test injecte les headers dans `chrome.storage.session`.
@@ -196,8 +202,8 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 1 Tests unitaires | 1,5–2 j | ✅ mergée (#13) | documente B1–B3, B7–B10, B13–B15, B17–B19 |
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
-| 3 Modules + WXT | 2–3 j | 3a ✅ (#16), 3b ✅ (#17), 3c ✅ PR à merger | B15, B21–B24, D3–D6, D13 |
-| 4 Types + adaptateur | 2–3 j | prochaine | D1, D8–D10, D14 |
+| 3 Modules + WXT | 2–3 j | ✅ 3a (#16), 3b (#17), 3c (#23) | B15, B21–B24, D3–D6, D13 |
+| 4 Types + adaptateur | 2–3 j | 4a ✅ PR à merger ; 4b, 4c à faire | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |
 
@@ -208,9 +214,9 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | Sujet | Question | Quand |
 |---|---|---|
 | B10 | ✅ Décidé le 22/11/2026 : vraie date dans l'export + colonne mois de rattachement ; regroupement et filtres sur le mois de rattachement | — |
-| Build | WXT (recommandé) ou Vite seul ? | avant 3 |
-| TypeScript | Conversion complète en `.ts` ou JSDoc + `checkJs` seulement ? | avant 4 |
-| Données | Purger le cache à la déconnexion de Bankin ? Durée de conservation ? | avant 4 |
+| Build | ✅ WXT | — |
+| TypeScript | ✅ JSDoc + `checkJs` (pas de conversion en `.ts`) | — |
+| Données | ✅ Cache purgé à la déconnexion de Bankin ; durée de validité inchangée (10 min) | — |
 | Publication | Réactiver la publication automatique après la phase 5, ou garder une validation manuelle ? | phase 6 |
 
 ## 7. Recette manuelle (avant chaque merge de phase 2 à 4)

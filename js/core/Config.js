@@ -3,6 +3,9 @@
  * Contient toutes les constantes et paramètres de configuration
  */
 export class Config {
+    /** Logs de debug (voir Logger) ; aussi activables avec localStorage `pecunio_debug = 1`. */
+    static DEBUG = false;
+
     // Configuration de l'API Bankin
     static API = {
         DOMAIN: "https://sync.bankin.com",
@@ -52,16 +55,21 @@ export class Config {
     };
 
     // Configuration des paramètres de stockage
-    static STORAGE_KEYS = {
+    static STORAGE_KEYS = /** @type {const} */ ({
         START_DATE: 'startDate',
         END_DATE: 'endDate',
-        ACCOUNTS: 'accounts',
         ACCOUNTS_SELECTED: 'accountsSelected',
         IS_BLURRY: 'isBlurry',
         CHART_TYPE: 'chartType',
         CACHE_PREFIX: 'cache_data_',
         CACHE_TIME_PREFIX: 'cache_time_'
-    };
+    });
+
+    /** Messages envoyés au service worker (chrome.runtime.sendMessage). */
+    static RUNTIME_MESSAGES = /** @type {const} */ ({
+        /** Page de connexion Bankin affichée : oublier les en-têtes d'authentification (D8). */
+        SIGNED_OUT: 'pecunio_signed_out',
+    });
 
     // Configuration du rapport PDF
     static REPORT = {

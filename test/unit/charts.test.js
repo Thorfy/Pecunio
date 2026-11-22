@@ -207,7 +207,7 @@ describe('BudgetChart — calculs', () => {
     });
 
     test('prepareData : deux séries comparées, catégories masquées retirées', async () => {
-        chrome.storage.local._data.Logement = true; // catégorie masquée par l'utilisateur
+        chrome.storage.local._data.hiddenCategories = ['Logement']; // catégorie masquée par l'utilisateur
         const chart = await budget();
         const data = await chart.prepareData(2024, 2, 2024, 1);
         expect(data.labels).toEqual(['Alimentation & Restau.', 'Banque', "Entrées d'argent"]);
@@ -337,7 +337,7 @@ describe('LineBarChart — données', () => {
     });
 
     test('masque les catégories masquées par l\'utilisateur', async () => {
-        chrome.storage.local._data.Logement = true;
+        chrome.storage.local._data.hiddenCategories = ['Logement'];
         const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
         const data = await chart.prepareData();
         expect(data.datasets.find((d) => d.label === 'Logement').hidden).toBe(true);
@@ -429,9 +429,11 @@ describe('BudgetChart — infobulle', () => {
 describe('Graphiques — destruction (B16)', () => {
     test('BaseChartData.destroy détruit l\'instance Chart.js et son écouteur de masquage', () => {
         const chart = new BaseChartData([], CATEGORIES);
-        const handler = () => {};
-        const instance = { destroy: vi.fn(), _pecunioAmountVisibilityHandler: handler };
+        const instance = { destroy: vi.fn(), options: { scales: {} }, update: vi.fn() };
+        const add = vi.spyOn(window, 'addEventListener');
         const remove = vi.spyOn(window, 'removeEventListener');
+        BaseChartData._attachAmountVisibilityListener(instance);
+        const handler = add.mock.calls.find(([name]) => name === 'pecunio_amounts_visibility_changed')[1];
         chart.chartInstance = instance;
         chart.destroy();
         expect(instance.destroy).toHaveBeenCalled();
@@ -460,8 +462,8 @@ describe('Graphiques — destruction (B16)', () => {
         const update = vi.spyOn(chart, '_updateChartView').mockResolvedValue();
         chart._setupStorageListener();
         chart.budgetChart = { destroy() {} };
-        chrome.storage.local.set({ Logement: true });
-        chrome.storage.local.set({ autreCle: 1 });
+        chrome.storage.local.set({ hiddenCategories: ['Logement'] });
+        chrome.storage.local.set({ Logement: true, autreCle: 1 });
         expect(update).toHaveBeenCalledTimes(1);
     });
 });

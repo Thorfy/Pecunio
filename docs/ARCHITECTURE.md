@@ -168,11 +168,11 @@ Gestionnaire d'événements centralisé utilisant les CustomEvents du DOM :
 - Gestion des listeners multiples
 - Mode debug
 
-#### Settings.js
-Gestionnaire de persistance des paramètres :
-- Interface avec `chrome.storage.local`
-- Validation des données
-- Gestion de l'initialisation asynchrone
+#### Settings.js et SettingsSchema.js
+Préférences utilisateur dans `chrome.storage.local` :
+- `SettingsSchema` décrit chaque préférence (valeur par défaut, validation) et migre le stockage au démarrage (`settings_version`)
+- `Settings` charge, valide et enregistre les préférences, et prévient (`settings_reloaded`)
+- `CategoryVisibility` gère la préférence `hiddenCategories` (légende du graphique temporel, comparaison budget)
 
 #### DataManager.js
 Gestionnaire centralisé des données :

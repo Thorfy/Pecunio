@@ -75,19 +75,20 @@ export class BaseChartData {
     destroy() {
         const chart = this.chartInstance;
         if (!chart) return;
-        if (chart._pecunioAmountVisibilityHandler) {
-            window.removeEventListener('pecunio_amounts_visibility_changed', chart._pecunioAmountVisibilityHandler);
-            chart._pecunioAmountVisibilityHandler = null;
-        }
+        BaseChartData._detachAmountVisibilityListener(chart);
         chart.destroy();
         this.chartInstance = null;
     }
 
+    /** Écouteur de masquage des montants associé à chaque instance Chart.js. */
+    static #visibilityHandlers = new WeakMap();
+
     /**
      * Attache l'écouteur de visibilité des montants (blur). Met à jour la globale et appelle chart.update().
-     * @param {Chart} chart - Instance Chart.js
+     * @param {import('chart.js').Chart} chart - Instance Chart.js
      */
     static _attachAmountVisibilityListener(chart) {
+        /** @param {CustomEvent<{ isBlurry: boolean }>} e */
         const handler = (e) => {
             if (!chart.canvas || !chart.canvas.isConnected) {
                 window.removeEventListener('pecunio_amounts_visibility_changed', handler);
@@ -97,7 +98,17 @@ export class BaseChartData {
             chart.update();
         };
         window.addEventListener('pecunio_amounts_visibility_changed', handler);
-        chart._pecunioAmountVisibilityHandler = handler;
+        BaseChartData.#visibilityHandlers.set(chart, handler);
+    }
+
+    /**
+     * Retire l'écouteur de masquage d'une instance Chart.js (avant sa destruction).
+     * @param {import('chart.js').Chart} chart
+     */
+    static _detachAmountVisibilityListener(chart) {
+        const handler = BaseChartData.#visibilityHandlers.get(chart);
+        if (handler) window.removeEventListener('pecunio_amounts_visibility_changed', handler);
+        BaseChartData.#visibilityHandlers.delete(chart);
     }
 
     /**
@@ -143,7 +154,7 @@ export class BaseChartData {
             return [];
         }
         const month = DateRange.monthIndexFromLabel(targetMonth);
-        const year = parseInt(targetYear, 10);
+        const year = parseInt(String(targetYear), 10);
         if (month == null || isNaN(year)) {
             console.warn('[BaseChartData] applySettingOnDataByMonth: unknown month', targetMonth, targetYear);
             return [];

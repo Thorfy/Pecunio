@@ -1,3 +1,4 @@
+import { getHiddenCategories, watchHiddenCategories } from '../core/CategoryVisibility.js';
 import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
@@ -158,55 +159,32 @@ export class BudgetChart extends BaseChartData {
         });
     }
 
+    /**
+     * Redessine le graphique quand une catégorie est masquée ou affichée dans
+     * la légende du graphique temporel. Un seul écouteur par graphique, retiré
+     * par destroy() (bug B16).
+     */
     _setupStorageListener() {
-        // Extract known parent category names for the storage listener
-        let knownCategoryNamesForVisibility = [];
-        if (this.categoryLookup && this.categoryLookup.size > 0) {
-            const uniqueNames = new Set(Array.from(this.categoryLookup.values()));
-            knownCategoryNamesForVisibility = Array.from(uniqueNames);
-        } else if (this.categories && Array.isArray(this.categories)) { // Fallback if lookup not populated but categories exist
-             this.categories.forEach(parentCat => {
-                if (parentCat && parentCat.name) {
-                    knownCategoryNamesForVisibility.push(parentCat.name);
-                }
-            });
-        } else {
-            console.warn('[ChartDataBudget] _setupStorageListener: Could not retrieve known category names for visibility checks.');
-        }
-
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-            // Un seul écouteur par graphique, retiré par destroy() (bug B16)
-            this._removeStorageListener();
-            this._storageListener = (changes, areaName) => {
-                if (areaName !== 'local') return;
-                const relevantChangeDetected = Object.keys(changes).some(key => knownCategoryNamesForVisibility.includes(key));
-                if (relevantChangeDetected && this.budgetChart) {
-                    this._updateChartView();
-                }
-            };
-            chrome.storage.onChanged.addListener(this._storageListener);
-        } else {
-            console.warn('[ChartDataBudget] _setupStorageListener: chrome.storage.onChanged not available.');
-        }
+        this._removeStorageListener();
+        this._unwatchHiddenCategories = watchHiddenCategories(() => {
+            if (this.budgetChart) this._updateChartView();
+        });
     }
 
     _removeStorageListener() {
-        if (this._storageListener && typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-            chrome.storage.onChanged.removeListener(this._storageListener);
-        }
-        this._storageListener = null;
+        this._unwatchHiddenCategories?.();
+        this._unwatchHiddenCategories = null;
     }
 
     /**
      * Détruit le graphique, ses écouteurs et l'écouteur de stockage (bug B16).
+     * @override
      */
     destroy() {
         this._destroyed = true;
         this._removeStorageListener();
         if (this.budgetChart) {
-            if (this.budgetChart._pecunioAmountVisibilityHandler) {
-                window.removeEventListener('pecunio_amounts_visibility_changed', this.budgetChart._pecunioAmountVisibilityHandler);
-            }
+            BaseChartData._detachAmountVisibilityListener(this.budgetChart);
             this.budgetChart.destroy();
             this.budgetChart = null;
         }
@@ -411,40 +389,15 @@ export class BudgetChart extends BaseChartData {
         Object.keys(comparisonData).forEach(name => allCategoryNames.add(name));
         const categoryNamesArray = Array.from(allCategoryNames).sort();
         
-        let visibilitySettings = {};
-        if (categoryNamesArray.length > 0 && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            try {
-                visibilitySettings = await new Promise((resolve) => { // Removed reject for simplicity, always resolve
-                    chrome.storage.local.get(categoryNamesArray, (items) => {
-                        if (chrome.runtime.lastError) {
-                            console.error('[ChartDataBudget] Error fetching visibility settings:', chrome.runtime.lastError.message);
-                            resolve({}); // Resolve with empty on error
-                        } else {
-                            resolve(items);
-                        }
-                    });
-                });
-                // Logger.debug('[ChartDataBudget] prepareData: Fetched visibilitySettings:', visibilitySettings); // Verbose
-            } catch (error) { // Should not be reached if promise always resolves
-                console.error('[ChartDataBudget] prepareData: Exception fetching visibility settings:', error);
-            }
-        } else if (categoryNamesArray.length === 0) {
-             // Logger.debug('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
-        } else {
-             console.warn('[ChartDataBudget] prepareData: chrome.storage.local not available.');
-        }
-        
+        const hiddenCategories = await getHiddenCategories();
+
         const finalLabels = [], primaryDatasetData = [], comparisonDatasetData = [];
         for (const name of categoryNamesArray) {
-            if (visibilitySettings[name] !== true) { // true means hidden
-                finalLabels.push(name);
-                primaryDatasetData.push(primaryData[name] || 0);
-                comparisonDatasetData.push(comparisonData[name] || 0);
-            } else {
-                // Logger.debug(`[ChartDataBudget] prepareData: Filtering out hidden category: ${name}`); // Verbose
-            }
+            if (hiddenCategories.has(name)) continue;
+            finalLabels.push(name);
+            primaryDatasetData.push(primaryData[name] || 0);
+            comparisonDatasetData.push(comparisonData[name] || 0);
         }
-        // Logger.debug(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
         return {
             labels: finalLabels,
             datasets: [
