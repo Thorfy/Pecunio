@@ -34,7 +34,7 @@ class Settings {
             // Écouter les changements de paramètres
             evt.listen('setting_updated', () => this.loadSettings());
             
-            console.log('[Settings] Initialization completed successfully');
+            Logger.debug('[Settings] Initialization completed successfully');
         } catch (error) {
             console.error('[Settings] Initialization failed:', error);
             throw error;
@@ -55,7 +55,7 @@ class Settings {
         try {
             this.settings = await this._getChromeStorage(Settings.ALL_SETTING_NAMES);
             evt.dispatch('settings_reloaded');
-            console.log('[Settings] Settings loaded successfully');
+            Logger.debug('[Settings] Settings loaded successfully');
         } catch (error) {
             console.error('[Settings] Error loading settings:', error);
             // Utiliser des valeurs par défaut en cas d'erreur
@@ -106,7 +106,7 @@ class Settings {
             await this.loadSettings(); // Recharger pour synchroniser l'état interne
             
             evt.dispatch('settings_updated');
-            console.log('[Settings] Settings updated successfully:', Object.keys(validatedSettings));
+            Logger.debug('[Settings] Settings updated successfully:', Object.keys(validatedSettings));
         } catch (error) {
             console.error('[Settings] Error updating settings:', error);
             throw error;
@@ -128,7 +128,7 @@ class Settings {
             await chrome.storage.local.remove(key);
             delete this.settings[key];
             evt.dispatch('settings_updated');
-            console.log(`[Settings] Setting '${key}' removed successfully`);
+            Logger.debug(`[Settings] Setting '${key}' removed successfully`);
         } catch (error) {
             console.error(`[Settings] Error removing setting '${key}':`, error);
             throw error;
@@ -144,7 +144,7 @@ class Settings {
             await chrome.storage.local.remove(Settings.ALL_SETTING_NAMES);
             this.settings = {};
             evt.dispatch('settings_updated');
-            console.log('[Settings] All settings cleared successfully');
+            Logger.debug('[Settings] All settings cleared successfully');
         } catch (error) {
             console.error('[Settings] Error clearing settings:', error);
             throw error;

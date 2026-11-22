@@ -65,6 +65,21 @@ class BaseChartData {
     }
 
     /**
+     * Détruit l'instance Chart.js du graphique et ses écouteurs.
+     * Appelé avant chaque reconstruction (PageController) pour ne rien laisser en mémoire.
+     */
+    destroy() {
+        const chart = this.chartInstance;
+        if (!chart) return;
+        if (chart._pecunioAmountVisibilityHandler) {
+            window.removeEventListener('pecunio_amounts_visibility_changed', chart._pecunioAmountVisibilityHandler);
+            chart._pecunioAmountVisibilityHandler = null;
+        }
+        chart.destroy();
+        this.chartInstance = null;
+    }
+
+    /**
      * Attache l'écouteur de visibilité des montants (blur). Met à jour la globale et appelle chart.update().
      * @param {Chart} chart - Instance Chart.js
      */

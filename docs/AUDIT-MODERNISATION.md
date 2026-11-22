@@ -39,19 +39,19 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B1 | 🔴 | **Authentification d'un seul onglet** : `bg.js` garde un unique `portEvent`, le dernier onglet Bankin connecté écrase les autres → « Auth timeout » dans les autres onglets | C + T | ✅ 2a |
 | B2 | 🔴 | **Headers non rejoués et perdus** : envoyés seulement lors d'une requête `/v2/accounts` ; si le content script se connecte après, ou si le service worker MV3 a été tué, attente jusqu'au timeout | C + T | ✅ 2a |
 | B3 | 🔴 | **Transactions en double** : `_fetchPaginatedData` appelle la page suivante dans son `try` ; un échec de la page N fait retélécharger la page N‑1 et réinsérer ses données (test : `[1, 2, 1, 2, 3]`). Les 4xx (404…) sont aussi retentées | C + T | ✅ 2a |
-| B4 | 🔴 | **Rafraîchissement multiplié** : chaque `build()` ajoute un écouteur sur `.refreshIcon`. Après 2 clics sur « Toggle chart type », **un** clic sur ↻ vide le cache et recharge les données **3 fois**. (Pas de cumul entre pages : Bankin recrée le bouton à chaque navigation) | C + L | 2b |
-| B5 | 🟠 | **`build()` concurrents** : aucun verrou ; les 3 rafraîchissements de B4 lancent 3 constructions en parallèle, dont une échoue (`budgetChartBlock not found`) ; le compteur de ReviewPrompt compte deux fois le même build | C + L | 2b |
-| B6 | 🔴 | **Graphiques périmés sur l'onglet Revenus** : `/categories/2` n'est pas reconnu (comparaison exacte de `location.href`), les graphiques de dépenses restent affichés et ne suivent plus le mois choisi | L | 2b |
+| B4 | 🔴 | **Rafraîchissement multiplié** : chaque `build()` ajoute un écouteur sur `.refreshIcon`. Après 2 clics sur « Toggle chart type », **un** clic sur ↻ vide le cache et recharge les données **3 fois**. (Pas de cumul entre pages : Bankin recrée le bouton à chaque navigation) | C + L + T | ✅ 2b |
+| B5 | 🟠 | **`build()` concurrents** : aucun verrou ; les 3 rafraîchissements de B4 lancent 3 constructions en parallèle, dont une échoue (`budgetChartBlock not found`) ; le compteur de ReviewPrompt compte deux fois le même build | C + L + T | ✅ 2b |
+| B6 | 🔴 | **Graphiques périmés sur l'onglet Revenus** : `/categories/2` n'est pas reconnu (comparaison exacte de `location.href`), les graphiques de dépenses restent affichés et ne suivent plus le mois choisi | L + T | ✅ 2b |
 | B7 | 🔴 | **CSV corrompu** : `encodeURI` laisse `#` → fichier tronqué ; guillemets non échappés ; formules Excel non neutralisées (`=`, `+`, `-`, `@`) ; nom de fichier avec des `/` | C + T | ✅ 2a |
 | B8 | 🔴 | **Export qui plante sans message** : `account.getDisplayName()` sur un compte supprimé (`{}`) → `TypeError`, avalée car levée dans un callback `chrome.storage` hors du `try/catch` de la popup | C + T | ✅ 2a |
 | B9 | 🟠 | **Dates décalées UTC/local** : rapport mensuel arrêté au 30 au lieu du 31 (et au 30/12 pour l'année) ; `DataManager.filterTransactions` exclut le jour de début **dans tout fuseau sauf UTC** ; `Config.toDateInputValue` donne la veille entre minuit et 1 h–2 h (France) ; à l'ouest de UTC, une dépense du 1er janvier est rangée en décembre (page Catégories) et tracée en **décembre de la même année** (graphique temporel) | C + T | ✅ 2a |
 | B10 | 🟠 | **Dates ramenées au 1er du mois** : `current_month` vaut 0 par défaut et `getAdjustedDate` fait toujours `setDate(1)` → colonne Date du CSV toujours au 1er, filtres par jour qui fonctionnent au mois. **Décidé** : l'export garde la vraie date + une colonne « Budget Month » ; graphiques et filtres utilisent la date budgétaire (date réelle décalée de `current_month`, jour conservé) | C + T | ✅ 2a |
-| B11 | 🟠 | **Popup forcée à chaque page Bankin** : `openPopup` échoue sans geste utilisateur et laisse un badge « ! » permanent | C | 2b |
-| B12 | 🟠 | **Rejet non intercepté** : l'extension démarre même sur `/signin` et lève `AuthenticationError: Auth timeout` au bout de 10 s ; aucun retour visible à l'utilisateur | C + L | 2b |
+| B11 | 🟠 | **Popup forcée à chaque page Bankin** : `openPopup` échoue sans geste utilisateur et laisse un badge « ! » permanent | C + T | ✅ 2b |
+| B12 | 🟠 | **Rejet non intercepté** : l'extension démarre même sur `/signin` et lève `AuthenticationError: Auth timeout` au bout de 10 s ; aucun retour visible à l'utilisateur | C + L + T | ✅ 2b |
 | B13 | 🟠 | **Settings utilisé comme cache** : chaque sauvegarde relit tout le stockage ; `clearAllSettings` vide tout `storage.local` (y compris les catégories masquées et le rapport) ; le bouton ↻ écrit `cache_time_* = ""`, rejeté par la validation (warning à chaque clic) | C + L + T | ✅ 2a |
 | B14 | 🟠 | **Filtrage écrit 3 fois** avec des règles différentes (`DataManager`, `DataMerger`, `BaseChartData`) : l'export n'exclut pas les catégories d'exception, `DataMerger` ignore la date si une seule borne est fournie | C + T | ✅ 2a |
 | B15 | 🟠 | **`Evt` défaillant** : événements « collants » (un nouvel écouteur est rappelé pour un événement passé), `removeListener` sans effet, événements visibles et déclenchables par la page Bankin | C + T | 3 |
-| B16 | 🟡 | **Écouteur `storage.onChanged` par `BudgetChart`**, jamais retiré | C | 2b |
+| B16 | 🟡 | **Écouteur `storage.onChanged` par `BudgetChart`**, jamais retiré | C + T | ✅ 2b |
 | B17 | 🟠 | **Plantage du regroupement par catégorie** : `BaseChartData.mergeTransactionByCategory` fait `category.categories.forEach` sans vérifier ; une catégorie parente sans sous-catégories fait planter le Sankey | T | ✅ 2a |
 | B18 | 🟠 | **Sankey : remboursements comptés comme dépenses** : les montants sont additionnés en valeur absolue ; une dépense de 100 € remboursée de 40 € apparaît comme 140 € de dépenses au lieu de 60 € | T | ✅ 2a |
 | B19 | 🔴 | **Page Catégories vide si le navigateur n'est pas en français** : `applySettingOnDataByMonth` compare le nom du mois affiché par Bankin (« février ») au nom du mois dans la langue du navigateur (`toLocaleString('default')`) ; avec Chrome en anglais, aucune transaction ne correspond (non vérifié en réel : le Chrome testé est en français) | T | ✅ 2a |
@@ -62,7 +62,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | # | Constat | Phase |
 |---|---|---|
 | D1 | Couplage fort au DOM Bankin : classes CSS utilitaires (`.dbl.fs14.fw7.lh18.elp`…), IDs de catégories en dur (`326, 282, 2, 163`) | 4 |
-| D2 | 134 `console.*` en production, dont des transactions brutes (données bancaires dans la console) | 2b |
+| D2 | 134 `console.*` en production, dont des transactions brutes (données bancaires dans la console) — ✅ 2b : `Logger` (debug silencieux par défaut), plus de transactions dans la console | 2b |
 | D3 | Classes globales + ordre de chargement maintenu à 3 endroits | 3 |
 | D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 | 3 |
 | D5 | Wrappers callback → Promise inutiles en MV3 ; popup encore en callbacks | 2a / 3 |
@@ -71,7 +71,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D8 | Données bancaires complètes en `storage.local` (+ `unlimitedStorage`), jamais purgées | 4 |
 | D9 | Interface mi-française mi-anglaise (« Toggle chart type », « All Months », mois de l'axe en anglais) | 4 |
 | D10 | Bouton « Toggle chart type » dessiné dans le canvas : inaccessible au clavier, aux lecteurs d'écran et aux tests e2e | 4 |
-| D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques | 2b |
+| D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques — ✅ 2b : bandeau « chargement de vos données… » après 1,5 s | 2b |
 | D12 | Description du manifest : « Pecunio overload Bankin website » | 6 |
 | D13 | 35 warnings ESLint (surtout `prefer-const`) | 3 |
 | D14 | Visibilité des catégories stockée sous des clés de premier niveau nommées d'après les catégories (`"Logement": true`) : collisions possibles avec les autres clés, nettoyage impossible | 4 |
@@ -129,13 +129,15 @@ But : couvrir la logique existante **sans la modifier** (aucun fichier de l'exte
 
 Réalisé : nouveaux modules `DateRange` (dates calendaires en heure locale, date budgétaire, mois FR/EN), `TransactionFilter` (filtre unique) et `CacheStore` (cache séparé des réglages) ; `bg.js` réécrit ; pagination itérative ; export CSV via `Blob` (UTF-8 + BOM, RFC 4180, formules neutralisées, colonne « Budget Month ») ; erreurs d'export affichées dans la popup. Choix : l'export CSV garde toutes les catégories (virements internes, épargne) ; le rapport PDF et les graphiques les excluent. Les graphiques respectent désormais « pas de date de fin ». Tests : 249, résultats identiques sous Paris, New York et UTC ; seuls B15 (×2) restent en `knownBug` (phase 3).
 
-**2b — Cycle de vie dans la page** (B4–B6, B11, B12, B16, D2, D11)
+**2b — Cycle de vie dans la page** ✅ _(branche `fix/phase-2b-page-lifecycle`)_ (B4–B6, B11, B12, B16, D2, D11)
 - Détection de page par `pathname` (`/accounts`, `/categories`, `/categories/:id`) ; suppression des graphiques Pecunio quand la vue ne les concerne pas.
 - Aucun chargement de données hors des pages utiles (pas sur `/signin`) ; erreurs d'authentification interceptées.
 - `build()` sérialisé (file d'attente + annulation du build en cours) ; un seul détecteur de navigation à la place du polling 1 s.
 - Chaque graphique expose `destroy()` (instance Chart.js + écouteurs via `AbortController`), appelé avant chaque reconstruction ; écouteur ↻ posé une seule fois.
 - Suppression de l'`openPopup` automatique ; bandeau visible pour les erreurs (auth expirée, API indisponible) et pendant le chargement.
 - Logger à niveaux, silencieux en production, sans données bancaires.
+
+Réalisé (2b) : `injected.js` réduit à la création des services ; tout le cycle de vie est dans `PageController` (testé : 35 tests). Constructions sérialisées et regroupées ; graphiques détruits avant chaque reconstruction ; écouteurs ↻ et sélecteur de mois posés une fois par élément ; page reconnue par son chemin (`/categories/2` = Revenus, graphiques de dépenses retirés) ; données chargées uniquement sur les pages à graphiques ; erreurs affichées dans un `StatusBanner` avec bouton « Recharger », et graphiques depuis le cache si l'API est indisponible ; réglages modifiés dans la popup appliqués à la page ouverte. La vérification périodique de l'URL est conservée comme filet de sécurité (l'API Navigation est utilisée quand elle existe), toutes les sources passant par la même détection.
 
 **Terminé quand** : tous les tests `knownBug` de la phase 1 sont convertis en tests normaux et passent sous les 3 fuseaux ; la recette manuelle §7 est validée dans Chrome.
 
@@ -183,9 +185,9 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 |---|---|---|---|
 | 0 Base saine | ½ j | ✅ mergée (#12) | — |
 | 1 Tests unitaires | 1,5–2 j | ✅ mergée (#13) | documente B1–B3, B7–B10, B13–B15, B17–B19 |
-| 2a Données & auth | 1,5–2 j | ✅ PR à merger | B1–B3, B7–B10, B13, B14, B17–B19 |
-| 2b Cycle de vie | 1–1,5 j | prochaine | B4–B6, B11, B12, B16 |
-| 3 Modules + WXT | 2–3 j | | B15, D3–D6, D13 |
+| 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
+| 2b Cycle de vie | 1–1,5 j | ✅ PR à merger | B4–B6, B11, B12, B16, D2, D11 |
+| 3 Modules + WXT | 2–3 j | prochaine | B15, D3–D6, D13 |
 | 4 Types + adaptateur | 2–3 j | | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |

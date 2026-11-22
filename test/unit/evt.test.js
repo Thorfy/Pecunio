@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { knownBug } from '../helpers/known-bug.js';
 import { loadScripts } from '../helpers/load.js';
 
-beforeAll(() => loadScripts(['js/core/Evt.js']));
+beforeAll(() => loadScripts(['js/core/Config.js', 'js/core/Logger.js', 'js/core/Evt.js']));
 
 describe('Evt', () => {
     test('dispatch appelle les écouteurs avec les données', () => {

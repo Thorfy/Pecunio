@@ -13,6 +13,8 @@ const projectGlobals = Object.fromEntries(
     [
         // core
         'Config',
+        'Logger',
+        'PageController',
         'DateRange',
         'TransactionFilter',
         'CacheStore',
@@ -46,6 +48,7 @@ const projectGlobals = Object.fromEntries(
         'LoadingScreen',
         'AmountHider',
         'ReviewPrompt',
+        'StatusBanner',
         'ColorParser',
         // instances créées par injected.js / popup.js
         'evt',

@@ -1,0 +1,415 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { CATEGORIES, sampleTransactions } from '../fixtures/bankin.js';
+import { loadContentScripts } from '../helpers/load.js';
+
+beforeAll(loadContentScripts);
+
+const PAGE = () => PageController.PAGE;
+
+/** Fausse fenêtre : URL modifiable, événements déclenchables, minuteurs de Vitest. */
+const makeWin = (href) => {
+    const listeners = {};
+    return {
+        location: { href, reload: vi.fn() },
+        document,
+        addEventListener: (type, fn) => (listeners[type] ??= []).push(fn),
+        fire: (type) => (listeners[type] || []).forEach((fn) => fn(new Event(type))),
+        setInterval: (fn, ms) => setInterval(fn, ms),
+        clearInterval: (id) => clearInterval(id),
+        setTimeout: (fn, ms) => setTimeout(fn, ms),
+        clearTimeout: (id) => clearTimeout(id),
+    };
+};
+
+/** Fausses classes de graphiques qui enregistrent leurs instances. */
+const makeCharts = () => {
+    const created = [];
+    class FakeChart {
+        constructor(...args) {
+            this.args = args;
+            this.destroy = vi.fn();
+            this.kind = this.constructor.name;
+            created.push(this);
+        }
+        static createMainContainer(homeBlock) {
+            homeBlock.innerHTML = '';
+            const main = document.createElement('div');
+            homeBlock.appendChild(main);
+            return main;
+        }
+        static prepareContainer(block) {
+            const row = document.createElement('div');
+            row.className = 'pecunio-charts-row';
+            block.appendChild(row);
+            return row;
+        }
+        createContainer(parent) {
+            const container = document.createElement('div');
+            parent.appendChild(container);
+            return container;
+        }
+        createUI(id) {
+            this.containerId = id;
+        }
+    }
+    class LineBarChart extends FakeChart {
+        async render() {
+            this.rendered = true;
+        }
+    }
+    class BudgetChart extends FakeChart {}
+    class ExpenseTypeChart extends FakeChart {
+        async render(row) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pecunio-expense-type-wrapper';
+            wrapper.appendChild(document.createElement('canvas'));
+            row.appendChild(wrapper);
+        }
+    }
+    class SankeyChart extends FakeChart {
+        async render(block) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pecunio-sankey-wrapper';
+            block.appendChild(wrapper);
+        }
+    }
+    return { classes: { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart }, created };
+};
+
+const ACCOUNTS_DOM = '<div class="rightColumn"><div></div></div><div class="refreshIcon"></div><div class="homeBlock"></div>';
+const CATEGORIES_DOM =
+    '<div id="monthSelector"><div class="active"><span class="dib">Septembre 2026</span></div></div>' +
+    '<div class="categoryChart"><div class="bankin-donut"></div></div>';
+
+/** Contrôleur prêt à l'emploi, avec ses faux services. */
+const setup = ({ href = 'https://app2.bankin.com/accounts', dom = ACCOUNTS_DOM, transactions = sampleTransactions(), dataPromise } = {}) => {
+    document.body.innerHTML = dom;
+    const win = makeWin(href);
+    const charts = makeCharts();
+    const settings = {
+        waitForInitialization: () => Promise.resolve(),
+        loadSettings: vi.fn(() => Promise.resolve()),
+        getSetting: (key) => ({ accountsSelected: [101], isBlurry: false })[key],
+        getAllSettings: () => ({ accountsSelected: [101] }),
+    };
+    const cacheStore = {
+        waitForInitialization: () => Promise.resolve(),
+        get: (type) => ({ transactions, categories: CATEGORIES })[type] ?? null,
+    };
+    const dataManager = {
+        waitForInitialization: vi.fn(() => dataPromise ?? new Promise(() => {})),
+        refreshData: vi.fn(() => Promise.resolve()),
+    };
+    const createDataManager = vi.fn(() => dataManager);
+    const evt = new Evt();
+    const controller = new PageController({ settings, cacheStore, evt, createDataManager, win, charts: charts.classes });
+    return { controller, win, charts, settings, dataManager, createDataManager, evt };
+};
+
+/** Simule une navigation de Bankin (SPA). */
+const navigate = (win, href) => {
+    win.location.href = href;
+    win.fire('popstate');
+};
+
+const kinds = (created) => created.map((c) => c.kind);
+
+beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(LoadingScreen, 'show').mockImplementation(() => {});
+    vi.spyOn(ReviewPrompt, 'tryShow').mockImplementation(() => Promise.resolve());
+    vi.stubGlobal(
+        'AmountHider',
+        class {
+            static refreshBlur() {}
+        },
+    );
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+    StatusBanner.hide();
+    document.body.innerHTML = '';
+});
+
+describe('PageController.detectPage', () => {
+    test.each([
+        ['https://app2.bankin.com/accounts', 'ACCOUNTS'],
+        ['https://app2.bankin.com/accounts/', 'ACCOUNTS'],
+        ['https://app2.bankin.com/accounts?tab=1#x', 'ACCOUNTS'],
+        ['https://app2.bankin.com/categories', 'CATEGORIES'],
+        ['https://app2.bankin.com/categories/2', 'CATEGORY_DETAIL'],
+        ['https://app2.bankin.com/signin', 'SIGNIN'],
+        ['https://app2.bankin.com/profile/settings', 'OTHER'],
+        ['pas une url', 'OTHER'],
+    ])('%s → %s', (href, page) => {
+        expect(PageController.detectPage(href)).toBe(PAGE()[page]);
+    });
+
+    test('seules les pages Comptes et Catégories ont des graphiques', () => {
+        expect(PageController.hasCharts(PAGE().ACCOUNTS)).toBe(true);
+        expect(PageController.hasCharts(PAGE().CATEGORIES)).toBe(true);
+        expect(PageController.hasCharts(PAGE().CATEGORY_DETAIL)).toBe(false);
+        expect(PageController.hasCharts(PAGE().SIGNIN)).toBe(false);
+    });
+});
+
+describe('PageController — chargement des données (B12)', () => {
+    test('B12 — sur /signin, aucune connexion ni chargement de données', async () => {
+        const { controller, createDataManager, charts } = setup({ href: 'https://app2.bankin.com/signin', dom: '' });
+        controller.start();
+        await vi.runOnlyPendingTimersAsync();
+        expect(createDataManager).not.toHaveBeenCalled();
+        expect(charts.created).toHaveLength(0);
+    });
+
+    test('un seul DataManager, créé au premier passage sur une page à graphiques', async () => {
+        const { controller, win, createDataManager } = setup({ href: 'https://app2.bankin.com/profile' });
+        controller.start();
+        expect(createDataManager).not.toHaveBeenCalled();
+        navigate(win, 'https://app2.bankin.com/accounts');
+        navigate(win, 'https://app2.bankin.com/categories');
+        navigate(win, 'https://app2.bankin.com/accounts');
+        await controller.requestBuild();
+        expect(createDataManager).toHaveBeenCalledTimes(1);
+    });
+
+    test('erreur d\'authentification : bandeau avec bouton « Recharger »', async () => {
+        const { controller, win } = setup({ dataPromise: Promise.reject(new AuthenticationError('Auth timeout')), transactions: [] });
+        controller.start();
+        await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
+        const banner = document.getElementById(StatusBanner.ID);
+        expect(banner.getAttribute('role')).toBe('alert');
+        expect(banner.textContent).toContain('session non reconnue');
+        banner.querySelector('.pecunio-status-action').click();
+        expect(win.location.reload).toHaveBeenCalled();
+    });
+
+    test('erreur réseau avec cache : bandeau + graphiques depuis les données enregistrées', async () => {
+        const { controller, charts } = setup({ dataPromise: Promise.reject(new APIError('offline', null, 'u')) });
+        await controller.start();
+        await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
+        await controller.whenIdle();
+        expect(document.getElementById(StatusBanner.ID).textContent).toContain('dernières données enregistrées');
+        expect(kinds(charts.created.slice(-2))).toEqual(['LineBarChart', 'BudgetChart']);
+        expect(controller.charts).toHaveLength(2);
+    });
+
+    test('D11 — bandeau « chargement » si les données tardent, retiré à leur arrivée', async () => {
+        const { controller, evt } = setup();
+        controller.start();
+        await vi.advanceTimersByTimeAsync(PageController.LOADING_BANNER_DELAY_MS - 1);
+        expect(StatusBanner.isVisible('loading')).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(StatusBanner.isVisible('loading')).toBe(true);
+        evt.dispatch('data_loaded');
+        expect(StatusBanner.isVisible('loading')).toBe(false);
+    });
+
+    test('pas de bandeau « chargement » si les données arrivent vite', async () => {
+        const { controller } = setup({ dataPromise: Promise.resolve() });
+        controller.start();
+        await vi.advanceTimersByTimeAsync(PageController.LOADING_BANNER_DELAY_MS * 2);
+        expect(StatusBanner.isVisible()).toBe(false);
+    });
+});
+
+describe('PageController — construction des graphiques', () => {
+    test('page Comptes : graphique temporel + budget, puis masquage et invitation à l\'avis', async () => {
+        const { controller, charts } = setup();
+        await controller.requestBuild();
+        expect(kinds(charts.created)).toEqual(['LineBarChart', 'BudgetChart']);
+        expect(charts.created[0].rendered).toBe(true);
+        expect(charts.created[1].containerId).toBe('budgetChartBlock');
+        expect(LoadingScreen.show).toHaveBeenCalled();
+        expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(1);
+        expect(controller.buildCount).toBe(1);
+    });
+
+    test('sans données en cache : aucun graphique', async () => {
+        const { controller, charts } = setup({ transactions: null });
+        await controller.requestBuild();
+        expect(charts.created).toHaveLength(0);
+    });
+
+    test('page Bankin pas encore affichée : rien, sans erreur', async () => {
+        const { controller, charts } = setup({ dom: '<div class="rightColumn"></div>' });
+        await controller.requestBuild();
+        expect(charts.created).toHaveLength(0);
+        expect(controller.buildCount).toBe(0);
+    });
+
+    test('page Catégories : types de dépenses + Sankey pour le mois affiché', async () => {
+        const { controller, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
+        await controller.requestBuild();
+        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'SankeyChart']);
+        expect(charts.created[0].args[2]).toEqual(['septembre', '2026']);
+    });
+
+    test('B16 — chaque reconstruction détruit les graphiques précédents', async () => {
+        const { controller, charts } = setup();
+        await controller.requestBuild();
+        const [first, second] = charts.created;
+        await controller.requestBuild();
+        expect(first.destroy).toHaveBeenCalledTimes(1);
+        expect(second.destroy).toHaveBeenCalledTimes(1);
+        expect(controller.charts).toHaveLength(2);
+        controller.stop();
+        expect(charts.created[2].destroy).toHaveBeenCalled();
+    });
+
+    test('B5 — demandes simultanées : une construction à la fois, regroupées', async () => {
+        const { controller, charts } = setup();
+        const requests = [1, 2, 3, 4, 5].map(() => controller.requestBuild());
+        await Promise.all(requests);
+        // La première construction, puis une seule pour toutes les demandes reçues pendant celle-ci
+        expect(controller.buildCount).toBe(2);
+        expect(charts.created).toHaveLength(4);
+        expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(2);
+        expect(document.querySelectorAll('#budgetChartBlock')).toHaveLength(1);
+    });
+
+    test('une erreur pendant une construction n\'empêche pas les suivantes', async () => {
+        const { controller, charts } = setup();
+        charts.classes.LineBarChart.prototype.render = vi.fn().mockRejectedValueOnce(new Error('boum')).mockResolvedValue();
+        await controller.requestBuild();
+        expect(console.error).toHaveBeenCalled();
+        await controller.requestBuild();
+        expect(controller.buildCount).toBe(1);
+    });
+
+    test('data_loaded déclenche la construction', async () => {
+        const { controller, evt, charts } = setup();
+        controller.start();
+        await controller.requestBuild(); // construction initiale
+        const before = charts.created.length;
+        evt.dispatch('data_loaded');
+        await controller.requestBuild();
+        expect(charts.created.length).toBeGreaterThan(before);
+    });
+});
+
+describe('PageController — bouton ↻ et sélecteur de mois (B4)', () => {
+    test('B4 — après plusieurs constructions, un clic sur ↻ ne recharge qu\'une fois', async () => {
+        const { controller, dataManager } = setup();
+        controller.start();
+        await controller.requestBuild();
+        await controller.requestBuild();
+        await controller.requestBuild();
+        document.querySelector('.refreshIcon').click();
+        await vi.advanceTimersByTimeAsync(PageController.REFRESH_DELAY_MS);
+        expect(dataManager.refreshData).toHaveBeenCalledTimes(1);
+    });
+
+    test('↻ en échec : bandeau d\'erreur', async () => {
+        const { controller, dataManager } = setup();
+        controller.start();
+        await controller.requestBuild();
+        dataManager.refreshData.mockRejectedValueOnce(new APIError('500', 500, 'u'));
+        document.querySelector('.refreshIcon').click();
+        await vi.advanceTimersByTimeAsync(PageController.REFRESH_DELAY_MS);
+        await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
+    });
+
+    test('↻ avant tout chargement : sans effet', async () => {
+        const { controller } = setup();
+        await expect(controller.refreshData()).resolves.toBeUndefined();
+    });
+
+    test('changement de mois : une seule reconstruction par clic', async () => {
+        const { controller } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
+        await controller.requestBuild();
+        await controller.requestBuild();
+        document.querySelector('#monthSelector').click();
+        await vi.advanceTimersByTimeAsync(PageController.MONTH_CHANGE_DELAY_MS);
+        await vi.waitFor(() => expect(controller.buildCount).toBe(3));
+    });
+});
+
+describe('PageController — navigation (B6)', () => {
+    test('B6 — onglet Revenus : les graphiques de dépenses sont retirés et détruits', async () => {
+        const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
+        await controller.start();
+        expect(document.querySelectorAll('.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper')).toHaveLength(2);
+
+        navigate(win, 'https://app2.bankin.com/categories/2');
+        await controller.whenIdle();
+
+        expect(document.querySelectorAll('.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper')).toHaveLength(0);
+        expect(charts.created.every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
+        expect(charts.created).toHaveLength(2);
+    });
+
+    test('retour sur l\'onglet Dépenses : graphiques reconstruits', async () => {
+        const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories/2', dom: CATEGORIES_DOM });
+        await controller.start();
+        expect(charts.created).toHaveLength(0);
+        navigate(win, 'https://app2.bankin.com/categories');
+        await controller.whenIdle();
+        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'SankeyChart']);
+    });
+
+    test('plusieurs signaux pour une même navigation : une seule reconstruction', async () => {
+        const { controller, win } = setup({ href: 'https://app2.bankin.com/profile', dom: ACCOUNTS_DOM });
+        await controller.start();
+        win.location.href = 'https://app2.bankin.com/accounts';
+        win.fire('popstate');
+        win.fire('hashchange');
+        await vi.advanceTimersByTimeAsync(Config.INTERVALS.URL_CHECK * 3);
+        await controller.whenIdle();
+        expect(controller.buildCount).toBe(1);
+    });
+
+    test('navigation détectée par l\'API Navigation si disponible', async () => {
+        const { controller, win } = setup({ href: 'https://app2.bankin.com/profile' });
+        const navListeners = [];
+        win.navigation = { addEventListener: (type, fn) => navListeners.push([type, fn]) };
+        await controller.start();
+        expect(navListeners.map(([type]) => type)).toEqual(['navigatesuccess']);
+        win.location.href = 'https://app2.bankin.com/accounts';
+        navListeners[0][1]();
+        await controller.whenIdle();
+        expect(controller.buildCount).toBe(1);
+    });
+
+    test('navigation sans événement : détectée par la vérification périodique', async () => {
+        const { controller, win } = setup({ href: 'https://app2.bankin.com/profile' });
+        await controller.start();
+        win.location.href = 'https://app2.bankin.com/accounts';
+        await vi.advanceTimersByTimeAsync(Config.INTERVALS.URL_CHECK);
+        await controller.whenIdle();
+        expect(controller.buildCount).toBe(1);
+        controller.stop();
+        win.location.href = 'https://app2.bankin.com/categories';
+        await vi.advanceTimersByTimeAsync(Config.INTERVALS.URL_CHECK * 2);
+        expect(controller.buildCount).toBe(1);
+    });
+});
+
+describe('PageController — réglages modifiés ailleurs (popup)', () => {
+    test('dates ou comptes modifiés : réglages relus puis graphiques redessinés', async () => {
+        const { controller, settings } = setup();
+        controller.start();
+        await controller.requestBuild();
+        chrome.storage.local.set({ startDate: '2024-02-01' });
+        await vi.waitFor(() => expect(settings.loadSettings).toHaveBeenCalled());
+        await controller.requestBuild();
+        expect(controller.buildCount).toBeGreaterThanOrEqual(2);
+    });
+
+    test('autres clés ou autre zone de stockage : rien', async () => {
+        const { controller, settings } = setup();
+        controller.start();
+        chrome.storage.local.set({ review_build_count: 3 });
+        await controller._onStorageChanged({ startDate: {} }, 'session');
+        expect(settings.loadSettings).not.toHaveBeenCalled();
+    });
+
+    test('relecture des réglages impossible : avertissement, graphiques quand même', async () => {
+        const { controller, settings } = setup();
+        settings.loadSettings.mockRejectedValueOnce(new Error('quota'));
+        await controller._onStorageChanged({ endDate: {} }, 'local');
+        expect(console.warn).toHaveBeenCalled();
+        expect(controller.buildCount).toBe(1);
+    });
+});

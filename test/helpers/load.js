@@ -22,6 +22,7 @@ export const CONTENT_SCRIPTS = manifest.content_scripts[0].js.filter(
 /** Scripts chargés par report.html (hors librairies et report.js). */
 export const REPORT_SCRIPTS = [
     'js/core/Config.js',
+    'js/core/Logger.js',
     'js/services/ReportStorage.js',
     'js/report/ReportFilters.js',
     'js/report/ReportChartDataBuilder.js',
