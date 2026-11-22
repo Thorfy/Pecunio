@@ -58,6 +58,8 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B20 | 🟠 | **Infobulle du graphique « Comparaison Budget Médian » : montants NaN** : `Number(context.parsed)` alors que Chart.js fournit un objet `{ x, y }` pour un graphique en barres (signalé par l'utilisateur le 22/11/2026, présent depuis février 2026) | L + T | ✅ 2a |
 | B21 | 🟡 | **Modale « Un petit avis ? » affichée en double** : la vérification « déjà affichée » précède le délai de 2 s ; deux constructions rapprochées (chargement puis arrivée des données) programment chacune une modale (vu en recette de la phase 3a sur une installation neuve) | L + T | ✅ 3a |
 | B22 | 🟡 | **Bandeau d'état déformé dans la page Bankin** : les règles CSS de Bankin sur tous les `button` (largeur, marges, fond, prioritaires) écrasent les styles en ligne du bandeau ; corrigé en isolant son contenu dans un Shadow DOM | L + T | ✅ 3b |
+| B23 | 🔴 | **« Vibration » du graphique temporel** : canvas en `height: 100%` dans un conteneur sans hauteur fixe + ratio 2 ⇒ hauteur idéale 582,5 px, Chart.js alterne 582/583 px toutes les 20–30 ms et redessine en continu (mesuré : 65 redimensionnements en 7 s, sans fin) ; conteneur de 580 px et `maintainAspectRatio: false` | L + T | ✅ 3b |
+| B24 | 🟠 | **Graphiques reconstruits deux fois au chargement** : construits depuis le cache puis reconstruits 50 ms plus tard à l'arrivée de données identiques (clignotement, travail inutile) ; la reconstruction est désormais ignorée quand l'empreinte données + réglages + page est inchangée | L + T | ✅ 3b |
 
 ### 3.2 Dette technique et qualité
 

@@ -98,6 +98,8 @@ export class PageController {
         this.buildCount = 0;
         this._running = null;
         this._pending = false;
+        this._pendingForce = false;
+        this._lastSignature = null;
         this._lastHref = null;
         this._wiredElements = new WeakSet();
         this._loadingTimer = null;
@@ -124,7 +126,9 @@ export class PageController {
     start() {
         this.evt.listen('data_loaded', () => {
             this._clearLoadingBanner();
-            this.requestBuild();
+            // Données souvent identiques à celles déjà affichées (cache) : pas de
+            // reconstruction inutile, qui ferait clignoter les graphiques (bug B24)
+            this.requestBuild({ onlyIfChanged: true });
         });
 
         this.win.addEventListener('pecunio_chart_type_changed', () => this.requestBuild());
@@ -222,19 +226,25 @@ export class PageController {
     /**
      * Demande une (re)construction. Si une construction est en cours, une seule
      * nouvelle construction est programmée à sa fin, quel que soit le nombre de demandes.
+     * @param {{ onlyIfChanged?: boolean }} [options] ne rien faire si les graphiques
+     *   affichés correspondent déjà aux mêmes données, réglages et page
      * @returns {Promise<void>}
      */
-    requestBuild() {
+    requestBuild({ onlyIfChanged = false } = {}) {
         if (this._running) {
             this._pending = true;
+            this._pendingForce = this._pendingForce || !onlyIfChanged;
             return this._running;
         }
         this._running = (async () => {
+            let skipIfUnchanged = onlyIfChanged;
             try {
                 do {
+                    if (this._pending) skipIfUnchanged = !this._pendingForce;
                     this._pending = false;
+                    this._pendingForce = false;
                     try {
-                        await this._build();
+                        await this._build({ onlyIfChanged: skipIfUnchanged });
                     } catch (error) {
                         Logger.error('Erreur pendant la construction des graphiques :', error);
                     }
@@ -246,7 +256,7 @@ export class PageController {
         return this._running;
     }
 
-    async _build() {
+    async _build({ onlyIfChanged = false } = {}) {
         await this.settings.waitForInitialization().catch(() => {});
         await this.cacheStore.waitForInitialization();
         this.win.__pecunioIsBlurry = !!this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY);
@@ -255,17 +265,52 @@ export class PageController {
         if (page !== PageController.PAGE.CATEGORIES) this._removeCategoryCharts();
         if (!PageController.hasCharts(page) || !this._hasData()) return;
 
+        const signature = this._signature(page);
+        if (onlyIfChanged && signature === this._lastSignature && this._chartsDisplayed(page)) {
+            Logger.debug('Données inchangées : graphiques conservés');
+            return;
+        }
+
         const built = page === PageController.PAGE.ACCOUNTS
             ? await this._buildAccountsPage()
             : await this._buildCategoriesPage();
         if (!built) return;
 
+        this._lastSignature = signature;
         this.buildCount++;
         this.win.setTimeout(() => {
             new AmountHider(this.settings);
             AmountHider.refreshBlur(this.settings);
         }, Config.INTERVALS.HIDDER_DELAY);
         ReviewPrompt.tryShow();
+    }
+
+    /**
+     * Empreinte de ce qu'affichent les graphiques : page, données en cache et
+     * réglages. Deux empreintes égales ⇒ reconstruire ne changerait rien.
+     */
+    _signature(page) {
+        const transactions = this.cacheStore.get('transactions') || [];
+        const categories = this.cacheStore.get('categories') || [];
+        let total = 0;
+        for (const t of transactions) total += Number(t?.amount) || 0;
+        const s = this.settings.getAllSettings();
+        const month = page === PageController.PAGE.CATEGORIES
+            ? this.document.querySelector(Config.SELECTORS.MONTH_SELECTOR_ACTIVE)?.textContent?.trim()
+            : null;
+        return JSON.stringify([
+            page, this.win.location.href, month,
+            transactions.length, transactions[0]?.id, transactions[transactions.length - 1]?.id, Math.round(total * 100),
+            categories.length,
+            s.startDate, s.endDate, s.noEndDate, s.accountsSelected, s.chartType, s.isBlurry,
+        ]);
+    }
+
+    /** Les graphiques de la dernière construction sont-ils toujours dans la page ? */
+    _chartsDisplayed(page) {
+        if (this.charts.length === 0) return false;
+        const selector = page === PageController.PAGE.ACCOUNTS ? '#budgetChartBlock' : '.pecunio-sankey-wrapper';
+        return Boolean(this.document.querySelector(selector));
     }
 
     _chartData() {
