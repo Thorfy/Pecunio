@@ -1,7 +1,5 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts(['js/core/DateRange.js']));
+import { describe, expect, test, vi } from 'vitest';
+import { DateRange } from '../../js/core/DateRange.js';
 
 describe('DateRange.parts / toDateOnly', () => {
     test('une chaîne YYYY-MM-DD est prise telle quelle, sans conversion UTC', () => {
@@ -20,7 +18,6 @@ describe('DateRange.parts / toDateOnly', () => {
         for (const value of [null, undefined, '', 'pas une date', '2024-13-01', '2024-02-32', new Date('x')]) {
             expect(DateRange.toDateOnly(value)).toBeNull();
         }
-        expect(DateRange.toDateOnlyString('2024-03-15')).toBe('2024-03-15');
     });
 
     test('toLocalDate : minuit heure locale', () => {

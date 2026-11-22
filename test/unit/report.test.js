@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, test } from 'vitest';
-import { REPORT_SCRIPTS, loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts(REPORT_SCRIPTS));
+import { describe, expect, test } from 'vitest';
+import { ReportChartDataBuilder } from '../../js/report/ReportChartDataBuilder.js';
+import { ReportFilters } from '../../js/report/ReportFilters.js';
+import { ReportStorage } from '../../js/services/ReportStorage.js';
 
 /** Ligne fusionnée (format de sortie de DataMerger.mergeData). */
 const row = (overrides = {}) => ({
@@ -42,10 +42,6 @@ describe('ReportFilters — statistiques', () => {
         row({ amount: 50, description: 'Remboursement mutuelle', expenseType: 'OTHER' }),
         row({ amount: -30, description: 'achat', categoryName: 'Avoir magasin' }),
     ];
-
-    test('computeStats : toutes les lignes', () => {
-        expect(ReportFilters.computeStats(rows)).toEqual({ totalTransactions: 5, totalIncome: 2050, totalExpenses: 730 });
-    });
 
     test('filterIncomeExpenseData exclut l\'épargne et les remboursements / avoirs', () => {
         expect(ReportFilters.filterIncomeExpenseData(rows).map((r) => r.amount)).toEqual([2000, -500]);

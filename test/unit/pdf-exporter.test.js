@@ -1,7 +1,5 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { REPORT_SCRIPTS, loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts([...REPORT_SCRIPTS, 'js/report/PdfExporter.js']));
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { PdfExporter } from '../../js/report/PdfExporter.js';
 
 /** Faux html2pdf().set().from().save() qui mémorise l'état du DOM au moment de l'export. */
 const fakeHtml2pdf = ({ fail = false } = {}) => {

@@ -85,15 +85,15 @@ export class SankeyChart extends BaseChartData {
     }
 
     async prepareData() {
-        let filteredTransactions = this.applySettingOnDataByMonth(this.params[0], this.params[1]);
-        let transactionByCategory = this.mergeTransactionByCategory(filteredTransactions, this.categories);
-        let formattedData = this.getDataFormated(this.categories, transactionByCategory, true);
-        let sankeyData = this.convertDataToSankeyFormat(formattedData);
+        const filteredTransactions = this.applySettingOnDataByMonth(this.params[0], this.params[1]);
+        const transactionByCategory = this.mergeTransactionByCategory(filteredTransactions, this.categories);
+        const formattedData = this.getDataFormated(this.categories, transactionByCategory, true);
+        const sankeyData = this.convertDataToSankeyFormat(formattedData);
         return sankeyData;
     }
 
     getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
-        let datasets = []
+        const datasets = []
 
         if (!categoryData || !Array.isArray(categoryData)) {
             console.warn('[SankeyChart] getDataFormated: Invalid categoryData');
@@ -112,7 +112,7 @@ export class SankeyChart extends BaseChartData {
             }
 
             const transactions = transactionByCategory.get(parseInt(categoryParent.id)) || [];
-            let childData = []
+            const childData = []
             
             if (categoryParent.categories && Array.isArray(categoryParent.categories)) {
                 categoryParent.categories.forEach(categoryEnfant => {
@@ -153,8 +153,8 @@ export class SankeyChart extends BaseChartData {
         return flow > 0 ? Math.round(flow * 100) / 100 : 0;
     }
 
-    convertDataToSankeyFormat(data, exceptionalCategories = [2]) {
-        var sankeyData = [];
+    convertDataToSankeyFormat(data, exceptionalCategories = [Config.CATEGORIES.BUDGET_CATEGORY_ID]) {
+        const sankeyData = [];
         let totalExpense = 0;
         let totalBudget = 0;
 
@@ -211,9 +211,9 @@ export class SankeyChart extends BaseChartData {
         });
 
         if (totalBudget > totalExpense) {
-            sankeyData.push({ from: "Budget", to: "Restant", flow: totalBudget - totalExpense, id: 2 });
+            sankeyData.push({ from: "Budget", to: "Restant", flow: totalBudget - totalExpense, id: Config.CATEGORIES.BUDGET_CATEGORY_ID });
         }
-        sankeyData.push({ from: "Budget", to: "Depenses", flow: totalExpense, id: 163 });
+        sankeyData.push({ from: "Budget", to: "Depenses", flow: totalExpense, id: Config.CATEGORIES.EXPENSES_CATEGORY_ID });
 
         return sankeyData;
     }

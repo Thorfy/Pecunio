@@ -1,7 +1,7 @@
-import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
-import { loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts(['js/core/Config.js', 'js/core/Logger.js', 'js/ui/StatusBanner.js']));
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { Config } from '../../js/core/Config.js';
+import { Logger } from '../../js/core/Logger.js';
+import { StatusBanner } from '../../js/ui/StatusBanner.js';
 
 afterEach(() => {
     document.body.innerHTML = '';

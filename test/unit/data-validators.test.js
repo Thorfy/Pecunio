@@ -1,8 +1,6 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ACCOUNTS, CATEGORIES, tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { APIError, AuthenticationError, DataManagerError, DataValidators, ValidationError } from '../../js/core/DataManager.js';
 
 describe('DataValidators', () => {
     test('transaction valide', () => {

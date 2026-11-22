@@ -50,7 +50,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B12 | 🟠 | **Rejet non intercepté** : l'extension démarre même sur `/signin` et lève `AuthenticationError: Auth timeout` au bout de 10 s ; aucun retour visible à l'utilisateur | C + L + T | ✅ 2b |
 | B13 | 🟠 | **Settings utilisé comme cache** : chaque sauvegarde relit tout le stockage ; `clearAllSettings` vide tout `storage.local` (y compris les catégories masquées et le rapport) ; le bouton ↻ écrit `cache_time_* = ""`, rejeté par la validation (warning à chaque clic) | C + L + T | ✅ 2a |
 | B14 | 🟠 | **Filtrage écrit 3 fois** avec des règles différentes (`DataManager`, `DataMerger`, `BaseChartData`) : l'export n'exclut pas les catégories d'exception, `DataMerger` ignore la date si une seule borne est fournie | C + T | ✅ 2a |
-| B15 | 🟠 | **`Evt` défaillant** : événements « collants » (un nouvel écouteur est rappelé pour un événement passé), `removeListener` sans effet, événements visibles et déclenchables par la page Bankin | C + T | 3 |
+| B15 | 🟠 | **`Evt` défaillant** : événements « collants » (un nouvel écouteur est rappelé pour un événement passé), `removeListener` sans effet, événements visibles et déclenchables par la page Bankin | C + T | ✅ 3c |
 | B16 | 🟡 | **Écouteur `storage.onChanged` par `BudgetChart`**, jamais retiré | C + T | ✅ 2b |
 | B17 | 🟠 | **Plantage du regroupement par catégorie** : `BaseChartData.mergeTransactionByCategory` fait `category.categories.forEach` sans vérifier ; une catégorie parente sans sous-catégories fait planter le Sankey | T | ✅ 2a |
 | B18 | 🟠 | **Sankey : remboursements comptés comme dépenses** : les montants sont additionnés en valeur absolue ; une dépense de 100 € remboursée de 40 € apparaît comme 140 € de dépenses au lieu de 60 € | T | ✅ 2a |
@@ -70,14 +70,14 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D3 | Classes globales + ordre de chargement maintenu à 3 endroits | ✅ 3a |
 | D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 — ✅ 3a : npm ; ✅ 3b : versions à jour + Dependabot | ✅ 3b |
 | D5 | Wrappers callback → Promise inutiles en MV3 ; popup encore en callbacks | 2a / 3 |
-| D6 | Code mort : `getAllSetting`, `mergeTransactionByCategoryLegacy`, `DataManager.filterTransactions`, `organizeTransactionsByCategory` (O(n × catégories²)). ✅ `LineBarChart.buildChart` déjà retiré | 3 |
+| D6 | Code mort : `getAllSetting`, `DataManager.filterTransactions`, `organizeTransactionsByCategory` (O(n × catégories²))… ✅ phase 0 : `LineBarChart.buildChart` ; ✅ 3c : le reste (`mergeTransactionByCategoryLegacy` est en fait utilisé par le graphique temporel, conservé) | ✅ 3c |
 | D7 | `Math.min(...dates)` sur des milliers d'éléments (dépassement de pile possible) | ✅ 2a |
 | D8 | Données bancaires complètes en `storage.local` (+ `unlimitedStorage`), jamais purgées | 4 |
 | D9 | Interface mi-française mi-anglaise (« Toggle chart type », « All Months », mois de l'axe en anglais) | 4 |
 | D10 | Bouton « Toggle chart type » dessiné dans le canvas : inaccessible au clavier, aux lecteurs d'écran et aux tests e2e | 4 |
 | D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques — ✅ 2b : bandeau « chargement de vos données… » après 1,5 s | 2b |
 | D12 | Description du manifest : « Pecunio overload Bankin website » | 6 |
-| D13 | 35 warnings ESLint (surtout `prefer-const`) | 3 |
+| D13 | 35 warnings ESLint (surtout `prefer-const`) | ✅ 3c |
 | D14 | Visibilité des catégories stockée sous des clés de premier niveau nommées d'après les catégories (`"Logement": true`) : collisions possibles avec les autres clés, nettoyage impossible | 4 |
 
 ### 3.3 Ce qui fonctionne (vérifié en réel)
@@ -157,7 +157,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 
 **3b — Dépendances** ✅ _(branche `chore/phase-3b-deps`)_ : Chart.js 3.7.1 → 4.6.1, chartjs-chart-sankey 0.12 → 0.22, chartjs-adapter-date-fns 2 → 3 (date-fns 2 → 4), Choices 11.0 → 11.2 ; html2pdf.js 0.14 via npm (fourni à `PdfExporter` par la page du rapport, plus de fichier dans `public/libs/`) ; seule option à adapter : `grid.borderColor` → `border.color` ; Dependabot (npm chaque semaine, groupes « charts » et « outillage », Actions chaque mois).
 
-**3c — Nettoyage** : `Evt` remplacé par un émetteur en mémoire (B15) ; code mort (D6) ; warnings ESLint à zéro et règles en `error` (D13) ; tests sans exports globaux.
+**3c — Nettoyage** ✅ _(branche `refactor/phase-3c-cleanup`)_ : `Evt` remplacé par un émetteur en mémoire (B15) ; seuls `data_loaded` et `settings_reloaded` restent, les événements jamais écoutés ou jamais émis sont supprimés et la popup suit les données via `chrome.storage.onChanged` ; code mort supprimé (D6, environ 600 lignes) ; 0 warning ESLint, règles en `error` et `--max-warnings=0` (D13) ; tests en imports explicites (plus de globales, `test/helpers/load.js` supprimé). Plus aucun test `knownBug` : tous les bugs documentés en phase 1 sont corrigés.
 
 **Terminé quand** : le zip WXT se charge dans Chrome et la recette §7 passe ; 0 warning ESLint.
 
@@ -196,8 +196,8 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 1 Tests unitaires | 1,5–2 j | ✅ mergée (#13) | documente B1–B3, B7–B10, B13–B15, B17–B19 |
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
-| 3 Modules + WXT | 2–3 j | 3a ✅ (#16), 3b ✅ PR à merger | B15, D3–D6, D13 |
-| 4 Types + adaptateur | 2–3 j | | D1, D8–D10, D14 |
+| 3 Modules + WXT | 2–3 j | 3a ✅ (#16), 3b ✅ (#17), 3c ✅ PR à merger | B15, B21–B24, D3–D6, D13 |
+| 4 Types + adaptateur | 2–3 j | prochaine | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |
 

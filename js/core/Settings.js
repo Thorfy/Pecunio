@@ -33,10 +33,6 @@ export class Settings {
         try {
             await this.loadSettings();
             this.isInitialized = true;
-            
-            // Écouter les changements de paramètres
-            evt.listen('setting_updated', () => this.loadSettings());
-            
             Logger.debug('[Settings] Initialization completed successfully');
         } catch (error) {
             console.error('[Settings] Initialization failed:', error);
@@ -89,15 +85,6 @@ export class Settings {
     }
 
     /**
-     * Méthode de compatibilité avec l'ancien code
-     * @deprecated Utiliser getAllSettings() à la place
-     */
-    getAllSetting() {
-        console.warn('[Settings] getAllSetting() is deprecated, use getAllSettings() instead');
-        return this.getAllSettings();
-    }
-
-    /**
      * Met à jour un ou plusieurs paramètres
      */
     async setSettings(settings) {
@@ -106,9 +93,7 @@ export class Settings {
             const validatedSettings = this._validateSettings(settings);
             
             await this._setChromeStorage(validatedSettings);
-            await this.loadSettings(); // Recharger pour synchroniser l'état interne
-            
-            evt.dispatch('settings_updated');
+            await this.loadSettings(); // Recharger pour synchroniser l'état interne (émet settings_reloaded)
             Logger.debug('[Settings] Settings updated successfully:', Object.keys(validatedSettings));
         } catch (error) {
             console.error('[Settings] Error updating settings:', error);
@@ -124,21 +109,6 @@ export class Settings {
     }
 
     /**
-     * Supprime un paramètre
-     */
-    async removeSetting(key) {
-        try {
-            await chrome.storage.local.remove(key);
-            delete this.settings[key];
-            evt.dispatch('settings_updated');
-            Logger.debug(`[Settings] Setting '${key}' removed successfully`);
-        } catch (error) {
-            console.error(`[Settings] Error removing setting '${key}':`, error);
-            throw error;
-        }
-    }
-
-    /**
      * Efface les préférences utilisateur, sans toucher au cache des données,
      * aux catégories masquées ni au rapport (bug B13).
      */
@@ -146,7 +116,7 @@ export class Settings {
         try {
             await chrome.storage.local.remove(Settings.ALL_SETTING_NAMES);
             this.settings = {};
-            evt.dispatch('settings_updated');
+            evt.dispatch('settings_reloaded');
             Logger.debug('[Settings] All settings cleared successfully');
         } catch (error) {
             console.error('[Settings] Error clearing settings:', error);
@@ -219,19 +189,5 @@ export class Settings {
                 }
             });
         });
-    }
-
-    /**
-     * Vérifie si un paramètre existe
-     */
-    hasSetting(key) {
-        return this.settings.hasOwnProperty(key) && this.settings[key] !== null && this.settings[key] !== undefined;
-    }
-
-    /**
-     * Récupère un paramètre avec une valeur par défaut
-     */
-    getSettingWithDefault(key, defaultValue) {
-        return this.hasSetting(key) ? this.settings[key] : defaultValue;
     }
 }

@@ -1,6 +1,5 @@
 import { Config } from './Config.js';
 import { evt } from './events.js';
-import { TransactionFilter } from './TransactionFilter.js';
 
 /**
  * Erreurs typées pour DataManager
@@ -241,7 +240,7 @@ export class DataManager {
 
                 // Vérifier que tous les headers requis sont présents
                 const hasAllHeaders = DataManager.REQUIRED_HEADERS.every(header => 
-                    message.data.hasOwnProperty(header) && message.data[header]
+                    Object.hasOwn(message.data, header) && message.data[header]
                 );
 
                 if (!hasAllHeaders) {
@@ -318,7 +317,6 @@ export class DataManager {
         if (this.cacheStore.isFresh(dataType, DataManager.CACHE_DURATION)) {
             try {
                 const validatedCache = this._validateFetchedData(this.cacheStore.get(dataType), dataType);
-                evt.dispatch(`cache_data_${dataType}_loaded`);
                 return validatedCache;
             } catch (error) {
                 console.warn(`[DataManager] Cached ${dataType} data is invalid, fetching fresh data:`, error.message);
@@ -363,7 +361,6 @@ export class DataManager {
         // Valider les données récupérées selon leur type
         const validatedData = this._validateFetchedData(allData, dataType);
         
-        evt.dispatch('fresh_data_loaded');
         return validatedData;
     }
 
@@ -504,95 +501,6 @@ export class DataManager {
         return data;
     }
 
-    /**
-     * Filtre les transactions (période sur la date budgétaire, comptes, catégories exclues).
-     * @param {Array} transactions - Transactions brutes Bankin
-     * @param {{ startDate?: string, endDate?: string, accountsSelected?: number[], excludeCategories?: number[] }} [options]
-     */
-    filterTransactions(transactions, options = {}) {
-        const {
-            startDate = null,
-            endDate = null,
-            accountsSelected = null,
-            excludeCategories = Config.CATEGORIES.EXCEPTION_IDS
-        } = options;
-        return TransactionFilter.apply(
-            (transactions || []).filter(t => t && t.category && t.account),
-            { startDate, endDate, accountsSelected, excludeCategoryIds: excludeCategories }
-        );
-    }
-
-    /**
-     * Organise les transactions par catégorie
-     */
-    organizeTransactionsByCategory(transactions, categories) {
-        const organizedData = new Map();
-
-        // Initialiser toutes les catégories
-        categories.forEach(category => {
-            organizedData.set(category.id, []);
-            
-            if (category.categories) {
-                category.categories.forEach(childCategory => {
-                    organizedData.set(childCategory.id, []);
-                });
-            }
-        });
-
-        // Organiser les transactions
-        transactions.forEach(transaction => {
-            const categoryId = transaction.category.id;
-            
-            // Ajouter à la catégorie enfant
-            if (organizedData.has(categoryId)) {
-                organizedData.get(categoryId).push(transaction);
-            }
-
-            // Ajouter à la catégorie parent si c'est une sous-catégorie
-            categories.forEach(parentCategory => {
-                if (parentCategory.categories) {
-                    parentCategory.categories.forEach(childCategory => {
-                        if (childCategory.id === categoryId) {
-                            organizedData.get(parentCategory.id).push(transaction);
-                        }
-                    });
-                }
-            });
-        });
-
-        return organizedData;
-    }
-
-    /**
-     * Crée une Map pour la recherche rapide des catégories
-     */
-    createCategoryLookup(categories) {
-        const lookup = new Map();
-        
-        categories.forEach(parentCategory => {
-            if (parentCategory.id != null && parentCategory.name) {
-                lookup.set(parentCategory.id, parentCategory.name);
-                
-                if (parentCategory.categories) {
-                    parentCategory.categories.forEach(childCategory => {
-                        if (childCategory.id != null) {
-                            lookup.set(childCategory.id, parentCategory.name);
-                        }
-                    });
-                }
-            }
-        });
-
-        return lookup;
-    }
-
-
-    /**
-     * Récupère les données mises en cache
-     */
-    getCachedData() {
-        return this.cachedData;
-    }
 
     /**
      * Force le rechargement des données

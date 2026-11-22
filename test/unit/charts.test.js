@@ -1,8 +1,11 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CATEGORIES, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { BaseChartData } from '../../js/charts/base/BaseChartData.js';
+import { BudgetChart } from '../../js/charts/BudgetChart.js';
+import { ExpenseTypeChart } from '../../js/charts/ExpenseTypeChart.js';
+import { LineBarChart } from '../../js/charts/LineBarChart.js';
+import { SankeyChart } from '../../js/charts/SankeyChart.js';
+import { Config } from '../../js/core/Config.js';
 
 /** Faux Settings : seules les méthodes utilisées par les graphiques. */
 const fakeSettings = (values = {}) => ({
@@ -49,13 +52,6 @@ describe('BaseChartData — utilitaires', () => {
         expect(BaseChartData.calculateAverage([NaN])).toBe(0);
     });
 
-    test('catégories d\'exception et catégories valides', () => {
-        const chart = new BaseChartData([], [...CATEGORIES, { id: 326, name: 'Exception', categories: [] }]);
-        expect(chart.isExceptionCategory(326)).toBe(true);
-        expect(chart.isExceptionCategory(188)).toBe(false);
-        expect(chart.getValidCategories().map((c) => c.id)).not.toContain(326);
-    });
-
     test('getAdjustedDate ne modifie pas la transaction', () => {
         const chart = new BaseChartData([], []);
         const t = tx({ date: '2024-01-20', current_month: -1 });
@@ -63,13 +59,6 @@ describe('BaseChartData — utilitaires', () => {
         expect([d.getFullYear(), d.getMonth() + 1]).toEqual([2023, 12]);
         expect(t.date).toBe('2024-01-20');
         expect(chart.getAdjustedDate({})).toBeNull();
-    });
-
-    test('formatDateToYearMonth et getMonthName', () => {
-        const chart = new BaseChartData([], []);
-        expect(chart.formatDateToYearMonth(new Date(2024, 2, 15, 12))).toBe('2024-03');
-        expect(chart.getMonthName(3)).toBe('Mar');
-        expect(chart.getMonthName(13)).toBe('');
     });
 });
 

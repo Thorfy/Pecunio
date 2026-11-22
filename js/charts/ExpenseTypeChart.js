@@ -187,7 +187,6 @@ export class ExpenseTypeChart extends BaseChartData {
                                 if (data.labels.length && data.datasets.length) {
                                     const dataset = data.datasets[0];
                                     return data.labels.map((label, i) => {
-                                        const value = dataset.data[i];
                                         return {
                                             text: label,
                                             fillStyle: dataset.backgroundColor[i],

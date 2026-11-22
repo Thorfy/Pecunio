@@ -60,11 +60,6 @@ export class DateRange {
         return p ? `${p.year}-${DateRange.#pad(p.month)}-${DateRange.#pad(p.day)}` : null;
     }
 
-    /** Alias historique utilisé pour normaliser les bornes de filtre. */
-    static toDateOnlyString(value) {
-        return DateRange.toDateOnly(value);
-    }
-
     /** Date du jour `YYYY-MM-DD` (heure locale). */
     static getTodayInputValue() {
         return DateRange.toDateOnly(new Date());

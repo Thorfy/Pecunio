@@ -1,4 +1,4 @@
-import { evt } from '../core/events.js';
+import { Config } from '../core/Config.js';
 
 /**
  * LoadingScreen - Composant d'écran de chargement
@@ -14,7 +14,7 @@ export class LoadingScreen {
             const childBlock = rightBlock[0].children;
 
             const imgdiv = document.createElement('img');
-            imgdiv.src = chrome.runtime.getURL("asset/Loading.gif");
+            imgdiv.src = Config.getAssetURL("LOADING_GIF");
             imgdiv.style.textAlign = "center";
 
             if (childBlock && childBlock[0]) {
@@ -24,10 +24,5 @@ export class LoadingScreen {
                 console.error("childBlock[0] not found in loadingScreen");
             }
         }
-        
-        // Dispatch l'événement de chargement
-        if (typeof evt !== 'undefined') {
-            evt.dispatch('loading_screen_display');
-        }
     }
-} 
+}

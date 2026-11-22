@@ -18,7 +18,6 @@ npm run test:bugs      # exécute les tests de bugs connus comme des tests norma
 |---|---|
 | `vitest.config.js` | Environnement happy-dom, seuils de couverture, résolution ESM de Chart.js |
 | `test/setup/vitest.setup.js` | Faux `chrome` neuf pour chaque test, console silencieuse (`PECUNIO_TEST_LOGS=1` pour la réafficher) |
-| `test/helpers/load.js` | `loadContentScripts()` importe tous les modules de `js/` et expose leurs exports sur `globalThis` (transition) ; `loadScripts([...])` pour un sous-ensemble |
 | `test/helpers/fake-chrome.js` | `chrome.storage` (callback et promesse), `runtime` (ports, messages), `webRequest`, `tabs`, `action` |
 | `test/helpers/known-bug.js` | `knownBug(...)` pour les bugs du registre |
 | `test/helpers/timezone.js` | `EAST_OF_UTC`, `WEST_OF_UTC`, `NOT_UTC` pour les tests dépendant du fuseau |
@@ -28,17 +27,16 @@ npm run test:bugs      # exécute les tests de bugs connus comme des tests norma
 ### Écrire un test
 
 ```js
-import { beforeAll, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
+import { Transaction } from '../../js/models/Transaction.js';
 import { tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
 
-beforeAll(loadContentScripts); // Transaction, DataMerger, etc. deviennent globaux
-// (ou, pour un nouveau test : import { Transaction } from '../../js/models/Transaction.js';)
-
-test('une dépense est négative', () => {
-    expect(Transaction.fromRaw(tx({ amount: -12 })).isExpense()).toBe(true);
+test('fromRaw lit le montant', () => {
+    expect(Transaction.fromRaw(tx({ amount: -12 })).amount).toBe(-12);
 });
 ```
+
+- Chaque test importe les modules dont il a besoin (`js/...`) ; ESLint signale tout import manquant.
 
 - **Jamais de données réelles** : utiliser ou étendre `test/fixtures/bankin.js`.
 - Le stockage du faux `chrome` est lisible directement : `chrome.storage.local._data`.

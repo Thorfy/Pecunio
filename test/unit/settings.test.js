@@ -1,8 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createFakeChrome } from '../helpers/fake-chrome.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { Config } from '../../js/core/Config.js';
+import { evt } from '../../js/core/events.js';
+import { Settings } from '../../js/core/Settings.js';
 
 beforeEach(() => {
     evt.cleanup();
@@ -20,9 +20,6 @@ describe('Settings', () => {
         const settings = await settingsWith({ startDate: '2024-01-01', isBlurry: true, autreCle: 'x' });
         expect(settings.getSetting('startDate')).toBe('2024-01-01');
         expect(settings.getAllSettings()).toEqual({ startDate: '2024-01-01', isBlurry: true });
-        expect(settings.hasSetting('isBlurry')).toBe(true);
-        expect(settings.hasSetting('endDate')).toBe(false);
-        expect(settings.getSettingWithDefault('endDate', '2024-12-31')).toBe('2024-12-31');
     });
 
     test('getAllSettings renvoie une copie', async () => {
@@ -34,7 +31,7 @@ describe('Settings', () => {
     test('setSettings enregistre, recharge et prévient', async () => {
         const settings = await settingsWith({});
         const updated = vi.fn();
-        evt.listen('settings_updated', updated);
+        evt.listen('settings_reloaded', updated);
         await settings.setSettings({ startDate: '2024-02-01', accountsSelected: [101] });
         expect(chrome.storage.local._data).toMatchObject({ startDate: '2024-02-01', accountsSelected: [101] });
         expect(settings.getSetting('accountsSelected')).toEqual([101]);
@@ -45,15 +42,6 @@ describe('Settings', () => {
         const settings = await settingsWith({});
         await settings.setSettings({ accountsSelected: 101, isBlurry: 'oui', noEndDate: 'non', endDate: '2024-03-01' });
         expect(chrome.storage.local._data).toEqual({ endDate: '2024-03-01' });
-    });
-
-    test('setSetting et removeSetting', async () => {
-        const settings = await settingsWith({});
-        await settings.setSetting('chartType', 'line');
-        expect(settings.getSetting('chartType')).toBe('line');
-        await settings.removeSetting('chartType');
-        expect(settings.getSetting('chartType')).toBeUndefined();
-        expect(chrome.storage.local._data.chartType).toBeUndefined();
     });
 
     test('lecture impossible → valeurs par défaut et erreur remontée', async () => {
@@ -105,17 +93,6 @@ describe('Config', () => {
         expect(Config.isExceptionCategory(188)).toBe(false);
     });
 
-    test('noms de mois', () => {
-        expect(Config.getMonthName(1)).toBe('Jan');
-        expect(Config.getFullMonthName(12)).toBe('December');
-        expect(Config.getMonthName(13)).toBe('');
-        expect(Config.getFullMonthName(-1)).toBe('');
-    });
-
-    test('moyenne du premier jeu de données (annotation des graphiques)', () => {
-        expect(Config.calculateAverage({ chart: { data: { datasets: [{ data: [1, 2, 3] }] } } })).toBe(2);
-    });
-
     test('URL des ressources de l\'extension', () => {
         expect(Config.getAssetURL('ICON')).toBe('chrome-extension://pecunio-test/asset/icon.png');
     });
@@ -125,20 +102,5 @@ describe('Config', () => {
         expect(Config.isBlurry()).toBe(true);
         window.__pecunioIsBlurry = false;
         expect(Config.isBlurry()).toBe(false);
-    });
-
-    test('toDateInputValue : date invalide → aujourd\'hui', () => {
-        vi.useFakeTimers({ toFake: ['Date'] });
-        vi.setSystemTime(new Date('2024-03-15T12:00:00Z'));
-        expect(Config.toDateInputValue('pas une date')).toBe('2024-03-15');
-        expect(Config.toDateInputValue('2024-01-31')).toBe('2024-01-31');
-    });
-
-    // --- B9 ----------------------------------------------------------------
-    test('B9 — la date du jour est correcte juste après minuit, quel que soit le fuseau', () => {
-        vi.useFakeTimers({ toFake: ['Date'] });
-        vi.setSystemTime(new Date(2024, 2, 15, 0, 30)); // 15 mars, 00h30 heure locale
-        expect(Config.toDateInputValue(null)).toBe('2024-03-15');
-        expect(Config.toDateInputValue(new Date(2024, 2, 15))).toBe('2024-03-15');
     });
 });

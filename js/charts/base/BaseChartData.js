@@ -255,23 +255,6 @@ export class BaseChartData {
     }
 
     /**
-     * Obtient toutes les catégories non-exception
-     * @returns {Array} Catégories valides
-     */
-    getValidCategories() {
-        return this.categories.filter(category => !this.isExceptionCategory(category.id));
-    }
-
-    /**
-     * Méthode utilitaire pour formater une date en chaîne YYYY-MM
-     * @param {Date} date - Date à formater
-     * @returns {string} Date formatée
-     */
-    formatDateToYearMonth(date) {
-        return (DateRange.toDateOnly(date) || '').slice(0, 7);
-    }
-
-    /**
      * Méthode utilitaire pour obtenir le nom court d'un mois
      * @param {number} monthNumber - Numéro du mois (1-12)
      * @returns {string} Nom court du mois

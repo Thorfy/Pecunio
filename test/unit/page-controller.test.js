@@ -1,8 +1,13 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { CATEGORIES, sampleTransactions } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { Config } from '../../js/core/Config.js';
+import { APIError, AuthenticationError } from '../../js/core/DataManager.js';
+import { Evt } from '../../js/core/Evt.js';
+import { PageController } from '../../js/core/PageController.js';
+import { AmountHider } from '../../js/ui/AmountHider.js';
+import { LoadingScreen } from '../../js/ui/LoadingScreen.js';
+import { ReviewPrompt } from '../../js/ui/ReviewPrompt.js';
+import { StatusBanner } from '../../js/ui/StatusBanner.js';
 
 const PAGE = () => PageController.PAGE;
 

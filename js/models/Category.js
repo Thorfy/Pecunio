@@ -21,42 +21,4 @@ export class Category {
         }
         return new Category(rawCategory.id, rawCategory.name, parentId);
     }
-
-    /**
-     * Vérifie si la catégorie est une catégorie parent
-     * @returns {boolean}
-     */
-    isParent() {
-        return this.parentId === null;
-    }
-
-    /**
-     * Vérifie si la catégorie est une sous-catégorie
-     * @returns {boolean}
-     */
-    isChild() {
-        return this.parentId !== null;
-    }
-
-    /**
-     * Retourne une représentation string de la catégorie
-     * @returns {string}
-     */
-    toString() {
-        return `Category(id: ${this.id}, name: "${this.name}", parentId: ${this.parentId})`;
-    }
-
-    /**
-     * Compare cette catégorie avec une autre
-     * @param {Category} other - Autre catégorie à comparer
-     * @returns {boolean}
-     */
-    equals(other) {
-        if (!(other instanceof Category)) {
-            return false;
-        }
-        return this.id === other.id && 
-               this.name === other.name && 
-               this.parentId === other.parentId;
-    }
 } 
