@@ -27,6 +27,15 @@ const DEFAULT_MONTHS = [
 let MONTHS = DEFAULT_MONTHS;
 let extraCss = '';
 
+/**
+ * Classes utilitaires de Bankin qui pèsent sur la mise en page (blocs, tailles,
+ * marges) : sans elles, l'en-tête du donut tient sur une ligne et un
+ * chevauchement avec le donut passerait inaperçu.
+ */
+const BANKIN_BASE_CSS = '.dbl{display:block}.dib{display:inline-block}.dtb{display:table}.dtc{display:table-cell}'
+    + '.vam{vertical-align:middle}.tac{text-align:center}.fw7{font-weight:700}.fs1{font-size:1rem}.fs2{font-size:2rem}'
+    + '.mt2{margin-top:2rem}.mb1{margin-bottom:1rem}.m0a{margin-left:auto;margin-right:auto}.h100{height:100%}.w100{width:100%}';
+
 const header = `
 <td class="bgw vam topHeader"><header class="dtb tlf w100">
   <div class="dtc w33 vam tac"><span class="dbl fs14 fw7 lh18 elp">2 345,67 €</span><span class="dbl fs1 elp">Solde total</span></div>
@@ -58,7 +67,7 @@ const categoriesBody = (activeIndex) => `${monthSelector(activeIndex)}
 </ul></div></td>
 <td class="vat rel rightColumn"><div class="scrollable categoryChart"><div class="cntr dtb h100 active"><div class="dtc vam">
   <div class="mt2 tac"><span class="dbl fs2 fw7">950,00 €</span><span class="dbl fs1">Total des dépenses</span></div>
-  <div id="donutChart" class="m0a mt2 mb1"><svg width="100" height="100"><g><g class="arc"><text>84 %</text></g></g></svg></div>
+  <div id="donutChart" class="m0a mt2 mb1" style="width: 300px"><svg width="300" height="300"><circle cx="150" cy="150" r="80" fill="none" stroke="#6562fc" stroke-width="40"/></svg></div>
 </div></div></div></td></tr>`;
 
 const incomeBody = (activeIndex) => `${monthSelector(activeIndex)}
@@ -67,6 +76,7 @@ const incomeBody = (activeIndex) => `${monthSelector(activeIndex)}
 </ul></div></td>
 <td class="vat rel rightColumn"><div class="scrollable categoryChart"><div class="cntr dtb h100 active"><div class="dtc vam">
   <div class="mt2 tac"><span class="dbl fs2 fw7">2 500,00 €</span><span class="dbl fs1">Total des revenus</span></div>
+  <div id="donutChart" class="m0a mt2 mb1" style="width: 300px"><svg width="300" height="300"><circle cx="150" cy="150" r="80" fill="none" stroke="#6562fc" stroke-width="40"/></svg></div>
 </div></div></div></td></tr>`;
 
 /** Contenu de la page selon le chemin (aussi utilisé pour la navigation SPA). */
@@ -121,7 +131,7 @@ function renderPage(pathname) {
 <body><form id="signin"><input type="email" placeholder="Votre email"><button type="submit">Me connecter</button></form></body></html>`;
     }
     const bodies = Object.fromEntries(['/accounts', '/categories', '/categories/2', '/categories/159'].map((p) => [p, bodyFor(p)]));
-    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bankin' (simulé)</title><style>${extraCss}</style></head>
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bankin' (simulé)</title><style>${BANKIN_BASE_CSS}${extraCss}</style></head>
 <body><div id="root" class="content h100"><section class="cntr mw100 w100 dashboard dtb h100"><section class="dtc vat h100">
 <table class="w100 h100"><tbody id="bankin-content">${bodyFor(pathname)}</tbody></table>
 </section></section></div>

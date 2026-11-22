@@ -117,6 +117,26 @@ test.describe('Page Comptes', () => {
 });
 
 test.describe('Page Catégories', () => {
+    test('9c — œil de masquage cliquable au-dessus du donut compact (Catégories, Revenus)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        const html = page.locator('html');
+        await page.goto(bankinUrl('/categories'));
+        await expect(page.locator('.pecunio-pace-wrapper canvas')).toBeVisible();
+        for (const path of ['/categories', '/categories/2']) {
+            if (path !== '/categories') {
+                await page.evaluate((p) => window.__bankinNavigate(p), path);
+                await expect(page.locator('.pecunio-history-wrapper canvas')).toBeVisible();
+            }
+            await expect(page.locator('#hideButton')).toBeVisible();
+            // Vrai clic : échoue si un autre élément (le SVG du donut) recouvre l'œil
+            await page.locator('#hideButton').click({ timeout: 3000 });
+            await expect(html).toHaveClass(/pecunio-amounts-hidden/);
+            await page.locator('#hideButton').click({ timeout: 3000 });
+            await expect(html).not.toHaveClass(/pecunio-amounts-hidden/);
+        }
+        expect(consoleErrors).toEqual([]);
+    });
+
     test('2 — types de dépenses et flux financiers, mis à jour au changement de mois', async ({ context, bankin, consoleErrors }) => {
         const page = await context.newPage();
         await page.goto(bankinUrl('/categories'));

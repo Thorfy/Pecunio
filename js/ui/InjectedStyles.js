@@ -402,6 +402,10 @@ export class InjectedStyles {
                 margin: 4px 0 0;
                 min-height: 70px;
                 text-align: center;
+                /* Au-dessus du SVG du donut, remonté sur sa marge transparente :
+                   sans cela, il recouvre l'œil de masquage (clic perdu) */
+                position: relative;
+                z-index: 1;
             }
             .pecunio-donut-wrapper .mt2.tac .fs2,
             .pecunio-donut-figure {
