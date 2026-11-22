@@ -750,18 +750,11 @@ describe('ExpenseTypeChart — total et pourcentages (U7)', () => {
         expect(ExpenseTypeChart.legendText('Aucune donnée', [1], 0)).toBe('Aucune donnée');
     });
 
-    test('total au centre : dessiné, sauf montants masqués ou sans donnée', () => {
-        const plugin = ExpenseTypeChart.centerTotalPlugin();
-        const ctx = { save: vi.fn(), restore: vi.fn(), fillText: vi.fn() };
-        const chart = { ctx, chartArea: { left: 0, right: 200, top: 0, bottom: 200 }, data: { labels: ['Essentiel'], datasets: [{ data: [60, 40] }] } };
-        plugin.afterDraw(chart);
-        expect(ctx.fillText).toHaveBeenCalledWith('100,00 €', 100, 92);
-        expect(ctx.fillText).toHaveBeenCalledWith('dépensés', 100, 112);
-
-        ctx.fillText.mockClear();
-        window.__pecunioIsBlurry = true;
-        plugin.afterDraw(chart);
-        window.__pecunioIsBlurry = undefined;
-        expect(ctx.fillText).not.toHaveBeenCalled();
+    test('en-tête : type principal en part arrondie (aucun montant)', () => {
+        expect(ExpenseTypeChart.mainType(['Essentiel', 'Plaisir', 'Épargne'], [453, 81, 168])).toEqual({ share: '65 %', label: 'Essentiel' });
+        expect(ExpenseTypeChart.mainType(['Aucune donnée'], [1])).toBeNull();
+        expect(ExpenseTypeChart.mainType(['Essentiel'], [0])).toBeNull();
+        expect(ExpenseTypeChart.createHeader({ share: '65 %', label: 'Essentiel' }).textContent).toBe('65 %Essentiel, type principal');
+        expect(ExpenseTypeChart.createHeader(null).textContent).toBe('—Aucune dépense ce mois-ci');
     });
 });

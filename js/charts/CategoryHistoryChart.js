@@ -121,8 +121,7 @@ export class CategoryHistoryChart extends BaseChartData {
         summary.textContent = CategoryHistoryChart.summary(history, monthLabel, Config.isBlurry(), inProgress);
         wrapper.appendChild(summary);
         const canvasContainer = InjectedStyles.createCanvasContainer();
-        // Hauteur proche de celle du donut de Bankin voisin
-        canvasContainer.style.height = '360px';
+        canvasContainer.style.height = '300px';
         const canvas = InjectedStyles.createCanvas();
         canvasContainer.appendChild(canvas);
         wrapper.appendChild(canvasContainer);

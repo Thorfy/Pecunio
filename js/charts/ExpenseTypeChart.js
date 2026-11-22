@@ -1,7 +1,6 @@
 import { Config } from '../core/Config.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
-import { THEME } from '../ui/theme.js';
 import { formatEuros, formatPercent } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
@@ -57,7 +56,13 @@ export class ExpenseTypeChart extends BaseChartData {
         const chartJsConfig = await this.getChartJsConfig();
         chartJsConfig.data = preparedData;
 
-        const { wrapper: expenseTypeWrapper, canvas: expenseTypeCanvas } = InjectedStyles.createDonutChart('Types de dépenses');
+        // Même format que le donut de Bankin voisin : en-tête, donut, légende dessous
+        const { wrapper: expenseTypeWrapper, canvas: expenseTypeCanvas } = InjectedStyles.createDonutChart('Types de dépenses', '250px');
+        const datasetValues = /** @type {number[]} */ (preparedData.datasets[0]?.data || []);
+        expenseTypeWrapper.insertBefore(
+            ExpenseTypeChart.createHeader(ExpenseTypeChart.mainType(preparedData.labels || [], datasetValues)),
+            expenseTypeCanvas.parentElement,
+        );
         chartsRowContainer.appendChild(expenseTypeWrapper);
 
         this.chartInstance = new Chart(expenseTypeCanvas.getContext('2d'), chartJsConfig);
@@ -211,7 +216,6 @@ export class ExpenseTypeChart extends BaseChartData {
                 },
                 cutout: '62%'
             },
-            plugins: [ExpenseTypeChart.centerTotalPlugin()],
         };
     }
 
@@ -228,32 +232,35 @@ export class ExpenseTypeChart extends BaseChartData {
     }
 
     /**
-     * Total des dépenses au centre du donut (U7) ; masqué avec les montants.
-     * @returns {import('chart.js').Plugin}
+     * Type principal du mois : « 45 % », « Essentiel ». Le total est déjà en
+     * tête du donut de Bankin voisin ; une part n'est pas un montant, elle
+     * reste visible quand les montants sont masqués.
+     * @param {string[]} labels
+     * @param {number[]} values
+     * @returns {{ share: string, label: string } | null}
      */
-    static centerTotalPlugin() {
-        return {
-            id: 'pecunioCenterTotal',
-            afterDraw(chart) {
-                const values = /** @type {number[]} */ (chart.data.datasets[0]?.data || []);
-                const total = values.reduce((a, b) => a + b, 0);
-                if (Config.isBlurry() || chart.data.labels?.[0] === 'Aucune donnée' || total <= 0) return;
-                const { left, right, top, bottom } = chart.chartArea;
-                const x = (left + right) / 2;
-                const y = (top + bottom) / 2;
-                const { ctx } = chart;
-                ctx.save();
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = THEME.text;
-                ctx.font = `700 16px ${THEME.fontFamily}`;
-                ctx.fillText(formatEuros(total), x, y - 8);
-                ctx.fillStyle = THEME.textMuted;
-                ctx.font = `400 12px ${THEME.fontFamily}`;
-                ctx.fillText('dépensés', x, y + 12);
-                ctx.restore();
-            },
-        };
+    static mainType(labels, values) {
+        const total = values.reduce((a, b) => a + b, 0);
+        if (labels[0] === 'Aucune donnée' || total <= 0) return null;
+        const index = values.indexOf(Math.max(...values));
+        return { share: `${Math.round((values[index] / total) * 100)} %`, label: String(labels[index]) };
+    }
+
+    /**
+     * En-tête au format de celui du donut de Bankin : chiffre puis légende.
+     * @param {{ share: string, label: string } | null} main
+     */
+    static createHeader(main) {
+        const header = document.createElement('div');
+        header.className = 'pecunio-donut-header';
+        const figure = document.createElement('span');
+        figure.className = 'pecunio-donut-figure';
+        figure.textContent = main ? main.share : '—';
+        const caption = document.createElement('span');
+        caption.className = 'pecunio-donut-caption';
+        caption.textContent = main ? `${main.label}, type principal` : 'Aucune dépense ce mois-ci';
+        header.append(figure, caption);
+        return header;
     }
 
     /**

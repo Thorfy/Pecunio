@@ -16,12 +16,15 @@ describe('InjectedStyles.prepareChartsRow', () => {
         expect(donut.textContent).toContain('Catégories');
         expect(donut.querySelector('.cntr.dtb')).not.toBeNull();
         expect(row.classList.contains('pecunio-charts-row--detail')).toBe(false);
+        // Page Catégories : donut et types de dépenses en un seul bloc
+        expect(row.classList.contains('pecunio-charts-row--merged')).toBe(true);
     });
 
     test('page de détail : modificateur posé, puis retiré au retour sur la page Catégories', () => {
         const block = document.querySelector('.categoryChart');
         const row = InjectedStyles.prepareChartsRow(block, { detail: true });
         expect(row.classList.contains('pecunio-charts-row--detail')).toBe(true);
+        expect(row.classList.contains('pecunio-charts-row--merged')).toBe(false);
         expect(InjectedStyles.prepareChartsRow(block)).toBe(row);
         expect(row.classList.contains('pecunio-charts-row--detail')).toBe(false);
         expect(block.querySelectorAll('.pecunio-donut-wrapper')).toHaveLength(1);
