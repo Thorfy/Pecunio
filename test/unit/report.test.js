@@ -43,10 +43,6 @@ describe('ReportFilters — statistiques', () => {
         row({ amount: -30, description: 'achat', categoryName: 'Avoir magasin' }),
     ];
 
-    test('computeStats : toutes les lignes', () => {
-        expect(ReportFilters.computeStats(rows)).toEqual({ totalTransactions: 5, totalIncome: 2050, totalExpenses: 730 });
-    });
-
     test('filterIncomeExpenseData exclut l\'épargne et les remboursements / avoirs', () => {
         expect(ReportFilters.filterIncomeExpenseData(rows).map((r) => r.amount)).toEqual([2000, -500]);
     });

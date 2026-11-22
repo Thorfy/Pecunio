@@ -25,21 +25,6 @@ export class ReportFilters {
     }
 
     /**
-     * Calcule les statistiques globales (nombre, revenus, dépenses)
-     * @param {Array<Object>} filteredData - Données déjà filtrées
-     * @returns {{ totalTransactions: number, totalIncome: number, totalExpenses: number }}
-     */
-    static computeStats(filteredData) {
-        const expenses = filteredData.filter(row => row.amount < 0);
-        const income = filteredData.filter(row => row.amount > 0);
-        return {
-            totalTransactions: filteredData.length,
-            totalIncome: income.reduce((sum, row) => sum + row.amount, 0),
-            totalExpenses: expenses.reduce((sum, row) => sum + Math.abs(row.amount), 0)
-        };
-    }
-
-    /**
      * Filtre pour le graphique Revenus vs Dépenses : exclut épargne, remboursements
      * @param {Array<Object>} filteredData - Données déjà filtrées par catégories
      * @returns {Array<Object>}

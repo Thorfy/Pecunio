@@ -37,18 +37,6 @@ export class Account {
     }
 
     /**
-     * Compare ce compte avec un autre
-     * @param {Account} other - Autre compte à comparer
-     * @returns {boolean}
-     */
-    equals(other) {
-        if (!(other instanceof Account)) {
-            return false;
-        }
-        return this.id === other.id && this.name === other.name;
-    }
-
-    /**
      * Retourne le nom du compte pour l'affichage
      * @returns {string}
      */

@@ -209,11 +209,6 @@ export class LineBarChart extends BaseChartData {
             responsive: true,
             maintainAspectRatio: false, // hauteur donnée par le conteneur (bug B23)
             plugins: {
-                annotation: {
-                    annotations: {
-                        annotation: Config.CHART.ANNOTATION
-                    }
-                },
                 title: {
                     display: true,
                     text: ""

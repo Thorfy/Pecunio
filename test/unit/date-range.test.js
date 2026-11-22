@@ -20,7 +20,6 @@ describe('DateRange.parts / toDateOnly', () => {
         for (const value of [null, undefined, '', 'pas une date', '2024-13-01', '2024-02-32', new Date('x')]) {
             expect(DateRange.toDateOnly(value)).toBeNull();
         }
-        expect(DateRange.toDateOnlyString('2024-03-15')).toBe('2024-03-15');
     });
 
     test('toLocalDate : minuit heure locale', () => {

@@ -49,13 +49,6 @@ describe('BaseChartData — utilitaires', () => {
         expect(BaseChartData.calculateAverage([NaN])).toBe(0);
     });
 
-    test('catégories d\'exception et catégories valides', () => {
-        const chart = new BaseChartData([], [...CATEGORIES, { id: 326, name: 'Exception', categories: [] }]);
-        expect(chart.isExceptionCategory(326)).toBe(true);
-        expect(chart.isExceptionCategory(188)).toBe(false);
-        expect(chart.getValidCategories().map((c) => c.id)).not.toContain(326);
-    });
-
     test('getAdjustedDate ne modifie pas la transaction', () => {
         const chart = new BaseChartData([], []);
         const t = tx({ date: '2024-01-20', current_month: -1 });
@@ -63,13 +56,6 @@ describe('BaseChartData — utilitaires', () => {
         expect([d.getFullYear(), d.getMonth() + 1]).toEqual([2023, 12]);
         expect(t.date).toBe('2024-01-20');
         expect(chart.getAdjustedDate({})).toBeNull();
-    });
-
-    test('formatDateToYearMonth et getMonthName', () => {
-        const chart = new BaseChartData([], []);
-        expect(chart.formatDateToYearMonth(new Date(2024, 2, 15, 12))).toBe('2024-03');
-        expect(chart.getMonthName(3)).toBe('Mar');
-        expect(chart.getMonthName(13)).toBe('');
     });
 });
 

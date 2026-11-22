@@ -76,27 +76,11 @@ export class Transaction {
     }
 
     /**
-     * Vérifie si la transaction est une dépense
-     * @returns {boolean}
-     */
-    isExpense() {
-        return this.amount < 0;
-    }
-
-    /**
      * Vérifie si la transaction est un revenu
      * @returns {boolean}
      */
     isIncome() {
         return this.amount > 0;
-    }
-
-    /**
-     * Retourne le montant absolu
-     * @returns {number}
-     */
-    getAbsoluteAmount() {
-        return Math.abs(this.amount);
     }
 
     /**
@@ -108,14 +92,6 @@ export class Transaction {
     }
 
     /**
-     * Retourne l'année de la transaction
-     * @returns {number}
-     */
-    getYear() {
-        return this.getAdjustedDate().getFullYear();
-    }
-
-    /**
      * Retourne une représentation string de la transaction
      * @returns {string}
      */
@@ -123,32 +99,4 @@ export class Transaction {
         return `Transaction(id: ${this.id}, amount: ${this.amount}, date: ${this.date}, description: "${this.description}")`;
     }
 
-    /**
-     * Compare cette transaction avec une autre
-     * @param {Transaction} other - Autre transaction à comparer
-     * @returns {boolean}
-     */
-    equals(other) {
-        if (!(other instanceof Transaction)) {
-            return false;
-        }
-        return this.id === other.id;
-    }
-
-    /**
-     * Retourne une copie de la transaction
-     * @returns {Transaction}
-     */
-    clone() {
-        return new Transaction(
-            this.id,
-            this.amount,
-            this.accountId,
-            this.date,
-            this.description,
-            this.categoryId,
-            this.current_month,
-            this.expense_type
-        );
-    }
 } 

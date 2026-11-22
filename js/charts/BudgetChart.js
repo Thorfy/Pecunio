@@ -287,7 +287,7 @@ export class BudgetChart extends BaseChartData {
 
             // First, check if this category is active in the processed period for the given year
             for (let m = 1; m <= lastMonthToProcess; m++) {
-                if (this.organizedData[year][m] && this.organizedData[year][m].hasOwnProperty(categoryName)) {
+                if (this.organizedData[year][m] && Object.hasOwn(this.organizedData[year][m], categoryName)) {
                     categoryActiveInProcessedPeriod = true;
                     break;
                 }
@@ -363,7 +363,7 @@ export class BudgetChart extends BaseChartData {
                 const year = parseInt(yearStr);
                 if (year < currentYear) { // Only consider years before the currentYear for historical data
                     // Check if the category existed in this month for this historical year
-                    if (this.organizedData[year][targetMonth] && this.organizedData[year][targetMonth].hasOwnProperty(categoryName)) {
+                    if (this.organizedData[year][targetMonth] && Object.hasOwn(this.organizedData[year][targetMonth], categoryName)) {
                         const amounts = this.organizedData[year][targetMonth][categoryName] || [];
                         historicalMonthlyTotals.push(amounts.reduce((sum, val) => sum + val, 0));
                     }
@@ -585,17 +585,6 @@ export class BudgetChart extends BaseChartData {
         });
         selectEl.value = defaultMonthValue.toString(); // Ensure value matches option.value type
         return selectEl;
-    }
-
-    _createCanvasElement(parentElement) {
-        const canvasDiv = document.createElement('canvas');
-        canvasDiv.classList = "canvasDiv"; // Keep class if it has other relevant styles
-        canvasDiv.style.width = '100%';   // Ensure canvas tries to use full width of parent
-        canvasDiv.style.height = '400px';  // Set a default height
-        if (parentElement) {
-            parentElement.appendChild(canvasDiv);
-        }
-        return canvasDiv;
     }
 
 }

@@ -13,24 +13,16 @@ import 'choices.js/public/assets/styles/choices.min.css';
 
 const settingClass = new Settings();
 const cacheStore = new CacheStore();
-let setting = {};
-
-evt.listen("settings_reloaded", () => {
-    // Pas besoin d'attendre, les settings sont déjà chargés
-    setting = settingClass.getAllSettings();
-});
-
 
 document.addEventListener('DOMContentLoaded', async function () {
 
     // Attendre l'initialisation (qui inclut déjà loadSettings())
     await settingClass.waitForInitialization();
     await cacheStore.waitForInitialization();
-    setting = settingClass.getAllSettings();
 
-    let currentVersionImg = document.querySelector("#currentVersion");
-    let currentVersionBadge = document.querySelector("#currentVersionBadge");
-    let cvSource = "https://img.shields.io/badge/installed-" + chrome.runtime.getManifest().version + "-blue";
+    const currentVersionImg = document.querySelector("#currentVersion");
+    const currentVersionBadge = document.querySelector("#currentVersionBadge");
+    const cvSource = "https://img.shields.io/badge/installed-" + chrome.runtime.getManifest().version + "-blue";
     currentVersionImg.textContent = chrome.runtime.getManifest().version;
     currentVersionBadge.src = cvSource;
 
@@ -38,16 +30,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     chrome.action.setBadgeText({ text: '' });
 
     // Récupérer les éléments DOM
-    let startDate = document.querySelector('#startDate');
-    let endDate = document.querySelector('#endDate');
-    let noEndDateCheckbox = document.querySelector('#noEndDate');
-    let accountsInput = document.querySelector('#accountsInput');
-    let csvExport = document.querySelector("#exportCsv");
-    let exportPdf = document.querySelector("#exportPdf");
-    let pdfYear = document.querySelector("#pdfYear");
-    let pdfMonth = document.querySelector("#pdfMonth");
-    let refreshData = document.querySelector("#refreshData");
-    let refreshSettings = document.querySelector("#refreshSettings");
+    const startDate = document.querySelector('#startDate');
+    const endDate = document.querySelector('#endDate');
+    const noEndDateCheckbox = document.querySelector('#noEndDate');
+    const accountsInput = document.querySelector('#accountsInput');
+    const csvExport = document.querySelector("#exportCsv");
+    const exportPdf = document.querySelector("#exportPdf");
+    const pdfYear = document.querySelector("#pdfYear");
+    const pdfMonth = document.querySelector("#pdfMonth");
+    const refreshData = document.querySelector("#refreshData");
+    const refreshSettings = document.querySelector("#refreshSettings");
 
     const PDF_MONTHS = ['Toute l\'année', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
@@ -141,7 +133,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             // Réinitialiser le select
             accountsInput.innerHTML = '';
             cache_data_accounts.forEach(account => {
-                let checked = accountsSelected.includes(account.id);
+                const checked = accountsSelected.includes(account.id);
                 const option = new Option(account.name, account.id, checked, checked);
                 accountsInput.add(option);
             });
@@ -177,14 +169,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         await loadAccounts();
     });
 
-    // Recharger les comptes quand ils sont chargés depuis le cache ou l'API
-    evt.listen('cache_data_accounts_loaded', async () => {
-        Logger.debug('[Popup] Accounts cache loaded event received');
-        await loadAccounts();
-    });
-
-    evt.listen('data_loaded', async () => {
-        Logger.debug('[Popup] Data loaded event received');
+    // Données chargées par l'onglet Bankin pendant que la popup est ouverte
+    // (premier chargement, ↻) : liste des comptes et années du rapport à jour.
+    const CACHE_KEYS_SHOWN = [Config.getCacheKey('accounts'), Config.getCacheKey('transactions')];
+    chrome.storage.onChanged.addListener(async (changes, area) => {
+        if (area !== 'local' || !Object.keys(changes).some((key) => CACHE_KEYS_SHOWN.includes(key))) return;
+        Logger.debug('[Popup] Données Bankin mises à jour');
         await cacheStore.load();
         await loadAccounts();
         const tx = cacheStore.get('transactions');
@@ -208,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
     
-    let inputs = [startDate, endDate];
+    const inputs = [startDate, endDate];
     for (const input of inputs) {
         input.addEventListener('blur', function () {
             chrome.storage.local.set({ [this.id]: this.value });
@@ -327,7 +317,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     refreshData.addEventListener('click', async function () {
         try {
             await cacheStore.clear(['transactions', 'categories']);
-            evt.dispatch('url_change');
             alert('Les données ont été réinitialisées avec succès. Les paramètres ont été conservés.');
         } catch (error) {
             console.error('[Popup] Erreur lors de la réinitialisation des données:', error);

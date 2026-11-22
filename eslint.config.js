@@ -38,16 +38,10 @@ export default [
             },
         },
         rules: {
-            'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
-            // Règles signalées sans bloquer, à durcir en phase 3c
-            'no-prototype-builtins': 'warn',
-            'no-empty': 'warn',
-            'no-useless-escape': 'warn',
-            'no-case-declarations': 'warn',
-            'no-async-promise-executor': 'warn',
-            eqeqeq: ['warn', 'smart'],
-            'prefer-const': 'warn',
-            'no-var': 'warn',
+            'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+            eqeqeq: ['error', 'smart'],
+            'prefer-const': 'error',
+            'no-var': 'error',
         },
     },
     {

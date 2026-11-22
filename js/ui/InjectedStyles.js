@@ -293,15 +293,6 @@ export class InjectedStyles {
     }
 
     /**
-     * Crée une section avec le style Pecunio
-     */
-    static createSection() {
-        const section = document.createElement('div');
-        section.classList.add('pecunio-section');
-        return section;
-    }
-
-    /**
      * Crée un groupe de contrôles avec le style Pecunio
      */
     static createControlGroup() {
@@ -333,19 +324,6 @@ export class InjectedStyles {
             select.id = id;
         }
         return select;
-    }
-
-    /**
-     * Crée un bouton avec le style Pecunio
-     */
-    static createButton(text, isSecondary = false) {
-        const button = document.createElement('button');
-        button.textContent = text;
-        button.classList.add('pecunio-button');
-        if (isSecondary) {
-            button.classList.add('pecunio-button-secondary');
-        }
-        return button;
     }
 
     /**

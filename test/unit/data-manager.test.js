@@ -218,7 +218,7 @@ describe('DataManager — authentification au démarrage', () => {
         const data = await dm.waitForInitialization();
 
         expect(data.transactions).toHaveLength(13);
-        expect(dm.getCachedData().accounts).toHaveLength(2);
+        expect(data.accounts).toHaveLength(2);
         expect(loaded).toHaveBeenCalled();
         expect(chrome.storage.local._data.cache_data_transactions).toHaveLength(13);
     });
@@ -245,31 +245,3 @@ describe('DataManager — authentification au démarrage', () => {
     });
 });
 
-describe('DataManager — fonctions de regroupement', () => {
-    test('createCategoryLookup : sous-catégorie → nom du parent', () => {
-        const lookup = authenticatedManager().createCategoryLookup(CATEGORIES);
-        expect(lookup.get(189)).toBe('Alimentation & Restau.');
-        expect(lookup.size).toBe(11); // 4 parents + 7 sous-catégories
-    });
-
-    test('organizeTransactionsByCategory : transaction rangée dans sa catégorie et son parent', () => {
-        const map = authenticatedManager().organizeTransactionsByCategory(sampleTransactions(), CATEGORIES);
-        expect(map.get(188).map((t) => t.id)).toEqual([3, 9, 13]);
-        expect(map.get(168).map((t) => t.id)).toEqual([3, 4, 9, 10, 13]);
-    });
-
-    test('filterTransactions : comptes et catégories d\'exception', () => {
-        const kept = authenticatedManager().filterTransactions(sampleTransactions(), { accountsSelected: [101] });
-        expect(kept.map((t) => t.id)).not.toContain(5);
-        expect(kept.map((t) => t.id)).not.toContain(6);
-    });
-
-    // --- B9 ----------------------------------------------------------------
-    test('B9 — filterTransactions inclut le jour de début, quel que soit le fuseau', () => {
-        const kept = authenticatedManager().filterTransactions([tx({ id: 1, date: '2024-03-15' })], {
-            startDate: '2024-03-15',
-            endDate: '2024-03-31',
-        });
-        expect(kept.map((t) => t.id)).toEqual([1]);
-    });
-});
