@@ -97,7 +97,7 @@ Pistes écartées pour l'instant : prévision de fin de mois (peu fiable sans hi
 |---|---|---|
 | **UX-1 Corrections** ✅ | U1 (vérifier), U12 (shields.io), U17, U18, U19, U20 ; police et couleurs de Bankin (§3, `theme.js`) | Défauts visibles et vie privée ; base visuelle commune pour la suite |
 | **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) — découpé en **UX-2a** (page Comptes ✅) et **UX-2b** (Catégories, popup ✅) | Les écrans existants deviennent utiles sans rien ajouter |
-| **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
+| **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 — découpé en **UX-3a** (G3, G6, G2 ✅) et **UX-3b** (G1, G5) | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
 | **UX-4 Exploration** | G4 (récurrents), G6, G7, G9, G8 | Plus d'effort ou de valeur à confirmer |
 
 Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, recette sur le vrai Bankin, une PR.
@@ -118,6 +118,11 @@ Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, 
 - Types de dépenses (U7) : total du mois au centre du donut (masqué avec les montants), part de chaque type dans la légende (« Essentiel · 82 % »), ordre fixe Essentiel / Plaisir / Épargne / Autre.
 - Flux financiers (U8, U9) : sous 2 % des dépenses du mois, petites catégories regroupées en « Autres dépenses » et petites sous-catégories en « <catégorie> (autres) » (seulement s'il reste une sous-catégorie détaillée) ; « Restant » devient « Non dépensé » ; dépenses supérieures aux revenus : flux rouge « Dépassement ».
 - Popup (U13 à U16) : identité Pecunio (en-tête violet avec le logo, vert pour l'export, Open Sans embarquée, plus d'emojis) ; ordre période → comptes → exports ; préréglages **Ce mois / 3 mois / 12 mois / Tout** ; « Période analysée : graphiques de Bankin et export CSV » ; astuce d'épinglage refermable ; actualisation et réinitialisation repliées dans « Avancé » ; lien « Ouvrir Bankin » en pied de page.
+
+**UX-3a** ✅ _(branche `feat/ux-3a-history-pace`)_ :
+- Historique d'une catégorie (G3, U11) : sur la page de détail `/categories/:id`, 12 mois jusqu'au mois affiché par Bankin, sous-catégories empilées dans des nuances de la couleur de Bankin de la catégorie (au-delà de 6 : 5 + « Autres »), mois affiché encadré, médiane des 12 mois précédents en pointillés, synthèse « montant, médiane, écart ». Suit le sélecteur de mois. Calculs dans `js/charts/categoryHistory.js` (testés).
+- Revenus sur 12 mois (G6, U10) : l'onglet Revenus de Bankin est le détail de « Entrées d'argent » (`/categories/2`) ; le même graphique y montre les revenus par source.
+- Rythme du mois (G2) : sur la page Catégories, dépenses cumulées jour après jour (hors revenus, virements internes et épargne, remboursements déduits) face à la médiane des cumuls des 12 mois précédents au même jour ; le mois en cours s'arrête à aujourd'hui (« Au 22 : … d'habitude à cette date »). Calculs dans `js/charts/monthPace.js` (testés).
 
 ## 6. Questions à trancher
 

@@ -122,6 +122,9 @@ test.describe('Page Catégories', () => {
         await page.goto(bankinUrl('/categories'));
         await expect(page.locator(EXPENSE_TYPE_CHART)).toBeVisible();
         await expect(page.locator(SANKEY_CHART)).toBeVisible();
+        // Rythme du mois (lot UX-3a)
+        await expect(page.locator('.pecunio-pace-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-pace-wrapper')).toContainText('Rythme du mois');
 
         // Changement de mois : les graphiques sont reconstruits (nouveaux canvas)
         await page.locator(SANKEY_CHART).evaluate((canvas) => canvas.setAttribute('data-avant', ''));
@@ -141,10 +144,15 @@ test.describe('Page Catégories', () => {
         await page.evaluate(() => window.__bankinNavigate('/categories/2'));
         await expect(page.locator('.pecunio-sankey-wrapper')).toHaveCount(0);
         await expect(page.locator('.pecunio-expense-type-wrapper')).toHaveCount(0);
+        await expect(page.locator('.pecunio-pace-wrapper')).toHaveCount(0);
+        // Onglet Revenus : historique des revenus sur 12 mois (lot UX-3a)
+        await expect(page.locator('.pecunio-history-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-history-wrapper')).toContainText('Revenus sur 12 mois');
 
         // Retour sur Dépenses : les graphiques reviennent
         await page.evaluate(() => window.__bankinNavigate('/categories'));
         await expect(page.locator(SANKEY_CHART)).toBeVisible();
+        await expect(page.locator('.pecunio-history-wrapper')).toHaveCount(0);
         expect(consoleErrors).toEqual([]);
     });
 });

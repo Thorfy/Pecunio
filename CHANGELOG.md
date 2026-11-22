@@ -10,6 +10,9 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 ## [Non publié]
 
 ### Ajouté
+- Historique d'une catégorie : sur la page de détail d'une catégorie, ses 12 derniers mois par sous-catégorie, aux couleurs de Bankin, avec la médiane et le mois affiché mis en avant.
+- Revenus sur 12 mois : l'onglet Revenus montre l'évolution des revenus par source.
+- Rythme du mois sur la page Catégories : dépenses cumulées jour après jour, comparées au rythme habituel au même jour.
 - Popup refaite à l'identité Pecunio : période en un clic (ce mois, 3 mois, 12 mois, tout), sections plus claires, actions rares repliées dans « Avancé », astuce d'épinglage refermable.
 - Types de dépenses : total du mois au centre du graphique et part de chaque type dans la légende.
 - Flux financiers plus lisibles : petits montants regroupés, « Non dépensé » et « Dépassement » quand les dépenses dépassent les revenus.

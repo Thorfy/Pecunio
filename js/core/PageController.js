@@ -1,7 +1,9 @@
 import { BankinPage } from '../bankin/BankinPage.js';
 import { BudgetChart } from '../charts/BudgetChart.js';
+import { CategoryHistoryChart } from '../charts/CategoryHistoryChart.js';
 import { ExpenseTypeChart } from '../charts/ExpenseTypeChart.js';
 import { LineBarChart } from '../charts/LineBarChart.js';
+import { MonthPaceChart } from '../charts/MonthPaceChart.js';
 import { SankeyChart } from '../charts/SankeyChart.js';
 import { Chart } from '../lib/chart.js';
 import { AmountHider } from '../ui/AmountHider.js';
@@ -80,7 +82,7 @@ export class PageController {
         this.evt = evt;
         this.createDataManager = createDataManager;
         this.win = win;
-        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart };
+        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart };
 
         this.dataManager = null;
         this.charts = [];
@@ -287,7 +289,7 @@ export class PageController {
         this.win.__pecunioIsBlurry = !!this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY);
 
         const page = this.currentPage;
-        if (page !== PageController.PAGE.CATEGORIES) this._removeCategoryCharts();
+        this._removeStaleCharts(page);
         if (!PageController.hasCharts(page) || !this._hasData()) return;
 
         const signature = this._signature(page);
@@ -298,7 +300,9 @@ export class PageController {
 
         const built = page === PageController.PAGE.ACCOUNTS
             ? await this._buildAccountsPage()
-            : await this._buildCategoriesPage();
+            : page === PageController.PAGE.CATEGORIES
+                ? await this._buildCategoriesPage()
+                : await this._buildCategoryDetailPage();
         if (!built) return;
 
         this._lastSignature = signature;
@@ -320,7 +324,7 @@ export class PageController {
         let total = 0;
         for (const t of transactions) total += Number(t?.amount) || 0;
         const s = this.settings.getAllSettings();
-        const month = page === PageController.PAGE.CATEGORIES ? this.bankin.activeMonthLabel() : null;
+        const month = page === PageController.PAGE.ACCOUNTS ? null : this.bankin.activeMonthLabel();
         return JSON.stringify([
             page, this.win.location.href, month,
             transactions.length, transactions[0]?.id, transactions[transactions.length - 1]?.id, Math.round(total * 100),
@@ -332,7 +336,11 @@ export class PageController {
     /** Les graphiques de la dernière construction sont-ils toujours dans la page ? */
     _chartsDisplayed(page) {
         if (this.charts.length === 0) return false;
-        const selector = page === PageController.PAGE.ACCOUNTS ? '#budgetChartBlock' : '.pecunio-sankey-wrapper';
+        const selector = {
+            [PageController.PAGE.ACCOUNTS]: '#budgetChartBlock',
+            [PageController.PAGE.CATEGORIES]: '.pecunio-sankey-wrapper',
+            [PageController.PAGE.CATEGORY_DETAIL]: '.pecunio-history-wrapper',
+        }[page];
         return Boolean(this.document.querySelector(selector));
     }
 
@@ -398,6 +406,33 @@ export class PageController {
         const sankeyChart = new SankeyChart(data.transactions, data.categories, monthParams, this.settings);
         this.charts.push(sankeyChart);
         await sankeyChart.render(categoryBlock);
+
+        // Rythme du mois (lot UX-3a)
+        const { MonthPaceChart: PaceChart } = this.chartClasses;
+        if (PaceChart) {
+            const paceChart = new PaceChart(data.transactions, data.categories, monthParams, this.settings);
+            this.charts.push(paceChart);
+            await paceChart.render(categoryBlock);
+        }
+        return true;
+    }
+
+    /** Page de détail d'une catégorie (et onglet Revenus) : historique sur 12 mois (lot UX-3a). */
+    async _buildCategoryDetailPage() {
+        const { CategoryHistoryChart: HistoryChart } = this.chartClasses;
+        this._wireMonthSelector();
+        const monthParams = this.bankin.activeMonth();
+        const categoryBlock = this.bankin.categoryChart();
+        const categoryId = BankinPage.categoryIdFromUrl(this.win.location.href);
+        if (!HistoryChart || !monthParams || !categoryBlock || categoryId == null) {
+            Logger.debug('Page de détail : mois, bloc ou catégorie introuvable');
+            return false;
+        }
+        this._destroyCharts();
+        const data = this._chartData();
+        const historyChart = new HistoryChart(data.transactions, data.categories, { categoryId, monthParams }, this.settings);
+        this.charts.push(historyChart);
+        await historyChart.render(categoryBlock);
         return true;
     }
 
@@ -443,9 +478,22 @@ export class PageController {
         this.charts = [];
     }
 
-    /** Retire les graphiques de dépenses (vue Revenus, autres pages) (bug B6). */
-    _removeCategoryCharts() {
-        const wrappers = this.document.querySelectorAll('.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper');
+    /**
+     * Retire les graphiques qui ne concernent pas la page affichée : graphiques
+     * de la page Catégories ailleurs (bug B6), historique hors page de détail.
+     * @param {string} page
+     */
+    _removeStaleCharts(page) {
+        const selectors = [];
+        if (page !== PageController.PAGE.CATEGORIES) selectors.push('.pecunio-expense-type-wrapper', '.pecunio-sankey-wrapper', '.pecunio-pace-wrapper');
+        if (page !== PageController.PAGE.CATEGORY_DETAIL) selectors.push('.pecunio-history-wrapper');
+        this._removeWrappers(selectors);
+    }
+
+    /** Retire des cartes Pecunio et détruit leurs graphiques. */
+    _removeWrappers(selectors) {
+        if (selectors.length === 0) return;
+        const wrappers = this.document.querySelectorAll(selectors.join(', '));
         if (wrappers.length === 0) return;
         this._destroyCharts();
         wrappers.forEach((wrapper) => {

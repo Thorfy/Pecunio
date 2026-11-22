@@ -45,10 +45,13 @@ const accountsBody = `
 </ul></div></section></div></td>
 <td class="vat rel rightColumn"><div class="scrollable bgw homeBlock"><p>Bienvenue sur Bankin</p></div></td></tr>`;
 
-const categoriesBody = (activeIndex) => `
+/** Sélecteur de mois (pages Catégories et détail d'une catégorie). */
+const monthSelector = (activeIndex) => `
 <tr><td class="bgw vam topAnalytics rel"><section><nav id="monthSelector" class="fs09 fw6 tac">
   ${MONTHS.map((m, i) => `<a class="dib${i === activeIndex ? ' active' : ''}" data-index="${i}"><span class="dib">${i === activeIndex ? m.label : m.short}</span></a>`).join('')}
-</nav></section></td></tr>
+</nav></section></td></tr>`;
+
+const categoriesBody = (activeIndex) => `${monthSelector(activeIndex)}
 <tr><td class="vat rel leftColumn"><div id="contentList" class="scrollable"><ul class="bgw active">
   <li><a class="dbl cntr categoryRow"><div class="m1 ml15 mr15"><div class="dtb tlf w100 fs1"><div class="dtc vam">Logement</div><div class="dtc vam tar w30"><span class="dbl elp ml04 fs11 fw7">800,00 €</span></div></div></div></a></li>
   <li><a class="dbl cntr categoryRow"><div class="m1 ml15 mr15"><div class="dtb tlf w100 fs1"><div class="dtc vam">Alimentation</div><div class="dtc vam tar w30"><span class="dbl elp ml04 fs11 fw7">150,00 €</span></div></div></div></a></li>
@@ -58,7 +61,7 @@ const categoriesBody = (activeIndex) => `
   <div id="donutChart" class="m0a mt2 mb1"><svg width="100" height="100"><g><g class="arc"><text>84 %</text></g></g></svg></div>
 </div></div></div></td></tr>`;
 
-const incomeBody = `
+const incomeBody = (activeIndex) => `${monthSelector(activeIndex)}
 <tr><td class="vat rel leftColumn"><div id="contentList" class="scrollable"><ul class="bgw active">
   <li><a class="dbl cntr categoryRow"><div class="m1 ml15 mr15"><div class="dtb tlf w100 fs1"><div class="dtc vam">Salaires</div><div class="dtc vam tar w30"><span class="dbl elp ml04 fs11 fw7">2 500,00 €</span></div></div></div></a></li>
 </ul></div></td>
@@ -70,7 +73,8 @@ const incomeBody = `
 function bodyFor(pathname) {
     if (pathname === '/accounts') return accountsBody;
     if (pathname === '/categories') return categoriesBody(MONTHS.length - 1);
-    if (pathname.startsWith('/categories/')) return incomeBody;
+    // Détail d'une catégorie (dont l'onglet Revenus, /categories/2) : même structure
+    if (pathname.startsWith('/categories/')) return incomeBody(MONTHS.length - 1);
     return '';
 }
 
