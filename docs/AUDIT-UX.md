@@ -96,7 +96,7 @@ Pistes écartées pour l'instant : prévision de fin de mois (peu fiable sans hi
 | Lot | Contenu | Pourquoi d'abord |
 |---|---|---|
 | **UX-1 Corrections** ✅ | U1 (vérifier), U12 (shields.io), U17, U18, U19, U20 ; police et couleurs de Bankin (§3, `theme.js`) | Défauts visibles et vie privée ; base visuelle commune pour la suite |
-| **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) — découpé en **UX-2a** (page Comptes ✅) et **UX-2b** (Catégories, popup) | Les écrans existants deviennent utiles sans rien ajouter |
+| **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) — découpé en **UX-2a** (page Comptes ✅) et **UX-2b** (Catégories, popup ✅) | Les écrans existants deviennent utiles sans rien ajouter |
 | **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
 | **UX-4 Exploration** | G4 (récurrents), G6, G7, G9, G8 | Plus d'effort ou de valeur à confirmer |
 
@@ -113,6 +113,11 @@ Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, 
 **UX-2a** ✅ _(branche `feat/ux-2a-accounts-charts`)_ :
 - Graphique temporel (U2, U3, U6) : 12 mois par défaut, boutons **6 mois / 12 mois / 24 mois / Tout**, vue simplifiée (revenus, 5 catégories de dépenses principales de la période, « Autres dépenses ») ou **toutes les catégories**, **ligne du solde du mois** ; préférences `chartRange` et `chartDetailed`. Calculs dans `js/charts/timeline.js` (testés).
 - Comparaison du budget (U4, U5) : préréglages **Ce mois-ci**, **Mois dernier** (par défaut), **Cette année** face à la médiane des 12 mois précédents ou à l'an dernier, et **Personnaliser** (les listes de choix, repliées) ; dépenses seules en barres horizontales triées, synthèse « total et écart », écart par catégorie dans l'infobulle ; préférence `budgetPreset`. Calculs dans `js/charts/budgetComparison.js` (testés).
+
+**UX-2b** ✅ _(branche `feat/ux-2b-categories-popup`)_ :
+- Types de dépenses (U7) : total du mois au centre du donut (masqué avec les montants), part de chaque type dans la légende (« Essentiel · 82 % »), ordre fixe Essentiel / Plaisir / Épargne / Autre.
+- Flux financiers (U8, U9) : sous 2 % des dépenses du mois, petites catégories regroupées en « Autres dépenses » et petites sous-catégories en « <catégorie> (autres) » (seulement s'il reste une sous-catégorie détaillée) ; « Restant » devient « Non dépensé » ; dépenses supérieures aux revenus : flux rouge « Dépassement ».
+- Popup (U13 à U16) : identité Pecunio (en-tête violet avec le logo, vert pour l'export, Open Sans embarquée, plus d'emojis) ; ordre période → comptes → exports ; préréglages **Ce mois / 3 mois / 12 mois / Tout** ; « Période analysée : graphiques de Bankin et export CSV » ; astuce d'épinglage refermable ; actualisation et réinitialisation repliées dans « Avancé » ; lien « Ouvrir Bankin » en pied de page.
 
 ## 6. Questions à trancher
 

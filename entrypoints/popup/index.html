@@ -2,8 +2,19 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Pecunio - Export CSV</title>
+    <title>Pecunio</title>
     <style>
+        /* Identité Pecunio (docs/assets/brand/README.md) ; police Open Sans embarquée (main.js) */
+        :root {
+            --violet: #6562fc;
+            --indigo: #1e1673;
+            --green: #2ee6a6;
+            --navy: #00213c;
+            --muted: #5b6b7c;
+            --line: #e6ebf2;
+            --bg: #f4f6fb;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -11,380 +22,368 @@
         }
 
         body {
-            width: 380px;
-            min-height: 500px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            width: 360px;
+            font-family: "Open Sans", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--navy);
+            font-size: 14px;
             overflow-x: hidden;
         }
 
-        .container {
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            margin: 10px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, var(--indigo), var(--violet));
+            color: #fff;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #f0f0f0;
+        .header img {
+            width: 40px;
+            height: 40px;
         }
 
         .logo {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
+            line-height: 1.1;
         }
 
         .subtitle {
-            color: #666;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 12px;
+            opacity: 0.85;
+        }
+
+        .content {
+            padding: 12px;
+            display: grid;
+            gap: 10px;
         }
 
         .section {
-            margin-bottom: 24px;
             background: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border: 1px solid #f0f0f0;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px 14px;
         }
 
         .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 2px;
         }
 
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 16px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 2px;
+        .section-hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
         }
 
         .form-group {
-            margin-bottom: 16px;
+            margin-top: 10px;
+        }
+
+        .form-group:first-child {
+            margin-top: 0;
         }
 
         .form-label {
             display: block;
-            font-size: 14px;
-            font-weight: 500;
-            color: #555;
-            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
         }
 
         .form-input {
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e1e5e9;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
             border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s ease;
+            font: inherit;
+            color: var(--navy);
             background: #fff;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--violet);
+            box-shadow: 0 0 0 3px rgba(101, 98, 252, 0.15);
         }
 
         .form-input:disabled {
-            background: #f8f9fa;
-            color: #6c757d;
-            cursor: not-allowed;
+            background: var(--bg);
+            color: var(--muted);
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-top: 10px;
+            font-size: 13px;
         }
 
         .checkbox {
-            width: 18px;
-            height: 18px;
-            accent-color: #667eea;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--violet);
+        }
+
+        /* Préréglages de période (U15) */
+        .presets {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .presets button {
+            padding: 6px 4px;
+            border: none;
+            border-right: 1px solid var(--line);
+            background: #fff;
+            color: var(--muted);
+            font: 600 12px "Open Sans", Arial, sans-serif;
             cursor: pointer;
         }
 
-        .checkbox-label {
-            font-size: 14px;
-            color: #555;
-            cursor: pointer;
-            user-select: none;
+        .presets button:last-child {
+            border-right: none;
+        }
+
+        .presets button[aria-pressed="true"] {
+            background: var(--violet);
+            color: #fff;
         }
 
         .btn {
+            display: block;
             width: 100%;
-            padding: 14px 20px;
+            padding: 10px 14px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
+            font: 600 14px "Open Sans", Arial, sans-serif;
             text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: filter 0.15s ease;
+        }
+
+        .btn:hover {
+            filter: brightness(1.05);
+        }
+
+        .btn:focus-visible,
+        .presets button:focus-visible,
+        summary:focus-visible {
+            outline: 2px solid var(--violet);
+            outline-offset: 2px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-secondary {
-            background: #f8f9fa;
-            color: #6c757d;
-            border: 2px solid #e1e5e9;
-        }
-
-        .btn-secondary:hover {
-            background: #e9ecef;
-            border-color: #adb5bd;
+            background: var(--violet);
+            color: #fff;
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
+            background: var(--green);
+            color: var(--navy);
         }
 
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        .btn-secondary {
+            background: #fff;
+            color: var(--navy);
+            border: 1px solid var(--line);
+        }
+
+        /* Bandeau d'épinglage, refermable (U13) */
+        .pin-banner {
+            position: relative;
+            background: #fff8e6;
+            border: 1px solid #ffe2a3;
+            border-radius: 10px;
+            padding: 10px 34px 10px 12px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .pin-banner button {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            border: none;
+            background: none;
+            font-size: 18px;
+            line-height: 1;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        details.section summary {
+            font-weight: 700;
+            cursor: pointer;
+            list-style-position: inside;
+        }
+
+        details.section[open] summary {
+            margin-bottom: 4px;
         }
 
         .footer {
-            text-align: center;
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid #f0f0f0;
-        }
-
-        .version-info {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .version-badge {
-            background: #f8f9fa;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 4px 16px 14px;
             font-size: 12px;
-            color: #6c757d;
+            color: var(--muted);
         }
 
-        .bankin-link {
-            font-size: 14px;
-            color: #667eea;
+        .footer a {
+            color: var(--violet);
+            font-weight: 600;
             text-decoration: none;
-            font-weight: 500;
         }
 
-        .bankin-link:hover {
+        .footer a:hover {
             text-decoration: underline;
         }
 
-        /* Styles pour Choices.js */
-        .choices {
+        /* Choices.js (sélection des comptes) ; préfixe .section : passe devant la
+           feuille de style de Choices, chargée après celle-ci */
+        .section .choices {
             margin-bottom: 0;
         }
 
-        .choices__inner {
+        .section .choices__inner {
             background: #fff;
-            border: 2px solid #e1e5e9;
+            border: 1px solid var(--line);
             border-radius: 8px;
-            min-height: 48px;
-            padding: 8px 12px;
+            min-height: 42px;
+            padding: 6px 8px;
+            font-size: 13px;
         }
 
-        .choices__list--multiple .choices__item {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .section .choices__list--multiple .choices__item {
+            background: var(--violet);
             border: none;
             border-radius: 6px;
-            color: white;
-            font-size: 13px;
-            padding: 4px 8px;
+            color: #fff;
+            font-size: 12px;
+            padding: 3px 8px;
         }
 
-        .choices__list--dropdown {
-            border: 2px solid #e1e5e9;
+        .section .choices__list--multiple .choices__item .choices__button {
+            border-left-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .section .choices__list--dropdown {
+            border: 1px solid var(--line);
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 33, 60, 0.1);
         }
 
-        .choices__list--dropdown .choices__item--selectable {
-            padding: 10px 12px;
+        .section .choices__list--dropdown .choices__item--selectable {
+            padding: 8px 10px;
         }
 
-        .choices__list--dropdown .choices__item--selectable.is-highlighted {
-            background: #f8f9fa;
-            color: #333;
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .section {
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .section:nth-child(2) { animation-delay: 0.1s; }
-        .section:nth-child(3) { animation-delay: 0.2s; }
-        .section:nth-child(4) { animation-delay: 0.3s; }
-
-        /* Responsive */
-        @media (max-width: 400px) {
-            .container {
-                margin: 5px;
-                padding: 15px;
-            }
+        .section .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background: var(--bg);
+            color: var(--navy);
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
+    <header class="header">
+        <img src="/asset/logo.png" alt="">
+        <div>
             <div class="logo">Pecunio</div>
-            <div class="subtitle">Export intelligent de vos données bancaires</div>
+            <div class="subtitle">Vos finances Bankin, enfin lisibles</div>
+        </div>
+    </header>
+
+    <main class="content">
+        <!-- Instructions d'épinglage : affichées si l'extension n'est pas épinglée, refermables -->
+        <div class="pin-banner" id="pinInstructionsSection" style="display: none;">
+            <strong>Astuce :</strong> épinglez Pecunio pour l'ouvrir en un clic : icône <strong>Extensions</strong> de Chrome, puis <strong>Épingler</strong> à côté de Pecunio.
+            <button type="button" id="pinDismiss" aria-label="Masquer l'astuce">×</button>
         </div>
 
-        <!-- Section Instructions d'épinglage -->
-        <div class="section" id="pinInstructionsSection" style="display: none;">
-            <div class="section-title">📌 Accès rapide</div>
-            <div class="pin-instructions">
-                <p style="margin-bottom: 12px; color: #555; font-size: 14px;">
-                    Pour un accès rapide à Pecunio, épinglez l'extension à la barre d'outils :
-                </p>
-                <ol style="margin-left: 20px; margin-bottom: 12px; color: #555; font-size: 14px; line-height: 1.6;">
-                    <li>Cliquez sur l'icône <strong>Extensions</strong> (🧩) dans la barre d'outils Chrome</li>
-                    <li>Repérez <strong>Pecunio</strong> dans la liste</li>
-                    <li>Cliquez sur l'icône <strong>Épingler</strong> (📌) à côté de Pecunio</li>
-                </ol>
+        <!-- Période : filtre les graphiques de Bankin et l'export CSV (U3, U14) -->
+        <section class="section">
+            <div class="section-title">Période analysée</div>
+            <div class="section-hint">Graphiques de Bankin et export CSV</div>
+            <div class="presets" id="periodPresets" role="group" aria-label="Préréglages de période">
+                <button type="button" data-months="1">Ce mois</button>
+                <button type="button" data-months="3">3 mois</button>
+                <button type="button" data-months="12">12 mois</button>
+                <button type="button" data-months="all">Tout</button>
             </div>
-        </div>
-
-        <!-- Lien Bankin (toujours visible) -->
-        <div class="section section-bankin-link">
-            <a href="https://app2.bankin.com/signin" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                🔗 Aller sur Bankin
-            </a>
-        </div>
-
-        <!-- Section Dates -->
-        <div class="section">
-            <div class="section-title">📅 Période d'export</div>
-            
-            <div class="form-group">
-                <label class="form-label">Date de début</label>
-                <input type="date" id="startDate" class="form-input">
-            </div>
-
-            <div class="checkbox-group">
-                <input type="checkbox" id="noEndDate" class="checkbox">
-                <label for="noEndDate" class="checkbox-label">Jusqu'à aujourd'hui (pas de limite)</label>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Date de fin</label>
-                <input type="date" id="endDate" class="form-input">
-            </div>
-        </div>
-
-        <!-- Section Comptes -->
-        <div class="section">
-            <div class="section-title">🏦 Comptes à inclure</div>
-            <div class="form-group">
-                <label class="form-label">Sélectionnez vos comptes</label>
-                <select id="accountsInput" multiple class="form-input"></select>
-            </div>
-        </div>
-
-        <!-- Section Actions -->
-        <div class="section">
-            <div class="section-title">📊 Export des données</div>
-
-            <div class="form-group" id="pdfPeriodGroup">
-                <label class="form-label">📄 Période du rapport PDF</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
-                    <div>
-                        <label for="pdfYear" style="font-size: 12px; color: #666;">Année</label>
-                        <select id="pdfYear" class="form-input" style="margin-top: 4px;"></select>
-                    </div>
-                    <div>
-                        <label for="pdfMonth" style="font-size: 12px; color: #666;">Mois</label>
-                        <select id="pdfMonth" class="form-input" style="margin-top: 4px;"></select>
-                    </div>
+            <div class="form-row form-group">
+                <div>
+                    <label class="form-label" for="startDate">Du</label>
+                    <input type="date" id="startDate" class="form-input">
+                </div>
+                <div>
+                    <label class="form-label" for="endDate">Au</label>
+                    <input type="date" id="endDate" class="form-input">
                 </div>
             </div>
-            
+            <div class="checkbox-group">
+                <input type="checkbox" id="noEndDate" class="checkbox">
+                <label for="noEndDate">Jusqu'à aujourd'hui</label>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-title">Comptes</div>
+            <div class="section-hint">Comptes pris en compte partout</div>
+            <select id="accountsInput" multiple class="form-input" aria-label="Comptes"></select>
+        </section>
+
+        <section class="section">
+            <div class="section-title">Exporter</div>
             <div class="form-group">
-                <button id="exportCsv" class="btn btn-success">
-                    📥 Exporter en CSV
-                </button>
+                <button id="exportCsv" class="btn btn-success">Exporter la période en CSV</button>
             </div>
-
+            <div class="form-group" id="pdfPeriodGroup">
+                <label class="form-label">Rapport PDF</label>
+                <div class="form-row">
+                    <select id="pdfYear" class="form-input" aria-label="Année du rapport"></select>
+                    <select id="pdfMonth" class="form-input" aria-label="Mois du rapport"></select>
+                </div>
+            </div>
             <div class="form-group">
-                <button id="exportPdf" class="btn btn-primary">
-                    📄 Générer rapport PDF
-                </button>
+                <button id="exportPdf" class="btn btn-primary">Générer le rapport PDF</button>
             </div>
+        </section>
 
+        <!-- Actions rares, repliées (U13) -->
+        <details class="section">
+            <summary>Avancé</summary>
+            <div class="section-hint">Recharger les données depuis Bankin ou revenir aux réglages par défaut.</div>
             <div class="form-group">
-                <button id="refreshData" class="btn btn-secondary">
-                    🔄 Actualiser les données
-                </button>
+                <button id="refreshData" class="btn btn-secondary">Actualiser les données</button>
             </div>
-
             <div class="form-group">
-                <button id="refreshSettings" class="btn btn-secondary">
-                    ⚙️ Réinitialiser les paramètres
-                </button>
+                <button id="refreshSettings" class="btn btn-secondary">Réinitialiser les paramètres</button>
             </div>
-        </div>
+        </details>
+    </main>
 
-        <!-- Footer -->
-        <div class="footer">
-            <div class="version-info">
-                <span class="version-badge">v<span id="currentVersion"></span></span>
-                <a href="https://github.com/Thorfy/Pecunio/releases/latest" target="_blank" class="bankin-link">
-                    Voir les nouveautés
-                </a>
-            </div>
-
-        </div>
-    </div>
+    <footer class="footer">
+        <span>v<span id="currentVersion"></span> · <a href="https://github.com/Thorfy/Pecunio/releases/latest" target="_blank" rel="noopener noreferrer">Nouveautés</a></span>
+        <a href="https://app2.bankin.com/signin" target="_blank" rel="noopener noreferrer">Ouvrir Bankin →</a>
+    </footer>
 
     <script type="module" src="./main.js"></script>
 </body>

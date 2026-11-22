@@ -27,8 +27,8 @@ export class SankeyChart extends BaseChartData {
                 datasets: [{
                     label: 'Flux financiers',
                     data: data,
-                    colorFrom: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
-                    colorTo: (c) => ColorParser.parseColorCSS("categoryColor_" + c.dataset.data[c.dataIndex].id),
+                    colorFrom: (c) => SankeyChart.flowColor(c.dataset.data[c.dataIndex].id),
+                    colorTo: (c) => SankeyChart.flowColor(c.dataset.data[c.dataIndex].id),
                     colorMode: '',
                 }]
             },
@@ -90,8 +90,84 @@ export class SankeyChart extends BaseChartData {
         const filteredTransactions = this.applySettingOnDataByMonth(this.params[0], this.params[1]);
         const transactionByCategory = this.mergeTransactionByCategory(filteredTransactions, this.categories);
         const formattedData = this.getDataFormated(this.categories, transactionByCategory, true);
-        const sankeyData = this.convertDataToSankeyFormat(formattedData);
-        return sankeyData;
+        return SankeyChart.groupSmallFlows(this.convertDataToSankeyFormat(formattedData));
+    }
+
+    /** Nœuds sans catégorie Bankin : identifiants et couleurs propres. */
+    static SPECIAL_FLOWS = Object.freeze({
+        others: 'rgb(173, 184, 197)',
+        overspend: 'rgb(252, 93, 106)',
+    });
+
+    /** Part des dépenses du mois sous laquelle un flux est regroupé (U8). */
+    static SMALL_FLOW_SHARE = 0.02;
+
+    /**
+     * Couleur d'un flux : couleur de Bankin de la catégorie, ou couleur propre
+     * aux nœuds « Autres » et « Dépassement » ; gris à défaut (pas de règle CSS).
+     * @param {number | string} id
+     */
+    static flowColor(id) {
+        if (SankeyChart.SPECIAL_FLOWS[id]) return SankeyChart.SPECIAL_FLOWS[id];
+        const color = ColorParser.parseColorCSS(`categoryColor_${id}`);
+        return color && !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(color) ? color : SankeyChart.SPECIAL_FLOWS.others;
+    }
+
+    /**
+     * Regroupe les petits flux (U8) pour garder des libellés lisibles :
+     * - catégories sous `share` des dépenses du mois → « Autres dépenses »
+     *   (sans le détail de leurs sous-catégories) ;
+     * - sous-catégories sous ce seuil, au moins deux pour une même catégorie
+     *   → « <catégorie> (autres) ».
+     * @param {{ from: string, to: string, flow: number, id: number | string }[]} sankeyData
+     * @param {number} [share]
+     */
+    static groupSmallFlows(sankeyData, share = SankeyChart.SMALL_FLOW_SHARE) {
+        const expenses = sankeyData.filter((d) => d.from === 'Dépenses');
+        const total = expenses.reduce((sum, d) => sum + d.flow, 0);
+        if (total <= 0) return sankeyData;
+        const threshold = total * share;
+        const round = (value) => Math.round(value * 100) / 100;
+        const sum = (flows) => round(flows.reduce((acc, d) => acc + d.flow, 0));
+
+        // Petites catégories : regroupées s'il y en a au moins deux
+        const smallParents = expenses.filter((d) => d.flow < threshold);
+        const groupedParents = new Set(smallParents.length >= 2 ? smallParents.map((d) => d.to) : []);
+
+        // Petites sous-catégories : regroupées s'il y en a au moins deux et qu'il
+        // reste au moins une sous-catégorie détaillée (sinon « X (autres) » seul n'apporte rien)
+        const parents = new Set(expenses.map((e) => e.to));
+        const smallChildren = new Map();
+        for (const parent of parents) {
+            const children = sankeyData.filter((d) => d.from === parent);
+            const small = children.filter((d) => d.flow < threshold);
+            if (small.length >= 2 && small.length < children.length) smallChildren.set(parent, small);
+        }
+
+        // Ordre d'origine conservé : un flux regroupé prend la place du premier qu'il remplace
+        const result = [];
+        let othersAdded = false;
+        const mergedChildren = new Set();
+        for (const d of sankeyData) {
+            if (d.from === 'Dépenses' && groupedParents.has(d.to)) {
+                if (!othersAdded) {
+                    result.push({ from: 'Dépenses', to: 'Autres dépenses', flow: sum(smallParents), id: 'others' });
+                    othersAdded = true;
+                }
+                continue;
+            }
+            if (groupedParents.has(d.from)) continue; // détail d'une catégorie regroupée
+            const small = smallChildren.get(d.from);
+            if (small?.includes(d)) {
+                if (!mergedChildren.has(d.from)) {
+                    result.push({ from: d.from, to: `${d.from} (autres)`, flow: sum(small), id: d.id });
+                    mergedChildren.add(d.from);
+                }
+                continue;
+            }
+            result.push(d);
+        }
+        return result;
     }
 
     getDataFormated(categoryData, transactionByCategory, isCumulative = false) {
@@ -212,10 +288,20 @@ export class SankeyChart extends BaseChartData {
             }
         });
 
-        if (totalBudget > totalExpense) {
-            sankeyData.push({ from: "Budget", to: "Restant", flow: totalBudget - totalExpense, id: Config.CATEGORIES.BUDGET_CATEGORY_ID });
+        const round = (value) => Math.round(value * 100) / 100;
+        if (totalBudget >= totalExpense) {
+            // Ce qui reste des revenus du mois (U9 : « Non dépensé » plutôt que « Restant »)
+            if (totalBudget > totalExpense) {
+                sankeyData.push({ from: "Budget", to: "Non dépensé", flow: round(totalBudget - totalExpense), id: Config.CATEGORIES.BUDGET_CATEGORY_ID });
+            }
+            sankeyData.push({ from: "Budget", to: "Dépenses", flow: round(totalExpense), id: Config.CATEGORIES.EXPENSES_CATEGORY_ID });
+        } else {
+            // Dépenses supérieures aux revenus : l'écart apparaît comme « Dépassement » (U9)
+            if (totalBudget > 0) {
+                sankeyData.push({ from: "Budget", to: "Dépenses", flow: round(totalBudget), id: Config.CATEGORIES.EXPENSES_CATEGORY_ID });
+            }
+            sankeyData.push({ from: "Dépassement", to: "Dépenses", flow: round(totalExpense - totalBudget), id: 'overspend' });
         }
-        sankeyData.push({ from: "Budget", to: "Dépenses", flow: totalExpense, id: Config.CATEGORIES.EXPENSES_CATEGORY_ID });
 
         return sankeyData;
     }

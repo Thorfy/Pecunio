@@ -101,6 +101,35 @@ describe('Popup — période', () => {
     });
 });
 
+describe('Popup — préréglages de période (U15)', () => {
+    const pressed = () => [...document.querySelectorAll('#periodPresets button[aria-pressed="true"]')].map((b) => b.textContent);
+    const firstOfMonth = (monthsBack) => DateRange.addMonths(`${DateRange.getTodayInputValue().slice(0, 7)}-01`, -monthsBack);
+
+    test("« 3 mois » : début du mois il y a 2 mois, jusqu'à aujourd'hui, enregistré", async () => {
+        const { $, stored } = await openPopup(cached());
+        [...document.querySelectorAll('#periodPresets button')].find((b) => b.textContent === '3 mois').click();
+        expect($('#startDate').value).toBe(firstOfMonth(2));
+        expect($('#noEndDate').checked).toBe(true);
+        expect($('#endDate').disabled).toBe(true);
+        expect(pressed()).toEqual(['3 mois']);
+        await vi.waitFor(() => expect(stored()).toMatchObject({ startDate: firstOfMonth(2), noEndDate: true }));
+    });
+
+    test('« Tout » : depuis la plus ancienne transaction', async () => {
+        const { $ } = await openPopup(cached());
+        [...document.querySelectorAll('#periodPresets button')].find((b) => b.textContent === 'Tout').click();
+        expect($('#startDate').value).toBe('2024-01-05');
+        expect(pressed()).toEqual(['Tout']);
+    });
+
+    test("bouton actif retrouvé à l'ouverture ; aucun si les dates ne correspondent à aucun préréglage", async () => {
+        await openPopup({ ...cached(), startDate: firstOfMonth(0), noEndDate: true });
+        expect(pressed()).toEqual(['Ce mois']);
+        await openPopup({ ...cached(), startDate: '2024-02-01', endDate: '2024-02-29', noEndDate: false });
+        expect(pressed()).toEqual([]);
+    });
+});
+
 describe('Popup — comptes', () => {
     test('comptes du cache proposés, tous sélectionnés au premier passage', async () => {
         const { $, stored } = await openPopup(cached());
@@ -196,6 +225,17 @@ describe('Popup — épinglage', () => {
     test('extension non épinglée : instructions affichées', async () => {
         const { $ } = await openPopup(cached(), { pinned: false });
         expect($('#pinInstructionsSection').style.display).toBe('block');
+    });
+
+    test('astuce refermable, et plus affichée ensuite', async () => {
+        localStorage.removeItem('pecunio_pin_dismissed');
+        const { $ } = await openPopup(cached(), { pinned: false });
+        expect($('#pinInstructionsSection').style.display).toBe('block');
+        $('#pinDismiss').click();
+        expect($('#pinInstructionsSection').style.display).toBe('none');
+        const again = await openPopup(cached(), { pinned: false });
+        expect(again.$('#pinInstructionsSection').style.display).toBe('none');
+        localStorage.removeItem('pecunio_pin_dismissed');
     });
 
     test('extension épinglée : instructions masquées', async () => {

@@ -7,9 +7,26 @@ import { Settings } from '../../js/core/Settings.js';
 import { DataMerger } from '../../js/services/DataMerger.js';
 import { ReportStorage } from '../../js/services/ReportStorage.js';
 import Choices from 'choices.js';
+// Open Sans embarquée : aucune requête vers un service tiers (U12)
+import '@fontsource/open-sans/latin-400.css';
+import '@fontsource/open-sans/latin-600.css';
+import '@fontsource/open-sans/latin-700.css';
 import 'choices.js/public/assets/styles/choices.min.css';
 
 // Popup de l'extension : période, comptes, export CSV et rapport PDF.
+
+/** Clé (localStorage de la popup) : astuce d'épinglage refermée. */
+const PIN_DISMISSED_KEY = 'pecunio_pin_dismissed';
+
+/**
+ * Date de début d'un préréglage de période (U15) : premier jour du mois,
+ * `months` mois en arrière (1 = ce mois-ci).
+ * @param {number} months
+ * @param {string} today date du jour `YYYY-MM-DD`
+ */
+export function presetStartDate(months, today) {
+    return DateRange.addMonths(`${today.slice(0, 7)}-01`, -(months - 1));
+}
 
 const settingClass = new Settings();
 const cacheStore = new CacheStore();
@@ -178,6 +195,35 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (tx && tx.length) fillPdfYearSelect(tx);
     });
 
+    // Préréglages de période (U15) : début du mois, jusqu'à aujourd'hui
+    const presetButtons = /** @type {HTMLButtonElement[]} */ (Array.from(document.querySelectorAll('#periodPresets button')));
+    const oldestTransactionDate = () => {
+        const dates = (cacheStore.get('transactions') || []).map((t) => DateRange.toDateOnly(t.date)).filter(Boolean);
+        return dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null;
+    };
+    const presetStart = (value) => {
+        const today = DateRange.getTodayInputValue();
+        return value === 'all' ? oldestTransactionDate() || presetStartDate(12, today) : presetStartDate(Number(value), today);
+    };
+    /** Bouton actif : celui dont la période correspond aux dates affichées. */
+    function markPreset() {
+        presetButtons.forEach((button) => {
+            const active = noEndDateCheckbox.checked && startDate.value === presetStart(button.dataset.months);
+            button.setAttribute('aria-pressed', String(active));
+        });
+    }
+    presetButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+            startDate.value = presetStart(button.dataset.months);
+            noEndDateCheckbox.checked = true;
+            endDate.value = DateRange.getTodayInputValue();
+            endDate.disabled = true;
+            markPreset();
+            await chrome.storage.local.set({ startDate: startDate.value, endDate: endDate.value, noEndDate: true });
+        });
+    });
+    markPreset();
+
     accountsInput.addEventListener('change', function () {
         const selectedOptions = Array.from(this.selectedOptions).map(option => parseInt(option.value));
         chrome.storage.local.set({ accountsSelected: selectedOptions });
@@ -186,6 +232,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Event listener pour la checkbox "pas de date de fin"
     noEndDateCheckbox.addEventListener('change', function () {
         endDate.disabled = this.checked;
+        markPreset();
         chrome.storage.local.set({ noEndDate: this.checked });
         
         // Si activé, mettre à jour la date de fin à aujourd'hui
@@ -199,6 +246,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     for (const input of inputs) {
         input.addEventListener('blur', function () {
             chrome.storage.local.set({ [this.id]: this.value });
+            markPreset();
         });
     }
 
@@ -351,8 +399,28 @@ async function checkAndShowPinInstructions() {
             return;
         }
 
+        const dismissed = () => {
+            try {
+                return localStorage.getItem(PIN_DISMISSED_KEY) === '1';
+            } catch {
+                return false;
+            }
+        };
+        document.querySelector('#pinDismiss')?.addEventListener('click', () => {
+            try {
+                localStorage.setItem(PIN_DISMISSED_KEY, '1');
+            } catch {
+                // stockage indisponible : l'astuce reviendra à la prochaine ouverture
+            }
+            pinInstructionsSection.style.display = 'none';
+        });
+
         // Fonction pour vérifier et mettre à jour l'affichage
         const updatePinInstructions = async () => {
+            if (dismissed()) {
+                pinInstructionsSection.style.display = 'none';
+                return;
+            }
             try {
                 const userSettings = await chrome.action.getUserSettings();
                 const isPinned = userSettings.isOnToolbar;

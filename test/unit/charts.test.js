@@ -249,18 +249,75 @@ describe('SankeyChart — données', () => {
             ['Dépenses', 'Alimentation & Restau.', 165.5],
             ['Logement', 'Loyer', 800],
             ['Dépenses', 'Logement', 800],
-            ['Budget', 'Restant', 1534.5],
+            ['Budget', 'Non dépensé', 1534.5],
             ['Budget', 'Dépenses', 965.5],
         ]);
     });
 
-    test('pas de « Restant » quand les dépenses dépassent le budget', async () => {
-        const data = await sankey([tx({ amount: -50, categoryId: 188, date: '2024-01-10' })]);
+    test('dépenses supérieures aux revenus : « Dépassement » plutôt que « Non dépensé » (U9)', async () => {
+        const data = await sankey([
+            tx({ amount: 30, categoryId: 230, date: '2024-01-31' }),
+            tx({ amount: -50, categoryId: 188, date: '2024-01-10' }),
+        ]);
         expect(flows(data)).toEqual([
+            ['Salaires', 'Budget', 30],
             ['Alimentation & Restau.', 'Supermarché / Epicerie', 50],
             ['Dépenses', 'Alimentation & Restau.', 50],
-            ['Budget', 'Dépenses', 50],
+            ['Budget', 'Dépenses', 30],
+            ['Dépassement', 'Dépenses', 20],
         ]);
+        expect(data.at(-1).id).toBe('overspend');
+    });
+
+    test('petits flux regroupés : catégories et sous-catégories sous 2 % (U8)', () => {
+        const data = [
+            { from: 'Logement', to: 'Loyer', flow: 900, id: 161 },
+            { from: 'Logement', to: 'Électricité', flow: 10, id: 161 },
+            { from: 'Logement', to: 'Assurance', flow: 8, id: 161 },
+            { from: 'Dépenses', to: 'Logement', flow: 918, id: 161 },
+            { from: 'Banque', to: 'Frais', flow: 3, id: 164 },
+            { from: 'Dépenses', to: 'Banque', flow: 3, id: 164 },
+            { from: 'Santé', to: 'Pharmacie', flow: 5, id: 163 },
+            { from: 'Dépenses', to: 'Santé', flow: 5, id: 163 },
+            { from: 'Budget', to: 'Dépenses', flow: 926, id: 163 },
+        ];
+        // Ordre d'origine conservé ; « Budget → Dépenses » reste le dernier flux
+        expect(flows(SankeyChart.groupSmallFlows(data))).toEqual([
+            ['Logement', 'Loyer', 900],
+            ['Logement', 'Logement (autres)', 18],
+            ['Dépenses', 'Logement', 918],
+            ['Dépenses', 'Autres dépenses', 8],
+            ['Budget', 'Dépenses', 926],
+        ]);
+    });
+
+    test('petites sous-catégories sans sous-catégorie détaillée : laissées telles quelles', () => {
+        const data = [
+            { from: 'Logement', to: 'Loyer', flow: 900, id: 161 },
+            { from: 'Dépenses', to: 'Logement', flow: 900, id: 161 },
+            { from: 'Loisirs', to: 'Sport', flow: 10, id: 170 },
+            { from: 'Loisirs', to: 'Sorties', flow: 8, id: 170 },
+            { from: 'Dépenses', to: 'Loisirs', flow: 18, id: 170 },
+        ];
+        expect(flows(SankeyChart.groupSmallFlows(data))).toEqual(flows(data));
+    });
+
+    test('petits flux : un seul sous le seuil reste tel quel ; mois sans dépense inchangé', () => {
+        const data = [
+            { from: 'Logement', to: 'Loyer', flow: 900, id: 161 },
+            { from: 'Logement', to: 'Électricité', flow: 10, id: 161 },
+            { from: 'Dépenses', to: 'Logement', flow: 910, id: 161 },
+            { from: 'Dépenses', to: 'Santé', flow: 5, id: 163 },
+        ];
+        expect(SankeyChart.groupSmallFlows(data)).toHaveLength(4);
+        const empty = [{ from: 'Budget', to: 'Dépenses', flow: 0, id: 163 }];
+        expect(SankeyChart.groupSmallFlows(empty)).toEqual(empty);
+    });
+
+    test('couleurs : nœuds « Autres » et « Dépassement », gris sans règle CSS', () => {
+        expect(SankeyChart.flowColor('others')).toBe('rgb(173, 184, 197)');
+        expect(SankeyChart.flowColor('overspend')).toBe('rgb(252, 93, 106)');
+        expect(SankeyChart.flowColor(99999)).toBe('rgb(173, 184, 197)');
     });
 
     test('données invalides', () => {
@@ -673,5 +730,38 @@ describe('BudgetChart — couleurs des catégories', () => {
         const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
         expect(chart._categoryColors(['Logement', 'Banque', 'Inconnue'])).toEqual(['rgb(103, 127, 224)', '#6562fc', '#6562fc']);
         style.remove();
+    });
+});
+
+describe('ExpenseTypeChart — total et pourcentages (U7)', () => {
+    test('types dans un ordre fixe : Essentiel, Plaisir, Épargne, Autre', async () => {
+        forceBrowserLocale('fr-FR');
+        const data = await new ExpenseTypeChart([
+            tx({ amount: -10, expense_type: 'OTHER' }),
+            tx({ amount: -30, expense_type: 'PLEASURE' }),
+            tx({ amount: -60, expense_type: 'ESSENTIAL' }),
+        ], CATEGORIES, null).prepareData();
+        expect(data.labels).toEqual(['Essentiel', 'Plaisir', 'Autre']);
+        expect(data.datasets[0].data).toEqual([60, 30, 10]);
+    });
+
+    test('légende : part de chaque type en pourcentage', () => {
+        expect(ExpenseTypeChart.legendText('Essentiel', [60, 30, 10], 0)).toBe('Essentiel · 60,0 %');
+        expect(ExpenseTypeChart.legendText('Aucune donnée', [1], 0)).toBe('Aucune donnée');
+    });
+
+    test('total au centre : dessiné, sauf montants masqués ou sans donnée', () => {
+        const plugin = ExpenseTypeChart.centerTotalPlugin();
+        const ctx = { save: vi.fn(), restore: vi.fn(), fillText: vi.fn() };
+        const chart = { ctx, chartArea: { left: 0, right: 200, top: 0, bottom: 200 }, data: { labels: ['Essentiel'], datasets: [{ data: [60, 40] }] } };
+        plugin.afterDraw(chart);
+        expect(ctx.fillText).toHaveBeenCalledWith('100,00 €', 100, 92);
+        expect(ctx.fillText).toHaveBeenCalledWith('dépensés', 100, 112);
+
+        ctx.fillText.mockClear();
+        window.__pecunioIsBlurry = true;
+        plugin.afterDraw(chart);
+        window.__pecunioIsBlurry = undefined;
+        expect(ctx.fillText).not.toHaveBeenCalled();
     });
 });

@@ -69,7 +69,7 @@ await popup.goto(`chrome-extension://${extensionId}/popup.html`);
 // Instructions d'épinglage masquées (sans objet sur une capture)
 await popup.locator('#pinInstructionsSection').evaluate((section) => section.style.setProperty('display', 'none'));
 await settle(popup);
-await popup.locator('.container').screenshot({ path: `${OUT}/popup.png` });
+await popup.locator('body').screenshot({ path: `${OUT}/popup.png` });
 
 await popup.locator('#pdfYear').selectOption(String(lastMonth.getFullYear()));
 const [report] = await Promise.all([context.waitForEvent('page'), popup.locator('#exportPdf').click()]);
