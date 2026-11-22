@@ -152,13 +152,20 @@ sequenceDiagram
 
 ## Structure des modules
 
+### Bankin (`js/bankin/`)
+
+#### BankinPage.js
+Adaptateur de l'interface web de Bankin : seul endroit qui connaît ses pages et son HTML.
+- Détection de la page d'après l'URL (`detectPage`), pages à graphiques
+- Sélecteurs CSS (`BANKIN_SELECTORS`) et lecture des éléments : bloc des graphiques, bouton ↻, mois affiché, bloc du donut, montants à flouter, emplacement du bouton de masquage
+- `missingElements(page)` : éléments attendus absents (tests de contrat, voir [TESTING.md](TESTING.md))
+
 ### Core (`js/core/`)
 
 #### Config.js
-Centralise toutes les constantes de configuration :
-- URLs et endpoints API
-- IDs de catégories spéciales
-- Sélecteurs CSS
+Centralise les constantes de configuration :
+- URLs et endpoints de l'API
+- IDs de catégories spéciales (identifiants de l'API Bankin)
 - Clés de stockage
 - Configuration des graphiques
 

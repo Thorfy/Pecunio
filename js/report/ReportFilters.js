@@ -12,11 +12,9 @@ export class ReportFilters {
      * @returns {Array<Object>}
      */
     static applyReportFilters(mergedData, params = {}) {
-        const exceptionIds = (params.exceptionCategoryIds && Array.isArray(params.exceptionCategoryIds))
+        const exceptionIds = Array.isArray(params.exceptionCategoryIds)
             ? params.exceptionCategoryIds
-            : (typeof Config !== 'undefined' && Config.CATEGORIES && Config.CATEGORIES.EXCEPTION_IDS
-                ? Config.CATEGORIES.EXCEPTION_IDS
-                : [326, 282]);
+            : Config.CATEGORIES.EXCEPTION_IDS;
 
         return mergedData.filter(row => {
             const id = row.categoryId != null ? row.categoryId : row.parentCategoryId;

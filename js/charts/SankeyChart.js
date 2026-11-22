@@ -1,3 +1,4 @@
+import { BankinPage } from '../bankin/BankinPage.js';
 import { Config } from '../core/Config.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
@@ -76,7 +77,7 @@ export class SankeyChart extends BaseChartData {
 
         // Ajuster les hauteurs des conteneurs après un délai
         setTimeout(() => {
-            document.querySelectorAll(".cntr.dtb.h100.active, .cntr.dtb.h100.notActive").forEach(item => {
+            new BankinPage(document).categoryChartPanels().forEach(item => {
                 item.classList.remove("h100");
             });
         }, 1000);

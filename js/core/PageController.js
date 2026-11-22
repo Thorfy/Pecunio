@@ -1,3 +1,4 @@
+import { BankinPage } from '../bankin/BankinPage.js';
 import { BudgetChart } from '../charts/BudgetChart.js';
 import { ExpenseTypeChart } from '../charts/ExpenseTypeChart.js';
 import { LineBarChart } from '../charts/LineBarChart.js';
@@ -30,13 +31,7 @@ import { Logger } from './Logger.js';
  *   gardées.
  */
 export class PageController {
-    static PAGE = Object.freeze({
-        ACCOUNTS: 'accounts',
-        CATEGORIES: 'categories',
-        CATEGORY_DETAIL: 'category-detail',
-        SIGNIN: 'signin',
-        OTHER: 'other',
-    });
+    static PAGE = BankinPage.PAGE;
 
     /** Délai avant d'afficher « chargement en cours » (évite un flash si le cache répond vite). */
     static LOADING_BANNER_DELAY_MS = 1500;
@@ -57,27 +52,17 @@ export class PageController {
     static SETTING_KEYS_TRIGGERING_REBUILD = ['startDate', 'endDate', 'noEndDate', 'accountsSelected'];
 
     /**
-     * Type de page Bankin, d'après le chemin de l'URL.
+     * Type de page Bankin, d'après le chemin de l'URL (voir BankinPage).
      * @param {string} href
      * @returns {string} une valeur de PageController.PAGE
      */
     static detectPage(href) {
-        let path;
-        try {
-            path = new URL(href).pathname.replace(/\/+$/, '') || '/';
-        } catch {
-            return PageController.PAGE.OTHER;
-        }
-        if (path === '/accounts') return PageController.PAGE.ACCOUNTS;
-        if (path === '/categories') return PageController.PAGE.CATEGORIES;
-        if (path.startsWith('/categories/')) return PageController.PAGE.CATEGORY_DETAIL;
-        if (path === '/signin' || path.startsWith('/signin/')) return PageController.PAGE.SIGNIN;
-        return PageController.PAGE.OTHER;
+        return BankinPage.detectPage(href);
     }
 
     /** Pages où Pecunio affiche des graphiques. */
     static hasCharts(page) {
-        return page === PageController.PAGE.ACCOUNTS || page === PageController.PAGE.CATEGORIES;
+        return BankinPage.hasCharts(page);
     }
 
     /**
@@ -112,6 +97,12 @@ export class PageController {
 
     get document() {
         return this.win.document;
+    }
+
+    /** Adaptateur de la page Bankin courante. */
+    get bankin() {
+        if (this._bankin?.doc !== this.document) this._bankin = new BankinPage(this.document);
+        return this._bankin;
     }
 
     get currentPage() {
@@ -313,8 +304,8 @@ export class PageController {
         this._lastSignature = signature;
         this.buildCount++;
         this.win.setTimeout(() => {
-            new AmountHider(this.settings);
-            AmountHider.refreshBlur(this.settings);
+            new AmountHider(this.settings, this.bankin);
+            AmountHider.refreshBlur(this.settings, this.bankin);
         }, Config.INTERVALS.HIDDER_DELAY);
         ReviewPrompt.tryShow();
     }
@@ -329,9 +320,7 @@ export class PageController {
         let total = 0;
         for (const t of transactions) total += Number(t?.amount) || 0;
         const s = this.settings.getAllSettings();
-        const month = page === PageController.PAGE.CATEGORIES
-            ? this.document.querySelector(Config.SELECTORS.MONTH_SELECTOR_ACTIVE)?.textContent?.trim()
-            : null;
+        const month = page === PageController.PAGE.CATEGORIES ? this.bankin.activeMonthLabel() : null;
         return JSON.stringify([
             page, this.win.location.href, month,
             transactions.length, transactions[0]?.id, transactions[transactions.length - 1]?.id, Math.round(total * 100),
@@ -358,10 +347,10 @@ export class PageController {
 
     async _buildAccountsPage() {
         const { LineBarChart, BudgetChart } = this.chartClasses;
-        LoadingScreen.show();
+        LoadingScreen.show(this.bankin);
         this._wireRefreshButton();
 
-        const homeBlock = this.document.querySelector(Config.SELECTORS.HOME_BLOCK);
+        const homeBlock = this.bankin.accountsBlock();
         if (!homeBlock) {
             Logger.debug('Bloc des comptes introuvable : page Bankin pas encore affichée');
             return false;
@@ -390,14 +379,13 @@ export class PageController {
         const { ExpenseTypeChart, SankeyChart } = this.chartClasses;
         this._wireMonthSelector();
 
-        const activeMonth = this.document.querySelector(Config.SELECTORS.MONTH_SELECTOR_ACTIVE);
-        const categoryBlock = this.document.querySelector(Config.SELECTORS.CATEGORY_CHART);
-        if (!activeMonth || !categoryBlock) {
+        // « Septembre 2026 » → ['septembre', '2026']
+        const monthParams = this.bankin.activeMonth();
+        const categoryBlock = this.bankin.categoryChart();
+        if (!monthParams || !categoryBlock) {
             Logger.debug('Sélecteur de mois ou graphique Bankin introuvable');
             return false;
         }
-        // « Septembre 2026 » → ['septembre', '2026']
-        const monthParams = activeMonth.textContent.trim().toLocaleLowerCase().split(/\s+/);
 
         this._destroyCharts();
         const data = this._chartData();
@@ -415,7 +403,7 @@ export class PageController {
 
     /** Bouton ↻ de Bankin : un seul écouteur par bouton (bug B4). */
     _wireRefreshButton() {
-        const icon = this.document.querySelector(Config.SELECTORS.REFRESH_ICON);
+        const icon = this.bankin.refreshButton();
         if (!icon || this._wiredElements.has(icon)) return;
         this._wiredElements.add(icon);
         icon.addEventListener('click', () => {
@@ -425,7 +413,7 @@ export class PageController {
 
     /** Sélecteur de mois de la page Catégories : reconstruction après changement de mois. */
     _wireMonthSelector() {
-        const menu = this.document.querySelector(Config.SELECTORS.MONTH_SELECTOR);
+        const menu = this.bankin.monthSelector();
         if (!menu || this._wiredElements.has(menu)) return;
         this._wiredElements.add(menu);
         menu.addEventListener('click', () => {

@@ -22,6 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "test:tz": "node scripts/test-timezones.mjs",
     "test:bugs": "vitest run --mode bugs",
+    "snapshot:snippet": "node scripts/print-snapshot-snippet.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {

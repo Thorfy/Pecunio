@@ -74,9 +74,10 @@ Organisation :
 | Dossier | Contenu |
 |---|---|
 | `entrypoints/` | points d'entrée WXT : service worker, content script, popup, page du rapport |
-| `js/` | code de l'extension en modules ES (cœur, modèles, graphiques, interface) |
+| `js/` | code de l'extension en modules ES (cœur, adaptateur Bankin, modèles, graphiques, interface) |
 | `public/` | fichiers copiés tels quels (images, html2pdf) |
-| `test/` | tests Vitest |
+| `test/` | tests Vitest (unitaires, et contrat avec les pages Bankin) |
+| `scripts/` | outillage (tests sous plusieurs fuseaux, capture anonymisée des pages Bankin) |
 
 Le manifest est généré par WXT à partir de `wxt.config.js` et de `entrypoints/` ; la version vient de `package.json`.
 

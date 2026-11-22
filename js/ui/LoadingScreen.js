@@ -1,3 +1,4 @@
+import { BankinPage } from '../bankin/BankinPage.js';
 import { Config } from '../core/Config.js';
 
 /**
@@ -8,21 +9,13 @@ export class LoadingScreen {
     /**
      * Affiche l'écran de chargement
      */
-    static show() {
-        const rightBlock = document.getElementsByClassName("rightColumn");
-        if (rightBlock && rightBlock[0]) {
-            const childBlock = rightBlock[0].children;
-
-            const imgdiv = document.createElement('img');
-            imgdiv.src = Config.getAssetURL("LOADING_GIF");
-            imgdiv.style.textAlign = "center";
-
-            if (childBlock && childBlock[0]) {
-                childBlock[0].innerHTML = "";
-                childBlock[0].appendChild(imgdiv);
-            } else {
-                console.error("childBlock[0] not found in loadingScreen");
-            }
-        }
+    static show(bankin = new BankinPage(document)) {
+        const slot = bankin.loadingSlot();
+        if (!slot) return;
+        const img = document.createElement('img');
+        img.src = Config.getAssetURL("LOADING_GIF");
+        img.style.textAlign = "center";
+        slot.innerHTML = "";
+        slot.appendChild(img);
     }
 }
