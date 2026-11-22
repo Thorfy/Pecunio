@@ -76,6 +76,27 @@ L'anonymisation a lieu dans le navigateur, avant la copie ; elle est testée dan
 
 Avant de merger une phase qui touche au comportement, suivre la recette du §7 de [AUDIT-MODERNISATION.md](AUDIT-MODERNISATION.md) avec l'extension non empaquetée (`chrome://extensions` → recharger l'extension **et** l'onglet Bankin).
 
-## Tests d'intégration
+## Tests de bout en bout (Playwright)
 
-Prévus en phase 5 (Playwright avec l'extension chargée et Bankin simulé).
+```bash
+npm run test:e2e       # construit l'extension puis lance les scénarios
+npx playwright test    # relance les scénarios sans reconstruire
+```
+
+Prérequis, une fois : `npx playwright install chromium`.
+
+Chaque test lance un Chromium avec l'extension construite (`.output/chrome-mv3`) face à un **Bankin simulé** (`e2e/bankin-simulator.js`) :
+
+- `app2.bankin.com` : pages minimales reprenant la structure des vraies pages, avec un petit script qui imite l'application (appel authentifié à `/v2/accounts`, sélecteur de mois, bouton ↻, navigation SPA via `window.__bankinNavigate(chemin)`) ;
+- `sync.bankin.com` : API v2 servie à partir des données **synthétiques** de `test/fixtures/bankin.js` ; `bankin.apiCalls` liste les appels reçus.
+
+Le service worker capture les en-têtes de l'appel simulé comme en réel (`webRequest` voit les requêtes interceptées par Playwright).
+
+| Fichier | Rôle |
+|---|---|
+| `playwright.config.js` | Un test à la fois, trace et capture d'écran en cas d'échec |
+| `e2e/fixtures.js` | `context` (Chromium + extension), `serviceWorker`, `bankin`, `consoleErrors` (erreurs de console de toutes les pages) |
+| `e2e/bankin-simulator.js` | Bankin simulé |
+| `e2e/*.spec.js` | Scénarios ; chacun vérifie aussi l'absence d'erreur dans la console |
+
+En cas d'échec : `npx playwright show-trace test-results/<test>/trace.zip` rejoue le test pas à pas. En CI, le job « Tests de bout en bout » publie `playwright-report/` et `test-results/` quand il échoue.

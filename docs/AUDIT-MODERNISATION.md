@@ -176,13 +176,16 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 - **Tests de contrat** (`test/contract/`) sur des captures anonymisées des pages Comptes et Catégories (`test/fixtures/bankin-pages/`), y compris la construction des graphiques par `PageController`. Outil de capture `scripts/bankin-snapshot.js` (anonymisation dans le navigateur, testée) et `npm run snapshot:snippet` ; procédure dans `docs/TESTING.md`.
 - IDs de catégories : une seule source, `Config.CATEGORIES` (copie en dur retirée de `ReportFilters`).
 
-**4c — Finitions** ✅ _(branche `feat/phase-4c-french-ui`)_ :
+**4c — Finitions** ✅ _(#28)_ :
 - Graphiques en français (D9) : mois des axes temporels (`date-fns/locale` `fr`), nombres des axes (`Chart.defaults.locale = 'fr-FR'`), montants des infobulles `-1 234,50 €` (`js/utils/format.js`) ; comparaison budget : « Tous les mois », « Janvier »…, « Réel févr. 2024 », « Médiane 2026 », « Montant (€) » ; « Dépenses sur N mois » ; nœud « Dépenses » du diagramme de flux accentué.
 - Bouton « Afficher en courbes / Afficher en barres » en HTML au-dessus du graphique temporel, utilisable au clavier et par les lecteurs d'écran (D10) ; plus de bouton dessiné dans le canvas ni d'écouteur de clic sur le canvas.
 - Inchangé : les en-têtes de colonnes de l'export CSV (format de données, déjà utilisé par des tableurs).
 
 ### Phase 5 — Tests d'intégration et e2e _(2 j)_
-- **POC en premier (½ j)** : vérifier que `webRequest.onBeforeSendHeaders` voit les requêtes interceptées par Playwright ; sinon le test injecte les headers dans `chrome.storage.session`.
+
+**5a — Playwright et pages Bankin** ✅ _(branche `test/phase-5-e2e`)_ : extension construite chargée dans Chromium face à un Bankin simulé (`e2e/`) ; POC concluant : `webRequest` voit les requêtes interceptées par Playwright, les en-têtes sont capturés comme en réel. Scénarios 1 à 6 et 9 ; job CI « Tests de bout en bout ». Reste pour **5b** : popup, export CSV, rapport PDF (scénarios 7 et 8) et tests de composants.
+
+- **POC en premier (½ j)** : vérifier que `webRequest.onBeforeSendHeaders` voit les requêtes interceptées par Playwright ; sinon le test injecte les headers dans `chrome.storage.session`. ✅ Il les voit.
 - Tests de composants (Vitest + happy-dom) : popup (comptes, dates, export), AmountHider, ReviewPrompt.
 - Scénarios Playwright (extension chargée, Bankin simulé) :
   1. Comptes → graphique temporel + budget affichés ;
@@ -210,8 +213,8 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
 | 3 Modules + WXT | 2–3 j | ✅ 3a (#16), 3b (#17), 3c (#23) | B15, B21–B24, D3–D6, D13 |
-| 4 Types + adaptateur | 2–3 j | 4a ✅ (#25), 4b ✅ (#27), 4c ✅ PR à merger | D1, D8–D10, D14 |
-| 5 e2e | 2 j | | non-régression de tout le registre |
+| 4 Types + adaptateur | 2–3 j | ✅ 4a (#25), 4b (#27), 4c (#28) | D1, D8–D10, D14 |
+| 5 e2e | 2 j | 5a ✅ PR à merger ; 5b à faire | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |
 
 **Total : 11 à 14 jours.** Les phases 0 → 2 règlent tout ce que voient les utilisateurs ; 3 → 6 rendent le code durable.
