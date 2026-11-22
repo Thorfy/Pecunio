@@ -1,13 +1,26 @@
 name: Release Chrome extension
 
+# Procédure complète : docs/RELEASE.md.
+# - Tag `vX.Y.Z` (identique à la version de package.json) : contrôles complets
+#   (lint, types, tests sous 3 fuseaux, e2e) et zip ; si tout passe, envoi sur
+#   le Chrome Web Store AVEC publication automatique (soumise à l'examen de
+#   Google), puis release GitHub publiée avec les notes du changelog.
+#   Si un contrôle échoue, rien n'est envoyé ni publié.
+# - Lancement manuel (« Run workflow ») : répétition générale, mêmes contrôles
+#   et zip en artefact, sans release GitHub ni envoi sur le store.
 on:
   push:
     tags:
       - v*.*.*
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
-    name: Vérifier et construire le zip
+    name: Contrôles complets et zip
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +34,7 @@ jobs:
 
       # WXT reprend la version de package.json dans le manifest
       - name: Le tag correspond à la version de package.json
+        if: github.event_name == 'push'
         run: |
           version=$(node -p "require('./package.json').version")
           if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
@@ -28,7 +42,26 @@ jobs:
             exit 1
           fi
 
-      - run: npm run check
+      - name: Le changelog décrit cette version
+        if: github.event_name == 'push'
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if ! grep -q "^## \[${version}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md n'a pas de section « ## [${version}] »"
+            exit 1
+          fi
+
+      - name: Lint, types, tests unitaires, build
+        run: npm run check
+
+      - name: Tests unitaires sous plusieurs fuseaux horaires
+        run: npm run test:tz
+
+      - name: Chromium de Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Scénarios de bout en bout
+        run: npx playwright test
 
       - name: Construction du zip (WXT)
         run: npm run zip
@@ -38,13 +71,57 @@ jobs:
           name: chrome-extension-${{ github.ref_name }}
           path: .output/pecunio-*-chrome.zip
 
+      - name: Rapport Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  github-release:
+    name: Release GitHub
+    runs-on: ubuntu-latest
+    # Publiée seulement une fois la version envoyée et publiée sur le store
+    needs: [build, upload]
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension-${{ github.ref_name }}
+
+      # Notes : section du changelog pour cette version, puis la liste des PR
+      # générée par GitHub.
+      - name: Créer la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## [${version}]" '
+            index($0, heading) == 1 { found = 1; next }
+            found && index($0, "## [") == 1 { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          gh release create "$GITHUB_REF_NAME" pecunio-*-chrome.zip \
+            --verify-tag --generate-notes \
+            --title "Pecunio $GITHUB_REF_NAME" \
+            --notes-file release-notes.md
+
   # Référence API :
   # * https://developer.chrome.com/docs/webstore/using_webstore_api/
   # * https://github.com/fregante/chrome-webstore-upload/blob/main/How%20to%20generate%20Google%20API%20keys.md
   upload:
-    name: Envoyer sur le Chrome Web Store (sans publier)
+    name: Publier sur le Chrome Web Store
     runs-on: ubuntu-latest
+    # Seulement si tous les contrôles du job build sont passés
     needs: build
+    if: github.event_name == 'push'
     env:
       EXTENSION_ID: "jeomdpldhaigmdbjobamliaipijhmiie"
     steps:
@@ -59,12 +136,11 @@ jobs:
       - name: Install webstore cli
         run: npm install -g chrome-webstore-upload-cli
 
-      # La version est envoyée en brouillon : la publication se fait à la main
-      # depuis le tableau de bord du Chrome Web Store, une fois la version testée.
-      # (Remettre --auto-publish quand la CI aura des tests d'intégration.)
-      - name: Upload
+      # Publication automatique dès que la CI passe (décision du 22/11/2026) :
+      # la version est soumise à l'examen de Google, puis publiée par le store.
+      - name: Envoi et publication
         run: |-
-          chrome-webstore-upload upload \
+          chrome-webstore-upload upload --auto-publish \
             --source pecunio-*-chrome.zip \
             --extension-id "$EXTENSION_ID" \
             --client-id "${{ secrets.CI_GOOGLE_CLIENT_ID }}" \
