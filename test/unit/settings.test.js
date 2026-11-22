@@ -1,8 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createFakeChrome } from '../helpers/fake-chrome.js';
-import { knownBug } from '../helpers/known-bug.js';
 import { loadContentScripts } from '../helpers/load.js';
-import { EAST_OF_UTC } from '../helpers/timezone.js';
 
 beforeAll(loadContentScripts);
 
@@ -45,7 +43,7 @@ describe('Settings', () => {
 
     test('setSettings refuse les valeurs de mauvais type', async () => {
         const settings = await settingsWith({});
-        await settings.setSettings({ accountsSelected: 101, isBlurry: 'oui', cache_time_transactions: '', endDate: '2024-03-01' });
+        await settings.setSettings({ accountsSelected: 101, isBlurry: 'oui', noEndDate: 'non', endDate: '2024-03-01' });
         expect(chrome.storage.local._data).toEqual({ endDate: '2024-03-01' });
     });
 
@@ -77,16 +75,22 @@ describe('Settings', () => {
     });
 
     // --- B13 ------------------------------------------------------------
-    test('B13 — comportement actuel : effacer les réglages vide tout le stockage', async () => {
-        const settings = await settingsWith({ startDate: '2024-01-01', Logement: true, pecunio_report_params: {} });
+    test('B13 — effacer les réglages ne touche ni au cache, ni aux catégories masquées, ni au rapport', async () => {
+        const settings = await settingsWith({
+            startDate: '2024-01-01',
+            noEndDate: true,
+            Logement: true,
+            pecunio_report_params: {},
+            cache_data_transactions: [],
+        });
         await settings.clearAllSettings();
-        expect(chrome.storage.local._data).toEqual({});
+        expect(chrome.storage.local._data).toEqual({ Logement: true, pecunio_report_params: {}, cache_data_transactions: [] });
+        expect(settings.getAllSettings()).toEqual({});
     });
 
-    knownBug('B13 — attendu : effacer les réglages ne touche pas aux autres données de l\'extension', async () => {
-        const settings = await settingsWith({ startDate: '2024-01-01', Logement: true, pecunio_report_params: {} });
-        await settings.clearAllSettings();
-        expect(chrome.storage.local._data).toMatchObject({ Logement: true, pecunio_report_params: {} });
+    test('B13 — le cache de l\'API ne fait pas partie des réglages', async () => {
+        const settings = await settingsWith({ startDate: '2024-01-01', cache_data_transactions: [1, 2], cache_time_transactions: 1 });
+        expect(settings.getAllSettings()).toEqual({ startDate: '2024-01-01' });
     });
 });
 
@@ -130,8 +134,8 @@ describe('Config', () => {
         expect(Config.toDateInputValue('2024-01-31')).toBe('2024-01-31');
     });
 
-    // --- B9 (est de UTC, ex. France) -----------------------------------
-    (EAST_OF_UTC ? knownBug : test)('B9 — attendu : la date du jour est correcte juste après minuit', () => {
+    // --- B9 ----------------------------------------------------------------
+    test('B9 — la date du jour est correcte juste après minuit, quel que soit le fuseau', () => {
         vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date(2024, 2, 15, 0, 30)); // 15 mars, 00h30 heure locale
         expect(Config.toDateInputValue(null)).toBe('2024-03-15');

@@ -3,6 +3,7 @@
 
 const evt = new Evt();
 const settingClass = new Settings();
+const cacheStore = new CacheStore();
 let setting = {};
 
 evt.listen("settings_reloaded", () => {
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Attendre l'initialisation (qui inclut déjà loadSettings())
     await settingClass.waitForInitialization();
+    await cacheStore.waitForInitialization();
     setting = settingClass.getAllSettings();
 
     let currentVersionImg = document.querySelector("#currentVersion");
@@ -45,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         let minYear = currentYear - 10;
         let defaultYear = currentYear;
         if (transactions && transactions.length > 0) {
-            const years = transactions.map(t => new Date(t.date).getFullYear());
+            const years = transactions.map(t => DateRange.parts(t.date)?.year).filter(Boolean);
             minYear = Math.min(minYear, Math.min(...years));
             defaultYear = Math.max(...years);
         }
@@ -72,48 +74,35 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Fonction pour charger les dates
-    function loadDates(startDate, endDate, noEndDateCheckbox) {
-        return new Promise((resolve) => {
-            chrome.storage.local.get(['startDate', 'endDate', 'cache_data_transactions', 'noEndDate'], function (data) {
+    async function loadDates(startDate, endDate, noEndDateCheckbox) {
+        const data = await chrome.storage.local.get(['startDate', 'endDate', 'noEndDate']);
         let startDateValue = data.startDate;
         let endDateValue = data.endDate;
-        let noEndDateValue = data.noEndDate || false;
-        
+        const noEndDateValue = data.noEndDate || false;
+
         // Si pas de date de fin définie, utiliser aujourd'hui
         if (!endDateValue) {
-            const today = new Date();
-            endDateValue = today.toISOString().split('T')[0];
-            chrome.storage.local.set({ endDate: endDateValue });
+            endDateValue = DateRange.getTodayInputValue();
+            await chrome.storage.local.set({ endDate: endDateValue });
         }
-        
-        // Si pas de date de début définie, calculer la plus ancienne date disponible
+
+        // Si pas de date de début définie : plus ancienne transaction, sinon il y a un an
         if (!startDateValue) {
-            if (data.cache_data_transactions && data.cache_data_transactions.length > 0) {
-                // Trouver la date la plus ancienne parmi les transactions
-                const oldestDate = data.cache_data_transactions
-                    .map(t => new Date(t.date))
-                    .reduce((oldest, current) => current < oldest ? current : oldest);
-                startDateValue = oldestDate.toISOString().split('T')[0];
-            } else {
-                // Fallback: 1 an en arrière
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                startDateValue = oneYearAgo.toISOString().split('T')[0];
-            }
-            chrome.storage.local.set({ startDate: startDateValue });
+            const dates = (cacheStore.get('transactions') || [])
+                .map(t => DateRange.toDateOnly(t.date))
+                .filter(Boolean);
+            startDateValue = dates.length > 0
+                ? dates.reduce((oldest, current) => (current < oldest ? current : oldest))
+                : DateRange.addMonths(DateRange.getTodayInputValue(), -12);
+            await chrome.storage.local.set({ startDate: startDateValue });
         }
-        
+
         startDate.value = startDateValue;
         endDate.value = endDateValue;
         noEndDateCheckbox.checked = noEndDateValue;
-        
+
         // Désactiver/activer le champ endDate selon la checkbox
         endDate.disabled = noEndDateValue;
-        
-        console.log('[Popup] Date range initialized:', startDateValue, 'to', endDateValue, 'noEndDate:', noEndDateValue);
-        resolve();
-            });
-        });
     }
 
     // Variable pour stocker l'instance Choices
@@ -121,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Fonction pour charger et afficher les comptes
     async function loadAccounts() {
-        const cache_data_accounts = settingClass.getSetting('cache_data_accounts');
+        const cache_data_accounts = cacheStore.get('accounts');
         let accountsSelected = settingClass.getSetting('accountsSelected');
 
         if (cache_data_accounts && Array.isArray(cache_data_accounts) && cache_data_accounts.length > 0) {
@@ -158,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             console.log('[Popup] Accounts loaded:', cache_data_accounts.length);
         } else {
-            console.warn('[Popup] No accounts found in cache. Available settings:', Object.keys(settingClass.getAllSettings()));
+            console.warn('[Popup] No accounts found in cache');
         }
     }
 
@@ -172,8 +161,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await loadAccounts();
 
     fillPdfMonthSelect();
-    const cacheTx = settingClass.getSetting('cache_data_transactions');
-    fillPdfYearSelect(cacheTx || []);
+    fillPdfYearSelect(cacheStore.get('transactions') || []);
 
     // Recharger les comptes quand les settings sont mis à jour
     evt.listen('settings_reloaded', async () => {
@@ -188,8 +176,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     evt.listen('data_loaded', async () => {
         console.log('[Popup] Data loaded event received');
+        await cacheStore.load();
         await loadAccounts();
-        const tx = settingClass.getSetting('cache_data_transactions');
+        const tx = cacheStore.get('transactions');
         if (tx && tx.length) fillPdfYearSelect(tx);
     });
 
@@ -205,8 +194,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         
         // Si activé, mettre à jour la date de fin à aujourd'hui
         if (this.checked) {
-            const today = new Date();
-            endDate.value = today.toISOString().split('T')[0];
+            endDate.value = DateRange.getTodayInputValue();
             chrome.storage.local.set({ endDate: endDate.value });
         }
     });
@@ -221,40 +209,47 @@ document.addEventListener('DOMContentLoaded', async function () {
     /** Retourne la date de fin effective (aujourd'hui si "pas de limite" coché, sinon valeur du champ). */
     function getEffectiveEndDate() {
         if (noEndDateCheckbox.checked) {
-            return new Date().toISOString().split('T')[0];
+            return DateRange.getTodayInputValue();
         }
         return endDate.value;
     }
 
-    // Load data
+    /**
+     * Lit les données en cache nécessaires à l'export.
+     * @returns {Promise<{transactions: Array, categories: Array, accounts: Array, accountsSelected: Array|null}|null>}
+     *   null (après un message à l'utilisateur) s'il n'y a aucune transaction
+     */
+    async function readExportData() {
+        await cacheStore.load();
+        const transactions = cacheStore.get('transactions');
+        if (!transactions || transactions.length === 0) {
+            alert('Aucune donnée de transaction disponible. Veuillez d\'abord charger des données depuis Bankin.');
+            return null;
+        }
+        const { accountsSelected = null } = await chrome.storage.local.get('accountsSelected');
+        return {
+            transactions,
+            categories: cacheStore.get('categories') || [],
+            accounts: cacheStore.get('accounts') || [],
+            accountsSelected,
+        };
+    }
+
+    // Export CSV de la période et des comptes choisis
     csvExport.addEventListener('click', async function () {
         try {
-            chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories', 'cache_data_accounts', 'accountsSelected'], function (data) {
-                if (typeof DataMerger === 'undefined') {
-                    console.error('DataMerger class not available');
-                    alert('Erreur: Impossible de charger les données. Veuillez recharger l\'extension.');
-                    return;
-                }
+            const data = await readExportData();
+            if (!data) return;
 
-                if (!data.cache_data_transactions || data.cache_data_transactions.length === 0) {
-                    alert('Aucune donnée de transaction disponible. Veuillez d\'abord charger des données depuis Bankin.');
-                    return;
-                }
-
-                const effectiveEndDate = getEffectiveEndDate();
-                const dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, startDate.value, effectiveEndDate, data.accountsSelected);
-                const mergedData = dataMerger.mergeData();
-
-                if (mergedData.length === 0) {
-                    alert('Aucune transaction trouvée pour la période sélectionnée. Vérifiez vos dates et comptes sélectionnés.');
-                    return;
-                }
-                
-                dataMerger.exportToCSV();
-            });
+            const dataMerger = new DataMerger(data.transactions, data.categories, data.accounts, startDate.value, getEffectiveEndDate(), data.accountsSelected);
+            if (dataMerger.mergeData().length === 0) {
+                alert('Aucune transaction trouvée pour la période sélectionnée. Vérifiez vos dates et comptes sélectionnés.');
+                return;
+            }
+            dataMerger.exportToCSV();
         } catch (error) {
-            console.error('Error exporting CSV:', error);
-            alert('Erreur lors de l\'export CSV: ' + error.message);
+            console.error('[Popup] Erreur lors de l\'export CSV :', error);
+            alert('Erreur lors de l\'export CSV : ' + error.message);
         }
     });
 
@@ -263,90 +258,66 @@ document.addEventListener('DOMContentLoaded', async function () {
         try {
             const year = parseInt(pdfYear.value, 10);
             const monthIndex = parseInt(pdfMonth.value, 10);
+            const today = DateRange.getTodayInputValue();
             let reportStartDate, reportEndDate;
             if (monthIndex === 0) {
                 reportStartDate = `${year}-01-01`;
-                const end = year === new Date().getFullYear() ? new Date() : new Date(year, 11, 31);
-                reportEndDate = end.toISOString().split('T')[0];
+                reportEndDate = year === new Date().getFullYear() ? today : `${year}-12-31`;
             } else {
                 reportStartDate = `${year}-${String(monthIndex).padStart(2, '0')}-01`;
-                const lastDay = new Date(year, monthIndex, 0);
-                reportEndDate = lastDay.toISOString().split('T')[0];
+                reportEndDate = DateRange.lastDayOfMonth(year, monthIndex);
             }
-            chrome.storage.local.get(['cache_data_transactions', 'cache_data_categories', 'cache_data_accounts', 'accountsSelected'], async function (data) {
-                if (typeof DataMerger === 'undefined') {
-                    alert('Erreur: Impossible de charger les données. Veuillez recharger l\'extension.');
-                    return;
-                }
-                if (!data.cache_data_transactions || data.cache_data_transactions.length === 0) {
-                    alert('Aucune donnée de transaction disponible. Veuillez d\'abord charger des données depuis Bankin.');
-                    return;
-                }
-                let dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, reportStartDate, reportEndDate, data.accountsSelected);
-                let mergedData = dataMerger.mergeData();
-                let usedStartDate = reportStartDate;
-                let usedEndDate = reportEndDate;
-                let usedPdfYear = year;
-                let usedPdfMonthIndex = monthIndex;
-                if (mergedData.length === 0) {
-                    const fallbackStart = startDate.value;
-                    const fallbackEnd = getEffectiveEndDate();
-                    dataMerger = new DataMerger(data.cache_data_transactions, data.cache_data_categories, data.cache_data_accounts, fallbackStart, fallbackEnd, data.accountsSelected);
-                    mergedData = dataMerger.mergeData();
-                    usedStartDate = fallbackStart;
-                    usedEndDate = fallbackEnd;
-                    usedPdfYear = null;
-                    usedPdfMonthIndex = null;
-                }
-                if (mergedData.length === 0) {
-                    alert('Aucune transaction trouvée pour la période sélectionnée ni pour la période d\'export. Vérifiez les dates et les comptes sélectionnés.');
-                    return;
-                }
-                const stats = dataMerger.getStats();
-                const accountNames = (data.cache_data_accounts || [])
-                    .filter(a => (data.accountsSelected || []).includes(a.id))
-                    .map(a => a.name)
-                    .join(', ') || 'Tous les comptes';
-                const exceptionCategoryIds = typeof Config !== 'undefined' && Config.CATEGORIES && Array.isArray(Config.CATEGORIES.EXCEPTION_IDS)
-                    ? Config.CATEGORIES.EXCEPTION_IDS
-                    : [326, 282];
-                const params = {
-                    startDate: usedStartDate,
-                    endDate: usedEndDate,
-                    accountNames: accountNames,
-                    pdfYear: usedPdfYear,
-                    pdfMonthIndex: usedPdfMonthIndex != null ? usedPdfMonthIndex : 0,
-                    pdfMonthLabel: usedPdfMonthIndex != null ? PDF_MONTHS[usedPdfMonthIndex] : 'Toute l\'année',
-                    exceptionCategoryIds: exceptionCategoryIds
-                };
-                await ReportStorage.saveReportData(mergedData, stats, params);
-                chrome.tabs.create({ url: chrome.runtime.getURL('report.html') });
-            });
+
+            const data = await readExportData();
+            if (!data) return;
+
+            let dataMerger = new DataMerger(data.transactions, data.categories, data.accounts, reportStartDate, reportEndDate, data.accountsSelected);
+            let mergedData = dataMerger.mergeData();
+            let usedStartDate = reportStartDate;
+            let usedEndDate = reportEndDate;
+            let usedPdfYear = year;
+            let usedPdfMonthIndex = monthIndex;
+            if (mergedData.length === 0) {
+                const fallbackStart = startDate.value;
+                const fallbackEnd = getEffectiveEndDate();
+                dataMerger = new DataMerger(data.transactions, data.categories, data.accounts, fallbackStart, fallbackEnd, data.accountsSelected);
+                mergedData = dataMerger.mergeData();
+                usedStartDate = fallbackStart;
+                usedEndDate = fallbackEnd;
+                usedPdfYear = null;
+                usedPdfMonthIndex = null;
+            }
+            if (mergedData.length === 0) {
+                alert('Aucune transaction trouvée pour la période sélectionnée ni pour la période d\'export. Vérifiez les dates et les comptes sélectionnés.');
+                return;
+            }
+            const stats = dataMerger.getStats();
+            const accountNames = data.accounts
+                .filter(a => (data.accountsSelected || []).includes(a.id))
+                .map(a => a.name)
+                .join(', ') || 'Tous les comptes';
+            const params = {
+                startDate: usedStartDate,
+                endDate: usedEndDate,
+                accountNames: accountNames,
+                pdfYear: usedPdfYear,
+                pdfMonthIndex: usedPdfMonthIndex != null ? usedPdfMonthIndex : 0,
+                pdfMonthLabel: usedPdfMonthIndex != null ? PDF_MONTHS[usedPdfMonthIndex] : 'Toute l\'année',
+                exceptionCategoryIds: Config.CATEGORIES.EXCEPTION_IDS
+            };
+            await ReportStorage.saveReportData(mergedData, stats, params);
+            chrome.tabs.create({ url: chrome.runtime.getURL('report.html') });
         } catch (error) {
-            console.error('Error preparing PDF report:', error);
-            alert('Erreur lors de la préparation du rapport PDF: ' + error.message);
+            console.error('[Popup] Erreur lors de la préparation du rapport PDF :', error);
+            alert('Erreur lors de la préparation du rapport PDF : ' + error.message);
         }
     });
 
-    // Réinitialiser uniquement les données (cache)
+    // Réinitialiser uniquement les données (cache des transactions et catégories)
+    // Le cache des comptes est conservé ; il est supprimé avec les paramètres.
     refreshData.addEventListener('click', async function () {
-        const cacheKeys = [
-            'cache_data_transactions',
-            'cache_time_transactions',
-            'cache_data_categories',
-            'cache_time_categories'
-            // Note: cache_data_accounts et cache_time_accounts sont gérés par refreshSettings
-        ];
-        
         try {
-            await settingClass.waitForInitialization();
-            
-            // Supprimer chaque cache
-            for (const key of cacheKeys) {
-                await settingClass.removeSetting(key);
-            }
-            
-            console.log('[Popup] Données (caches) réinitialisées avec succès');
+            await cacheStore.clear(['transactions', 'categories']);
             evt.dispatch('url_change');
             alert('Les données ont été réinitialisées avec succès. Les paramètres ont été conservés.');
         } catch (error) {
@@ -355,40 +326,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    // Réinitialiser uniquement les paramètres utilisateur
+    // Réinitialiser uniquement les paramètres utilisateur (et la liste des comptes)
     refreshSettings.addEventListener('click', async function () {
         if (!confirm('Êtes-vous sûr de vouloir réinitialiser tous vos paramètres ? Les données seront conservées.')) {
             return;
         }
-        
-        // Récupérer tous les noms de paramètres depuis Settings
-        // Exclure les caches de transactions et catégories (qui sont gérés par refreshData)
-        const cacheKeys = [
-            'cache_data_transactions',
-            'cache_time_transactions',
-            'cache_data_categories',
-            'cache_time_categories'
-            // Note: cache_data_accounts et cache_time_accounts sont supprimés avec les paramètres
-        ];
-        
-        // Liste complète des paramètres utilisateur à supprimer
-        const settingsKeys = Settings.ALL_SETTING_NAMES
-            .filter(key => !cacheKeys.includes(key)) // Exclure uniquement les caches de transactions/catégories
-            .concat(['noEndDate']); // Ajouter noEndDate qui n'est pas dans ALL_SETTING_NAMES
-        
-        console.log('[Popup] Suppression des paramètres:', settingsKeys);
-        
         try {
-            await settingClass.waitForInitialization();
-            
-            // Supprimer chaque paramètre
-            for (const key of settingsKeys) {
-                await settingClass.removeSetting(key);
-            }
-            
-            console.log('[Popup] Paramètres réinitialisés avec succès');
-            
-            // Recharger la page pour appliquer les changements
+            await settingClass.clearAllSettings();
+            await cacheStore.remove('accounts');
             window.location.reload();
         } catch (error) {
             console.error('[Popup] Erreur lors de la réinitialisation des paramètres:', error);

@@ -1,18 +1,17 @@
 /**
- * Settings - Gestionnaire centralisé des paramètres
- * Responsable de la persistance et de la récupération des paramètres de l'extension
+ * Settings - Préférences utilisateur (période, comptes, affichage)
+ * Le cache de l'API Bankin est géré par CacheStore.
  */
 class Settings {
+    /**
+     * Préférences utilisateur. Le cache de l'API Bankin (cache_data_* / cache_time_*)
+     * est géré à part par CacheStore.
+     */
     static ALL_SETTING_NAMES = [
-        'startDate', 
-        'endDate', 
+        'startDate',
+        'endDate',
+        'noEndDate',
         'accounts',
-        'cache_data_transactions', 
-        'cache_time_transactions', 
-        'cache_data_categories', 
-        'cache_time_categories', 
-        'cache_data_accounts', 
-        'cache_time_accounts',
         'accountsSelected',
         'isBlurry',
         'chartType'
@@ -137,11 +136,12 @@ class Settings {
     }
 
     /**
-     * Efface tous les paramètres
+     * Efface les préférences utilisateur, sans toucher au cache des données,
+     * aux catégories masquées ni au rapport (bug B13).
      */
     async clearAllSettings() {
         try {
-            await chrome.storage.local.clear();
+            await chrome.storage.local.remove(Settings.ALL_SETTING_NAMES);
             this.settings = {};
             evt.dispatch('settings_updated');
             console.log('[Settings] All settings cleared successfully');
@@ -158,19 +158,13 @@ class Settings {
         const validated = {};
         
         for (const [key, value] of Object.entries(settings)) {
-            // Validation basique selon le type de paramètre
-            if (key.includes('cache_time_') && typeof value !== 'number') {
-                console.warn(`[Settings] Invalid cache time for ${key}, expected number, got ${typeof value}`);
-                continue;
-            }
-            
             if (key === 'accountsSelected' && !Array.isArray(value)) {
                 console.warn(`[Settings] Invalid accountsSelected, expected array, got ${typeof value}`);
                 continue;
             }
             
-            if (key === 'isBlurry' && typeof value !== 'boolean') {
-                console.warn(`[Settings] Invalid isBlurry, expected boolean, got ${typeof value}`);
+            if ((key === 'isBlurry' || key === 'noEndDate') && typeof value !== 'boolean') {
+                console.warn(`[Settings] Invalid ${key}, expected boolean, got ${typeof value}`);
                 continue;
             }
             
@@ -189,7 +183,8 @@ class Settings {
             endDate: null,
             accounts: [],
             accountsSelected: null,
-            isBlurry: false
+            isBlurry: false,
+            noEndDate: false
         };
     }
 
