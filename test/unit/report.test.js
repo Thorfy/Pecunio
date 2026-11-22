@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, test } from 'vitest';
-import { REPORT_SCRIPTS, loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts(REPORT_SCRIPTS));
+import { describe, expect, test } from 'vitest';
+import { ReportChartDataBuilder } from '../../js/report/ReportChartDataBuilder.js';
+import { ReportFilters } from '../../js/report/ReportFilters.js';
+import { ReportStorage } from '../../js/services/ReportStorage.js';
 
 /** Ligne fusionnée (format de sortie de DataMerger.mergeData). */
 const row = (overrides = {}) => ({

@@ -1,8 +1,8 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { Account } from '../../js/models/Account.js';
+import { Category } from '../../js/models/Category.js';
+import { Transaction } from '../../js/models/Transaction.js';
 
 describe('Transaction', () => {
     test('fromRaw lit les champs bruts Bankin', () => {

@@ -1,7 +1,5 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts(['js/core/DateRange.js']));
+import { describe, expect, test, vi } from 'vitest';
+import { DateRange } from '../../js/core/DateRange.js';
 
 describe('DateRange.parts / toDateOnly', () => {
     test('une chaîne YYYY-MM-DD est prise telle quelle, sans conversion UTC', () => {

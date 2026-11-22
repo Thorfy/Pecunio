@@ -1,8 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { ACCOUNTS, AUTH_HEADERS, CATEGORIES, apiPage, jsonResponse, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { CacheStore } from '../../js/core/CacheStore.js';
+import { APIError, AuthenticationError, DataManager, ValidationError } from '../../js/core/DataManager.js';
+import { evt } from '../../js/core/events.js';
 
 const DOMAIN = 'https://sync.bankin.com';
 
@@ -180,7 +180,8 @@ describe('DataManager — validation et cache', () => {
     test('B13 — le cache ne passe plus par les réglages', async () => {
         const dm = authenticatedManager();
         dm.cacheStore = await cacheWith();
-        globalThis.settingClass = { setSettings: vi.fn(), getSetting: vi.fn() };
+        const settingClass = { setSettings: vi.fn(), getSetting: vi.fn() };
+        globalThis.settingClass = settingClass; // ancienne globale : ne doit plus être utilisée
         mockFetch({ '/v2/accounts?limit=500': jsonResponse(apiPage(ACCOUNTS)) });
         await dm._loadDataWithCache('accounts');
         expect(settingClass.setSettings).not.toHaveBeenCalled();

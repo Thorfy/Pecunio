@@ -1,9 +1,7 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { ACCOUNTS } from '../fixtures/bankin.js';
 import { createFakeChrome } from '../helpers/fake-chrome.js';
-import { loadScripts } from '../helpers/load.js';
-
-beforeAll(() => loadScripts(['js/core/Config.js', 'js/core/CacheStore.js']));
+import { CacheStore } from '../../js/core/CacheStore.js';
 
 const storeWith = async (local) => {
     globalThis.chrome = createFakeChrome({ local });

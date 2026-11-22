@@ -1,11 +1,9 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { ACCOUNTS, CATEGORIES, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { loadContentScripts, loadScripts } from '../helpers/load.js';
-
-beforeAll(async () => {
-    await loadContentScripts();
-    await loadScripts(['js/report/ReportFilters.js']);
-});
+import { Config } from '../../js/core/Config.js';
+import { TransactionFilter } from '../../js/core/TransactionFilter.js';
+import { ReportFilters } from '../../js/report/ReportFilters.js';
+import { DataMerger } from '../../js/services/DataMerger.js';
 
 const merger = (transactions = sampleTransactions(), options = {}) =>
     new DataMerger(

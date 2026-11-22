@@ -1,8 +1,11 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CATEGORIES, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { BaseChartData } from '../../js/charts/base/BaseChartData.js';
+import { BudgetChart } from '../../js/charts/BudgetChart.js';
+import { ExpenseTypeChart } from '../../js/charts/ExpenseTypeChart.js';
+import { LineBarChart } from '../../js/charts/LineBarChart.js';
+import { SankeyChart } from '../../js/charts/SankeyChart.js';
+import { Config } from '../../js/core/Config.js';
 
 /** Faux Settings : seules les méthodes utilisées par les graphiques. */
 const fakeSettings = (values = {}) => ({

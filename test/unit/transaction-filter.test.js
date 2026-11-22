@@ -1,8 +1,8 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { sampleTransactions, tx } from '../fixtures/bankin.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { Config } from '../../js/core/Config.js';
+import { TransactionFilter } from '../../js/core/TransactionFilter.js';
+import { Transaction } from '../../js/models/Transaction.js';
 
 const ids = (list) => list.map((t) => t.id).sort((a, b) => a - b);
 

@@ -1,8 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createFakeChrome } from '../helpers/fake-chrome.js';
-import { loadContentScripts } from '../helpers/load.js';
-
-beforeAll(loadContentScripts);
+import { Config } from '../../js/core/Config.js';
+import { evt } from '../../js/core/events.js';
+import { Settings } from '../../js/core/Settings.js';
 
 beforeEach(() => {
     evt.cleanup();
