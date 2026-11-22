@@ -1,4 +1,3 @@
-import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
 import { THEME } from '../ui/theme.js';
@@ -81,7 +80,6 @@ export class VariationsChart extends BaseChartData {
     async render(container) {
         const variations = this.prepareData();
         if (!variations) return null;
-        const hideAmounts = Config.isBlurry();
 
         const wrapper = document.createElement('div');
         wrapper.className = 'pecunio-section pecunio-variations-wrapper';
@@ -100,7 +98,6 @@ export class VariationsChart extends BaseChartData {
             const list = document.createElement('ul');
             list.className = 'pecunio-variations';
             for (const variation of variations.items) {
-                const { value, detail } = VariationsChart.describe(variation, hideAmounts);
                 const item = document.createElement('li');
                 item.className = variation.diff > 0 ? 'pecunio-variation-up' : 'pecunio-variation-down';
                 const dot = document.createElement('span');
@@ -111,14 +108,12 @@ export class VariationsChart extends BaseChartData {
                 name.textContent = variation.name;
                 const amount = document.createElement('span');
                 amount.className = 'pecunio-variation-value';
-                amount.textContent = value;
-                item.append(dot, name, amount);
-                if (detail) {
-                    const small = document.createElement('span');
-                    small.className = 'pecunio-variation-detail';
-                    small.textContent = detail;
-                    item.appendChild(small);
-                }
+                BaseChartData.bindAmountText(amount, (hide) => VariationsChart.describe(variation, hide).value);
+                // Détail en montants : vide (et sans hauteur) quand ils sont masqués
+                const small = document.createElement('span');
+                small.className = 'pecunio-variation-detail';
+                BaseChartData.bindAmountText(small, (hide) => VariationsChart.describe(variation, hide).detail);
+                item.append(dot, name, amount, small);
                 list.appendChild(item);
             }
             wrapper.appendChild(list);

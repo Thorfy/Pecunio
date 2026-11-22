@@ -619,9 +619,9 @@ export class BudgetChart extends BaseChartData {
             return;
         }
         const delta = formatDelta(totals.delta);
-        this.summaryElement.textContent = Config.isBlurry()
+        BaseChartData.bindAmountText(this.summaryElement, (hide) => (hide
             ? `Dépenses ${comparison.primaryLabel.toLowerCase()} face à ${comparison.comparisonLabel.toLowerCase()} : ${delta}`
-            : `Dépenses : ${formatEuros(totals.primary)} (${comparison.primaryLabel}) contre ${formatEuros(totals.comparison)} (${comparison.comparisonLabel}), écart ${delta}`;
+            : `Dépenses : ${formatEuros(totals.primary)} (${comparison.primaryLabel}) contre ${formatEuros(totals.comparison)} (${comparison.comparisonLabel}), écart ${delta}`));
     }
 
     _createYearSelect(id, defaultSelectedYear, currentYear) {

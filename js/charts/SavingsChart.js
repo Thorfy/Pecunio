@@ -5,7 +5,7 @@ import { InjectedStyles } from '../ui/InjectedStyles.js';
 import { THEME } from '../ui/theme.js';
 import { formatEuros, formatNumber } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
-import { currentMonthKey, savingsFromTimeline } from './savings.js';
+import { currentMonthKey, savingsFromTimeline, zeroAlignedRanges } from './savings.js';
 import { RANGE_LABELS, buildTimeline } from './timeline.js';
 import { roundHalfAway } from './variations.js';
 
@@ -87,7 +87,7 @@ export class SavingsChart extends BaseChartData {
         wrapper.appendChild(InjectedStyles.createTitle(SavingsChart.title(this._range())));
         const summary = document.createElement('p');
         summary.className = 'pecunio-budget-summary';
-        summary.textContent = SavingsChart.summary(savings, Config.isBlurry());
+        BaseChartData.bindAmountText(summary, (hide) => SavingsChart.summary(savings, hide));
         wrapper.appendChild(summary);
         container.appendChild(wrapper);
         if (savings.months.length === 0) return null;
@@ -103,11 +103,12 @@ export class SavingsChart extends BaseChartData {
         const barColors = savings.balance.map((value, i) =>
             (value >= 0 ? SAVED_COLOR : DEFICIT_COLOR).replace('rgb(', 'rgba(').replace(')', `, ${alpha(i)})`));
         const ratePoints = savings.rate.map((r) => (r == null ? null : Math.max(-RATE_LIMIT, Math.min(RATE_LIMIT, r * 100))));
+        const ranges = zeroAlignedRanges(savings.balance, ratePoints);
 
         this.chartInstance = new Chart(canvas.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: savings.months.map((m, i) => `${SavingsChart.monthLabel(m)}${i === savings.inProgress ? ' (en cours)' : ''}`),
+                labels: savings.months.map((m) => SavingsChart.monthLabel(m)),
                 datasets: [
                     /** @type {any} */ ({
                         type: 'line',
@@ -140,18 +141,19 @@ export class SavingsChart extends BaseChartData {
                     x: { grid: { display: false } },
                     amount: {
                         position: 'left',
-                        beginAtZero: true,
+                        min: ranges.left.min,
+                        max: ranges.left.max,
                         title: { display: true, text: 'Solde du mois' },
-                        ticks: { callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value))) },
+                        ticks: { includeBounds: false, callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value))) },
                     },
                     rate: {
                         position: 'right',
-                        // Zéro aligné sur celui des soldes tant qu'aucun mois n'est en déficit
-                        suggestedMin: 0,
-                        suggestedMax: 50,
+                        // Zéro à la hauteur de celui des soldes
+                        min: ranges.right.min,
+                        max: ranges.right.max,
                         title: { display: true, text: "Taux d'épargne" },
                         grid: { drawOnChartArea: false },
-                        ticks: { callback: (value) => `${value} %` },
+                        ticks: { includeBounds: false, callback: (value) => `${Math.round(Number(value))} %` },
                     },
                 },
                 plugins: {
@@ -167,6 +169,9 @@ export class SavingsChart extends BaseChartData {
                     },
                     tooltip: {
                         callbacks: {
+                            title: (items) => (items.length
+                                ? `${items[0].label}${items[0].dataIndex === savings.inProgress ? ' (en cours)' : ''}`
+                                : ''),
                             label: (context) => {
                                 const i = context.dataIndex;
                                 if (context.dataset.yAxisID === 'rate') {

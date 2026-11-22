@@ -118,7 +118,7 @@ export class CategoryHistoryChart extends BaseChartData {
         const summary = document.createElement('p');
         summary.className = 'pecunio-budget-summary';
         const inProgress = month.year === this.now.getFullYear() && month.month === this.now.getMonth() + 1;
-        summary.textContent = CategoryHistoryChart.summary(history, monthLabel, Config.isBlurry(), inProgress);
+        BaseChartData.bindAmountText(summary, (hide) => CategoryHistoryChart.summary(history, monthLabel, hide, inProgress));
         wrapper.appendChild(summary);
         const canvasContainer = InjectedStyles.createCanvasContainer();
         canvasContainer.style.height = '300px';

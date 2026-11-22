@@ -118,3 +118,45 @@ describe('Plus fortes variations (G5)', () => {
         expect(VariationsChart.subtitle(22)).toBe('Au 22, face à la médiane des 12 mois précédents au même jour');
     });
 });
+
+describe('Épargne : axes alignés sur zéro', () => {
+    test('un mois en déficit : le zéro des soldes et celui du taux à la même hauteur', async () => {
+        const { zeroAlignedRanges } = await import('../../js/charts/savings.js');
+        const share = ({ min, max }) => -min / (max - min);
+        const { left, right } = zeroAlignedRanges([800, -400, 1200], [30, -40, 35]);
+        expect(share(left)).toBeCloseTo(share(right));
+        expect(left.min).toBeLessThanOrEqual(-400);
+        expect(left.max).toBeGreaterThanOrEqual(1200);
+        expect(right.min).toBeLessThanOrEqual(-40);
+        expect(right.max).toBeGreaterThanOrEqual(35);
+    });
+
+    test('aucun déficit : les deux axes partent de zéro ; taux absents ignorés', async () => {
+        const { zeroAlignedRanges } = await import('../../js/charts/savings.js');
+        const { left, right } = zeroAlignedRanges([800, 200], [30, null]);
+        expect(left.min).toBe(0);
+        expect(right.min).toBe(0);
+        expect(right.max).toBeGreaterThanOrEqual(30);
+    });
+});
+
+describe('Textes avec montants et masquage', () => {
+    test("réécrits à chaque bascule de l'œil ; une nouvelle liaison remplace l'ancienne", async () => {
+        const { BaseChartData } = await import('../../js/charts/base/BaseChartData.js');
+        const p = document.createElement('p');
+        document.body.appendChild(p);
+        const toggle = (isBlurry) => window.dispatchEvent(new CustomEvent('pecunio_amounts_visibility_changed', { detail: { isBlurry } }));
+
+        BaseChartData.bindAmountText(p, (hide) => (hide ? 'ancien masqué' : 'ancien 10 €'));
+        BaseChartData.bindAmountText(p, (hide) => (hide ? 'écart +5 %' : '120,00 €, écart +5 %'));
+        expect(p.textContent).toBe('120,00 €, écart +5 %');
+        toggle(true);
+        expect(p.textContent).toBe('écart +5 %');
+        toggle(false);
+        expect(p.textContent).toBe('120,00 €, écart +5 %');
+
+        p.remove();
+        toggle(true);
+        expect(p.textContent).toBe('120,00 €, écart +5 %');
+    });
+});

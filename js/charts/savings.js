@@ -86,3 +86,29 @@ export function savingsFromRows(rows) {
 export function currentMonthKey(today = new Date()) {
     return DateRange.toDateOnly(today)?.slice(0, 7) ?? null;
 }
+
+/**
+ * Bornes de deux axes dont les zéros tombent à la même hauteur (soldes en
+ * euros à gauche, taux en % à droite) : sans cela, un mois en déficit décale
+ * l'un des zéros et la courbe semble passer sous les barres.
+ * @param {number[]} left valeurs de l'axe de gauche
+ * @param {number[]} right valeurs de l'axe de droite
+ * @returns {{ left: { min: number, max: number }, right: { min: number, max: number } }}
+ */
+export function zeroAlignedRanges(left, right) {
+    const span = (values, minimumMax) => {
+        const finite = values.filter((v) => Number.isFinite(v));
+        return { min: Math.min(0, ...finite), max: Math.max(minimumMax, ...finite) };
+    };
+    const a = span(left, 1);
+    const b = span(right, 10);
+    // Part de chaque axe sous le zéro : la plus grande s'impose aux deux
+    const below = Math.max(-a.min / (a.max - a.min), -b.min / (b.max - b.min));
+    const fit = ({ min, max }) => {
+        if (below === 0) return { min: 0, max: max * 1.1 };
+        // Mêmes proportions : |min| / (max + |min|) = below, en gardant l'étendue nécessaire
+        const top = Math.max(max, (-min * (1 - below)) / below);
+        return { min: (-top * below) / (1 - below) * 1.1, max: top * 1.1 };
+    };
+    return { left: fit(a), right: fit(b) };
+}

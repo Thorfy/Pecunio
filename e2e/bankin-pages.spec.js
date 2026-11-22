@@ -92,6 +92,9 @@ test.describe('Page Comptes', () => {
         await page.locator('#hideButton').click();
         await expect(header).toHaveCSS('filter', /blur/);
         await expect(amounts.first()).toHaveCSS('filter', /blur/);
+        // Phrases de Pecunio (épargne, budget) : plus aucun montant en clair
+        await expect(page.locator('.pecunio-savings-wrapper .pecunio-budget-summary')).not.toContainText('€');
+        await expect(page.locator('#budgetChartBlock .pecunio-budget-summary')).not.toContainText('€');
 
         await page.locator('#hideButton').click();
         await expect(header).toHaveCSS('filter', 'none');
@@ -135,6 +138,10 @@ test.describe('Page Catégories', () => {
             // Vrai clic : échoue si un autre élément (le SVG du donut) recouvre l'œil
             await page.locator('#hideButton').click({ timeout: 3000 });
             await expect(html).toHaveClass(/pecunio-amounts-hidden/);
+            // Textes de Pecunio réécrits sans montants (rythme, variations, historique)
+            for (const text of await page.locator('.pecunio-budget-summary, .pecunio-variation-value, .pecunio-variation-detail').all()) {
+                await expect(text).not.toContainText('€');
+            }
             await page.locator('#hideButton').click({ timeout: 3000 });
             await expect(html).not.toHaveClass(/pecunio-amounts-hidden/);
         }
