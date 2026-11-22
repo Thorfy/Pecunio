@@ -325,7 +325,7 @@ export class PageController {
             page, this.win.location.href, month,
             transactions.length, transactions[0]?.id, transactions[transactions.length - 1]?.id, Math.round(total * 100),
             categories.length,
-            s.startDate, s.endDate, s.noEndDate, s.accountsSelected, s.chartType, s.isBlurry,
+            s.startDate, s.endDate, s.noEndDate, s.accountsSelected, s.chartType, s.isBlurry, s.chartRange, s.chartDetailed,
         ]);
     }
 

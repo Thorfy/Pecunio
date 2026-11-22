@@ -23,11 +23,11 @@
 
 ### Sur la page Comptes
 
-**Vos dépenses mois par mois**, par catégorie, revenus au-dessus et dépenses en dessous de zéro. Cliquez sur une catégorie de la légende pour la masquer, et passez en courbes d'un clic.
+**Vos revenus et dépenses mois par mois**, avec le **solde de chaque mois** : les 5 catégories de dépenses principales et « Autres », sur 6, 12 ou 24 mois (ou tout l'historique). Un clic affiche toutes les catégories ou passe en courbes ; un clic dans la légende masque une catégorie.
 
 <p align="center"><img src="docs/assets/screens/depenses-par-mois.png" alt="Graphique des dépenses par mois et par catégorie" width="90%"></p>
 
-**La comparaison de budget** : une année ou un mois face à une autre période, en médiane ou en moyenne, catégorie par catégorie.
+**La comparaison du budget** : le mois dernier (ou le mois en cours) face à la médiane des 12 mois précédents, ou cette année face à l'an dernier. Dépenses triées par catégorie, total et écart en un coup d'œil ; « Personnaliser » pour choisir d'autres périodes.
 
 <p align="center"><img src="docs/assets/screens/comparaison-budget.png" alt="Comparaison du budget entre deux années" width="90%"></p>
 

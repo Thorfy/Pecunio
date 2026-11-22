@@ -96,7 +96,7 @@ Pistes écartées pour l'instant : prévision de fin de mois (peu fiable sans hi
 | Lot | Contenu | Pourquoi d'abord |
 |---|---|---|
 | **UX-1 Corrections** ✅ | U1 (vérifier), U12 (shields.io), U17, U18, U19, U20 ; police et couleurs de Bankin (§3, `theme.js`) | Défauts visibles et vie privée ; base visuelle commune pour la suite |
-| **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) | Les écrans existants deviennent utiles sans rien ajouter |
+| **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) — découpé en **UX-2a** (page Comptes ✅) et **UX-2b** (Catégories, popup) | Les écrans existants deviennent utiles sans rien ajouter |
 | **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
 | **UX-4 Exploration** | G4 (récurrents), G6, G7, G9, G8 | Plus d'effort ou de valeur à confirmer |
 
@@ -110,7 +110,13 @@ Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, 
 - U17 : grille du rapport en `minmax(0, 1fr)`. U18 : barres empilées sur les deux axes. U19 : donut au lieu de l'aire polaire. U20 : mois via `Intl` (« janv. 2024 ») et couleurs des catégories de Bankin dans le rapport (`js/bankin/categoryColors.js`), sous-catégories du flux de la couleur de leur parent.
 - §3 : `js/ui/theme.js` (Open Sans, bleu nuit `#00213c`, violet `#6562fc`) appliqué à Chart.js et au CSS injecté ; emojis retirés des titres et légendes ; cartes côte à côte de même hauteur ; titre « Comparaison du budget ».
 
+**UX-2a** ✅ _(branche `feat/ux-2a-accounts-charts`)_ :
+- Graphique temporel (U2, U3, U6) : 12 mois par défaut, boutons **6 mois / 12 mois / 24 mois / Tout**, vue simplifiée (revenus, 5 catégories de dépenses principales de la période, « Autres dépenses ») ou **toutes les catégories**, **ligne du solde du mois** ; préférences `chartRange` et `chartDetailed`. Calculs dans `js/charts/timeline.js` (testés).
+- Comparaison du budget (U4, U5) : préréglages **Ce mois-ci**, **Mois dernier** (par défaut), **Cette année** face à la médiane des 12 mois précédents ou à l'an dernier, et **Personnaliser** (les listes de choix, repliées) ; dépenses seules en barres horizontales triées, synthèse « total et écart », écart par catégorie dans l'infobulle ; préférence `budgetPreset`. Calculs dans `js/charts/budgetComparison.js` (testés).
+
 ## 6. Questions à trancher
+
+Réponses du 22/11/2026 : 1 → vue simplifiée par défaut ; 2 → préréglages + « Personnaliser » ; 3 → abonnements plus tard ; 4 → popup à l'identité Pecunio (violet, vert, Open Sans, logo).
 
 1. **Graphique temporel** : remplacer l'empilement de 17 catégories par défaut (ex. solde + 5 premières catégories + « Autres ») ou garder la vue complète en option ?
 2. **Comparaison budget** : garder les 5 listes déroulantes (souplesse) ou passer à des préréglages (simplicité) ?

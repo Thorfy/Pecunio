@@ -335,7 +335,10 @@ describe('LineBarChart — données', () => {
             ['2024-02', -158.3],
             ['2024-03', -150],
         ]);
-        expect(data.datasets.find((d) => d.label === 'Banque').data).toEqual([]);
+        // Catégorie sans opération sur la période : pas de série
+        expect(data.datasets.find((d) => d.label === 'Banque')).toBeUndefined();
+        // Solde du mois en ligne, hors pile des catégories
+        expect(data.datasets.at(-1)).toMatchObject({ type: 'line', label: 'Solde du mois', stack: 'solde' });
     });
 
     test('masque les catégories masquées par l\'utilisateur', async () => {
@@ -376,8 +379,8 @@ describe('Graphiques — mois de rattachement Bankin (current_month)', () => {
         const chart = new LineBarChart(moved(), CATEGORIES, null, {}, fakeSettings({}));
         const data = await chart.prepareData();
         expect(data.datasets.find((d) => d.label === 'Logement').data).toEqual([
-            { x: '2024-02', y: -100 },
             { x: '2024-01', y: -50 },
+            { x: '2024-02', y: -100 },
         ]);
     });
 
@@ -551,5 +554,124 @@ describe('LineBarChart — bouton de type de graphique (D10)', () => {
         const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
         const config = await chart.getChartJsConfig();
         expect(config.plugins).toBeUndefined();
+    });
+});
+
+describe('BudgetChart — préréglages et comparaison (UX-2a)', () => {
+    const settingsWith = (values = {}) => ({ ...fakeSettings(values), setSetting: vi.fn(() => Promise.resolve()) });
+    const budgetAt = async (now, values = {}) => {
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, settingsWith(values));
+        chart.now = () => now;
+        await chart.initializationPromise;
+        return chart;
+    };
+
+    test('médiane mensuelle sur une liste de mois, mois sans opération comptés à zéro', async () => {
+        const chart = await budgetAt(new Date(2024, 3, 15));
+        const median = chart.getCalculatedValueOverMonths([{ year: 2024, month: 1 }, { year: 2024, month: 2 }, { year: 2024, month: 3 }]);
+        expect(median.Logement).toBe(-800);
+        expect(median['Alimentation & Restau.']).toBe(-158.3);
+        expect(chart.getCalculatedValueOverMonths([{ year: 2030, month: 1 }]).Logement).toBe(0);
+    });
+
+    test('« mois dernier » : mars 2024 face à la médiane des 12 mois précédents', async () => {
+        const chart = await budgetAt(new Date(2024, 3, 15), { budgetPreset: 'last' });
+        const comparison = await chart.getComparison();
+        expect(comparison.primaryLabel).toBe('Mars 2024');
+        expect(comparison.comparisonLabel).toBe('Médiane des 12 mois précédents');
+        expect(comparison.primary.Logement).toBe(-800);
+        // Seuls janvier et février 2024 ont des opérations : la médiane sur 12 mois vaut 0
+        expect(comparison.comparison.Logement).toBe(0);
+    });
+
+    test('interface : préréglage enregistré, bouton actif, panneau « Personnaliser », synthèse et barres triées', async () => {
+        document.body.innerHTML = '<div id="budgetChartBlock"></div>';
+        const settings = settingsWith({ budgetPreset: 'last' });
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, settings);
+        chart.now = () => new Date(2024, 2, 15); // mois dernier = février 2024
+        chart.createUI('budgetChartBlock');
+        await chart.initializationPromise;
+        await vi.waitFor(() => expect(chart.lastComparison).toBeDefined());
+
+        const pressed = () => [...document.querySelectorAll('.pecunio-budget-presets button[aria-pressed="true"]')].map((b) => b.textContent);
+        expect(pressed()).toEqual(['Mois dernier']);
+        expect(document.querySelector('.pecunio-budget-custom').hidden).toBe(true);
+        // Dépenses seules (pas les revenus), de la plus importante à la plus faible
+        expect(chart.lastComparison.rows.map((r) => r.name)).toEqual(['Logement', 'Alimentation & Restau.']);
+        expect(document.querySelector('.pecunio-budget-summary').textContent).toMatch(/^Dépenses : .*Février 2024.*écart/);
+
+        chart.lastComparison = undefined;
+        document.querySelector('.pecunio-budget-presets button[data-preset="custom"]').click();
+        expect(settings.setSetting).toHaveBeenCalledWith('budgetPreset', 'custom');
+        expect(pressed()).toEqual(['Personnaliser']);
+        expect(document.querySelector('.pecunio-budget-custom').hidden).toBe(false);
+        await vi.waitFor(() => expect(chart.lastComparison).toBeDefined());
+        chart.destroy();
+        document.body.innerHTML = '';
+    });
+
+    test('revenus et catégories masquées exclus de la comparaison', async () => {
+        chrome.storage.local._data.hiddenCategories = ['Logement'];
+        const chart = await budgetAt(new Date(2024, 2, 15));
+        const excluded = await chart._excludedCategories();
+        expect([...excluded].sort()).toEqual(["Entrées d'argent", 'Logement']);
+    });
+
+    test('infobulle des barres horizontales : valeur sur l\'axe X', () => {
+        const context = { dataset: { label: 'Mars 2024' }, parsed: { x: 158.3, y: 2 } };
+        expect(BudgetChart.formatTooltipLabel(context, false, 'x')).toBe('Mars 2024 : 158,30 €');
+    });
+});
+
+describe('LineBarChart — barre d\'outils (UX-2a)', () => {
+    test('période : un bouton par durée, l\'actif marqué, clic sur un autre', () => {
+        const onSelect = vi.fn();
+        const group = LineBarChart.createRangeSelector('12m', onSelect);
+        const buttons = [...group.querySelectorAll('button')];
+        expect(buttons.map((b) => b.textContent)).toEqual(['6 mois', '12 mois', '24 mois', 'Tout']);
+        expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+        buttons[1].click();
+        expect(onSelect).not.toHaveBeenCalled();
+        buttons[3].click();
+        expect(onSelect).toHaveBeenCalledWith('all');
+    });
+
+    test('détail : libellé selon la vue', () => {
+        expect(LineBarChart.createDetailToggle(false, () => {}).textContent).toBe('Toutes les catégories');
+        expect(LineBarChart.createDetailToggle(true, () => {}).textContent).toBe('Vue simplifiée');
+    });
+
+    test('préférences enregistrées et graphique prévenu', async () => {
+        const settings = { ...fakeSettings({ chartRange: '6m' }), setSetting: vi.fn(() => Promise.resolve()) };
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, settings);
+        expect(chart._option('chartRange')).toBe('6m');
+        expect(chart._option('chartDetailed')).toBe(false); // valeur par défaut
+        const changed = vi.fn();
+        window.addEventListener('pecunio_chart_type_changed', changed, { once: true });
+        await chart._saveOption('chartDetailed', true);
+        expect(settings.setSetting).toHaveBeenCalledWith('chartDetailed', true);
+        expect(changed).toHaveBeenCalled();
+    });
+
+    test('titre selon la période', () => {
+        expect(LineBarChart.title('12m')).toBe('Revenus et dépenses — 12 mois');
+        expect(LineBarChart.title('all')).toBe('Revenus et dépenses par mois');
+    });
+});
+
+describe('BudgetChart — couleurs des catégories', () => {
+    test('même couleur, plus claire, pour la période de référence', () => {
+        expect(BudgetChart.withAlpha('rgb(255, 178, 0)', 0.35)).toBe('rgba(255, 178, 0, 0.35)');
+        expect(BudgetChart.withAlpha('rgba(1, 2, 3, 1)', 0.5)).toBe('rgba(1, 2, 3, 0.5)');
+        expect(BudgetChart.withAlpha('#6562fc', 0.5)).toBe('#6562fc');
+    });
+
+    test('couleur de Bankin de chaque catégorie, violet à défaut', async () => {
+        const style = document.createElement('style');
+        style.textContent = '.categoryColor_159 { background-color: rgb(103, 127, 224); }';
+        document.head.appendChild(style);
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        expect(chart._categoryColors(['Logement', 'Banque', 'Inconnue'])).toEqual(['rgb(103, 127, 224)', '#6562fc', '#6562fc']);
+        style.remove();
     });
 });

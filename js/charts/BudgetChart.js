@@ -3,23 +3,27 @@ import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { THEME } from '../ui/theme.js';
+import { ColorParser } from '../utils/ColorParser.js';
 import { MONTH_NAMES, formatEuros, formatNumber } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
+import { BUDGET_PRESETS, formatDelta, presetPeriods, toExpenseComparison } from './budgetComparison.js';
 
 export class BudgetChart extends BaseChartData {
     /**
      * Libellé de l'infobulle d'une barre : « Série : -158,30 € ».
      * Pour un graphique en barres, Chart.js fournit `context.parsed` sous forme
      * d'objet { x, y } : la valeur est `parsed.y` (bug B20 : NaN affiché).
-     * @param {{ dataset?: { label?: string }, parsed?: number|{ y?: number }, raw?: unknown }} context
+     * @param {{ dataset?: { label?: string }, parsed?: number|{ x?: number, y?: number }, raw?: unknown }} context
      * @param {boolean} hideAmounts - mode « montants masqués »
+     * @param {'x' | 'y'} [valueAxis] axe de la valeur : 'x' pour des barres horizontales
      * @returns {string}
      */
-    static formatTooltipLabel(context, hideAmounts) {
+    static formatTooltipLabel(context, hideAmounts, valueAxis = 'y') {
         const label = context?.dataset?.label || '';
         if (hideAmounts) return label;
         const parsed = context?.parsed;
-        const candidate = parsed != null && typeof parsed === 'object' ? parsed.y : (parsed ?? context?.raw);
+        const candidate = parsed != null && typeof parsed === 'object' ? parsed[valueAxis] : (parsed ?? context?.raw);
         const value = typeof candidate === 'number' ? candidate : Number(candidate);
         return candidate == null || !Number.isFinite(value) ? `${label} : —` : `${label} : ${formatEuros(value)}`;
     }
@@ -40,6 +44,40 @@ export class BudgetChart extends BaseChartData {
         this.budgetCtx = null;
         this.budgetChart = null;
         this.monthsArray = [BudgetChart.ALL_MONTHS_LABEL, ...MONTH_NAMES.slice(1)];
+        /** Date du jour (remplaçable dans les tests). */
+        this.now = () => new Date();
+        /** Préréglage affiché (préférence budgetPreset). */
+        this.preset = settingsInstance?.getSetting?.('budgetPreset') || 'last';
+    }
+
+    /** Hauteur d'une ligne (catégorie) du graphique horizontal, en pixels. */
+    static ROW_HEIGHT = 34;
+
+    /** Opacité des barres de la période de référence (même couleur, plus claire). */
+    static COMPARISON_ALPHA = 0.35;
+
+    /**
+     * Même couleur avec une opacité : « rgb(1, 2, 3) » → « rgba(1, 2, 3, 0.35) ».
+     * @param {string} color
+     * @param {number} alpha
+     */
+    static withAlpha(color, alpha) {
+        const match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color || '');
+        return match ? `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})` : color;
+    }
+
+    /**
+     * Couleur de Bankin de chaque catégorie (par son nom), violet de Pecunio à défaut.
+     * @param {string[]} names
+     * @returns {string[]}
+     */
+    _categoryColors(names) {
+        return names.map((name) => {
+            const category = this.categories?.find((c) => c && c.name === name);
+            const color = category ? ColorParser.parseColorCSS(`categoryColor_${category.id}`) : '';
+            // Sans règle CSS, la couleur calculée est transparente
+            return color && !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(color) ? color : THEME.accent;
+        });
     }
 
     static ALL_MONTHS_LABEL = 'Tous les mois';
@@ -55,109 +93,85 @@ export class BudgetChart extends BaseChartData {
             console.error(`[ChartDataBudget] createUI: Container element with ID '${containerElementId}' not found.`);
             return;
         }
-        
-        // Injecter les styles Pecunio
         InjectedStyles.inject();
-        
-        this.containerElement.innerHTML = ''; // Clear the container
-        
-        // Appliquer les classes Pecunio au conteneur
+        this.containerElement.innerHTML = '';
         InjectedStyles.applyContainerClasses(this.containerElement);
+        this.containerElement.appendChild(InjectedStyles.createTitle('Comparaison du budget'));
 
-        const budgetTitle = InjectedStyles.createTitle("Comparaison du budget");
-        this.containerElement.appendChild(budgetTitle);
+        // Préréglages (lot UX-2a) ; « Personnaliser » affiche les listes de choix
+        const toolbar = document.createElement('div');
+        toolbar.className = 'pecunio-chart-toolbar';
+        this.presetGroup = document.createElement('div');
+        this.presetGroup.className = 'pecunio-segmented pecunio-budget-presets';
+        this.presetGroup.setAttribute('role', 'group');
+        this.presetGroup.setAttribute('aria-label', 'Période comparée');
+        for (const [preset, label] of Object.entries(BUDGET_PRESETS)) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+            button.dataset.preset = preset;
+            button.addEventListener('click', () => this.selectPreset(/** @type {any} */ (preset)));
+            this.presetGroup.appendChild(button);
+        }
+        toolbar.appendChild(this.presetGroup);
+        this.containerElement.appendChild(toolbar);
 
         const selectorContainer = document.createElement('div');
         selectorContainer.id = 'medianChartSelectors';
-        selectorContainer.classList.add('pecunio-controls');
+        selectorContainer.classList.add('pecunio-controls', 'pecunio-budget-custom');
+        this.customPanel = selectorContainer;
         this.containerElement.appendChild(selectorContainer);
 
-        const currentYear = new Date().getFullYear();
+        const currentYear = this.now().getFullYear();
+        const group = (title, yearId, monthId, defaultYear) => {
+            const div = InjectedStyles.createControlGroup();
+            const strong = document.createElement('strong');
+            strong.textContent = title;
+            strong.style.fontSize = '13px';
+            strong.style.color = THEME.text;
+            div.appendChild(strong);
+            div.appendChild(InjectedStyles.createLabel('Année :', yearId));
+            const yearSelect = this._createYearSelect(yearId, defaultYear, currentYear);
+            div.appendChild(yearSelect);
+            div.appendChild(InjectedStyles.createLabel('Mois :', monthId));
+            const monthSelect = this._createMonthSelect(monthId, 'ALL');
+            div.appendChild(monthSelect);
+            selectorContainer.appendChild(div);
+            return [yearSelect, monthSelect];
+        };
+        [this.yearSelectorLeft, this.monthSelectorLeft] = group('Période', 'yearSelectorLeft', 'monthSelectorLeft', currentYear);
+        [this.yearSelectorRight, this.monthSelectorRight] = group('Comparer à', 'yearSelectorRight', 'monthSelectorRight', currentYear - 1);
 
-        // Left Column (Primary)
-        const leftColumnDiv = InjectedStyles.createControlGroup();
-
-        const leftColumnTitle = document.createElement('strong');
-        leftColumnTitle.textContent = 'Colonne Gauche (Principale)';
-        leftColumnTitle.style.fontSize = '13px';
-        leftColumnTitle.style.color = '#333';
-        leftColumnDiv.appendChild(leftColumnTitle);
-
-        const yearLabelLeft = InjectedStyles.createLabel('Année:', 'yearSelectorLeft');
-        leftColumnDiv.appendChild(yearLabelLeft);
-        this.yearSelectorLeft = this._createYearSelect('yearSelectorLeft', currentYear, currentYear);
-        leftColumnDiv.appendChild(this.yearSelectorLeft);
-
-        const monthLabelLeft = InjectedStyles.createLabel('Mois:', 'monthSelectorLeft');
-        leftColumnDiv.appendChild(monthLabelLeft);
-        this.monthSelectorLeft = this._createMonthSelect('monthSelectorLeft', "ALL");
-        leftColumnDiv.appendChild(this.monthSelectorLeft);
-        selectorContainer.appendChild(leftColumnDiv);
-
-        // Right Column (Comparison)
-        const rightColumnDiv = InjectedStyles.createControlGroup();
-
-        const rightColumnTitle = document.createElement('strong');
-        rightColumnTitle.textContent = 'Colonne Droite (Comparaison)';
-        rightColumnTitle.style.fontSize = '13px';
-        rightColumnTitle.style.color = '#333';
-        rightColumnDiv.appendChild(rightColumnTitle);
-
-        const yearLabelRight = InjectedStyles.createLabel('Année:', 'yearSelectorRight');
-        rightColumnDiv.appendChild(yearLabelRight);
-        this.yearSelectorRight = this._createYearSelect('yearSelectorRight', currentYear - 1, currentYear);
-        rightColumnDiv.appendChild(this.yearSelectorRight);
-
-        const monthLabelRight = InjectedStyles.createLabel('Mois:', 'monthSelectorRight');
-        rightColumnDiv.appendChild(monthLabelRight);
-        this.monthSelectorRight = this._createMonthSelect('monthSelectorRight', "ALL");
-        rightColumnDiv.appendChild(this.monthSelectorRight);
-        selectorContainer.appendChild(rightColumnDiv);
-
-        // Calculation Type Selector
         const calcDiv = InjectedStyles.createControlGroup();
-
-        const calcLabel = InjectedStyles.createLabel('Calcul:', 'calculationTypeSelector');
-        calcDiv.appendChild(calcLabel);
-
+        calcDiv.appendChild(InjectedStyles.createLabel('Calcul :', 'calculationTypeSelector'));
         this.calcTypeSelector = InjectedStyles.createSelect('calculationTypeSelector');
-
-        const optionMedian = document.createElement('option');
-        optionMedian.value = 'median';
-        optionMedian.textContent = 'Médiane';
-        optionMedian.selected = true;
-        this.calcTypeSelector.appendChild(optionMedian);
-
-        const optionAverage = document.createElement('option');
-        optionAverage.value = 'average';
-        optionAverage.textContent = 'Moyenne';
-        this.calcTypeSelector.appendChild(optionAverage);
-
+        for (const [value, label] of [['median', 'Médiane'], ['average', 'Moyenne']]) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            this.calcTypeSelector.appendChild(option);
+        }
+        this.calcTypeSelector.value = 'median';
         calcDiv.appendChild(this.calcTypeSelector);
         selectorContainer.appendChild(calcDiv);
 
-        // Canvas Creation
-        const canvasContainer = InjectedStyles.createCanvasContainer();
-        this.containerElement.appendChild(canvasContainer);
-        
+        // Synthèse : totaux et écart
+        this.summaryElement = document.createElement('p');
+        this.summaryElement.className = 'pecunio-budget-summary';
+        this.containerElement.appendChild(this.summaryElement);
+
+        // Hauteur fixée à chaque mise à jour, selon le nombre de catégories (pas de boucle de redimensionnement, B23)
+        this.canvasContainer = InjectedStyles.createCanvasContainer();
+        this.containerElement.appendChild(this.canvasContainer);
         const budgetCanvas = InjectedStyles.createCanvas();
-        canvasContainer.appendChild(budgetCanvas);
-        
-        if (budgetCanvas) {
-            this.budgetCtx = budgetCanvas.getContext('2d');
-        } else {
-            console.error("[ChartDataBudget] createUI: Failed to create canvas element.");
-            return;
+        this.canvasContainer.appendChild(budgetCanvas);
+        this.budgetCtx = budgetCanvas.getContext('2d');
+
+        for (const select of [this.yearSelectorLeft, this.monthSelectorLeft, this.yearSelectorRight, this.monthSelectorRight, this.calcTypeSelector]) {
+            select.addEventListener('change', () => this._updateChartView());
         }
+        this._showPreset();
 
-        // Attach Event Listeners
-        this.yearSelectorLeft.addEventListener('change', this._updateChartView.bind(this));
-        this.monthSelectorLeft.addEventListener('change', this._updateChartView.bind(this));
-        this.yearSelectorRight.addEventListener('change', this._updateChartView.bind(this));
-        this.monthSelectorRight.addEventListener('change', this._updateChartView.bind(this));
-        this.calcTypeSelector.addEventListener('change', this._updateChartView.bind(this));
-
-        // Initial Chart Load (after awaiting initializationPromise)
         this.initializationPromise.then(() => {
             if (this._destroyed) return; // graphique remplacé entre-temps
             this._setupStorageListener();
@@ -165,6 +179,27 @@ export class BudgetChart extends BaseChartData {
         }).catch(error => {
             console.error("[ChartDataBudget] createUI: Error during initial data load for chart view:", error);
         });
+    }
+
+    /**
+     * Change de préréglage, l'enregistre et redessine.
+     * @param {'current' | 'last' | 'year' | 'custom'} preset
+     */
+    selectPreset(preset) {
+        if (preset === this.preset) return;
+        this.preset = preset;
+        this._showPreset();
+        this.settingsInstance?.setSetting?.('budgetPreset', preset)?.catch?.((error) =>
+            console.warn('[ChartDataBudget] Préréglage non enregistré :', error));
+        this._updateChartView();
+    }
+
+    /** Bouton actif et panneau « Personnaliser » selon le préréglage. */
+    _showPreset() {
+        this.presetGroup?.querySelectorAll('button').forEach((button) => {
+            button.setAttribute('aria-pressed', String(button.dataset.preset === this.preset));
+        });
+        if (this.customPanel) this.customPanel.hidden = this.preset !== 'custom';
     }
 
     /**
@@ -248,6 +283,7 @@ export class BudgetChart extends BaseChartData {
 
     getCalculatedMonthlyValueForYear(year, calculationType = 'median') {
         // Logger.debug(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
+        /** @type {Record<string, number>} */
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -306,8 +342,73 @@ export class BudgetChart extends BaseChartData {
         return result;
     }
 
+    /**
+     * Médiane (ou moyenne) mensuelle par catégorie sur une liste de mois ; un
+     * mois sans opération compte pour zéro dès que la catégorie a été active.
+     * @param {{ year: number, month: number }[]} months
+     * @param {'median' | 'average'} [calculationType]
+     * @returns {Record<string, number>}
+     */
+    getCalculatedValueOverMonths(months, calculationType = 'median') {
+        /** @type {Record<string, number>} */
+        const result = {};
+        for (const categoryName of new Set(this.categoryLookup.values())) {
+            const totals = months.map(({ year, month }) =>
+                (this.organizedData[year]?.[month]?.[categoryName] || []).reduce((sum, val) => sum + val, 0));
+            const active = months.some(({ year, month }) => this.organizedData[year]?.[month]?.[categoryName]);
+            result[categoryName] = !active
+                ? 0
+                : calculationType === 'average'
+                    ? BaseChartData.calculateAverage(totals)
+                    : BaseChartData.calculateMedian(totals);
+        }
+        return result;
+    }
+
+    /**
+     * Montants d'une période (mois réel, médiane d'une liste de mois ou d'une année).
+     * @param {import('./budgetComparison.js').BudgetPeriod} period
+     */
+    _periodValues(period) {
+        if (period.kind === 'month') return this.getActualSpendingForMonth(period.year, period.month);
+        if (period.kind === 'months') return this.getCalculatedValueOverMonths(period.months);
+        return this.getCalculatedMonthlyValueForYear(period.year);
+    }
+
+    /**
+     * Montants comparés selon le préréglage (ou les listes de « Personnaliser »).
+     * @returns {Promise<{ primary: Record<string, number>, comparison: Record<string, number>, primaryLabel: string, comparisonLabel: string }>}
+     */
+    async getComparison(preset = this.preset) {
+        await this.initializationPromise;
+        if (preset === 'custom') {
+            const month = (select) => (select.value === 'ALL' ? 'ALL' : parseInt(select.value));
+            return this._customComparison(
+                parseInt(this.yearSelectorLeft.value), month(this.monthSelectorLeft),
+                parseInt(this.yearSelectorRight.value), month(this.monthSelectorRight),
+                this.calcTypeSelector.value,
+            );
+        }
+        const periods = presetPeriods(preset, this.now());
+        return {
+            primary: this._periodValues(periods.primary),
+            comparison: this._periodValues(periods.comparison),
+            primaryLabel: periods.primaryLabel,
+            comparisonLabel: periods.comparisonLabel,
+        };
+    }
+
+    /** Catégories exclues de la comparaison : revenus et catégories masquées. */
+    async _excludedCategories() {
+        const excluded = await getHiddenCategories();
+        const income = this.categories?.find((c) => c && c.id === Config.CATEGORIES.BUDGET_CATEGORY_ID);
+        if (income) excluded.add(income.name);
+        return excluded;
+    }
+
     getActualSpendingForMonth(year, month) {
         // Logger.debug(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
+        /** @type {Record<string, number>} */
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -333,6 +434,7 @@ export class BudgetChart extends BaseChartData {
 
     getHistoricalCalculatedValueForMonth(targetMonth, currentYear, calculationType = 'median') {
         // Logger.debug(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
+        /** @type {Record<string, number>} */
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -367,8 +469,8 @@ export class BudgetChart extends BaseChartData {
         return result;
     }
 
-    async prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType = 'median') {
-        await this.initializationPromise;
+    /** Montants comparés pour des années / mois choisis dans les listes. */
+    _customComparison(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType = 'median') {
         // Logger.debug(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
 
         let primaryData, comparisonData, primaryLabel, comparisonLabel;
@@ -391,6 +493,17 @@ export class BudgetChart extends BaseChartData {
             comparisonData = this.getActualSpendingForMonth(selectedYearRight, selectedMonthRight);
             comparisonLabel = `Réel ${this.getMonthName(selectedMonthRight)} ${selectedYearRight}`;
         }
+        return { primary: primaryData, comparison: comparisonData, primaryLabel, comparisonLabel };
+    }
+
+    /**
+     * Données brutes (toutes catégories, montants signés) pour des périodes choisies.
+     * Utilisé par le mode « Personnaliser » et les tests.
+     */
+    async prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType = 'median') {
+        await this.initializationPromise;
+        const { primary: primaryData, comparison: comparisonData, primaryLabel, comparisonLabel } =
+            this._customComparison(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType);
 
         const allCategoryNames = new Set();
         Object.keys(primaryData).forEach(name => allCategoryNames.add(name));
@@ -415,112 +528,100 @@ export class BudgetChart extends BaseChartData {
         };
     }
 
+    /** Recalcule la comparaison et redessine le graphique horizontal. */
     async _updateChartView() {
-        // Get new selector values
-        const selectedYearLeft = parseInt(this.yearSelectorLeft.value);
-        const monthValueLeft = this.monthSelectorLeft.value;
-        const selectedMonthLeft = (monthValueLeft === "ALL") ? "ALL" : parseInt(monthValueLeft);
-
-        const selectedYearRight = parseInt(this.yearSelectorRight.value);
-        const monthValueRight = this.monthSelectorRight.value;
-        const selectedMonthRight = (monthValueRight === "ALL") ? "ALL" : parseInt(monthValueRight);
-
-        const selectedCalcType = this.calcTypeSelector.value;
-
-        // Logger.debug(`[ChartDataBudget] _updateChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
-
-        if (!this || typeof this.prepareData !== 'function') { // Check instance and method
-            console.error('[ChartDataBudget] _updateChartView: instance is not ready or prepareData is missing.');
+        if (!this.canvasContainer) return; // createUI pas encore appelé
+        let comparison;
+        try {
+            comparison = await this.getComparison();
+        } catch (error) {
+            console.error('[ChartDataBudget] Comparaison impossible :', error);
             return;
         }
+        if (this._destroyed) return;
+        const { rows, totals } = toExpenseComparison(comparison.primary, comparison.comparison, {
+            exclude: await this._excludedCategories(),
+        });
+        this.lastComparison = { ...comparison, rows, totals };
+        this._renderSummary(comparison, totals, rows.length);
 
-        const newChartData = await this.prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, selectedCalcType);
-
-        if (!newChartData || !newChartData.labels || !newChartData.datasets || !Array.isArray(newChartData.datasets)) {
-            console.error('[ChartDataBudget] _updateChartView: Invalid data structure received from prepareData. Data:', newChartData);
-            if(this.budgetChart) {
-                this.budgetChart.data.labels = [];
-                this.budgetChart.data.datasets = [];
-                this.budgetChart.update();
-            }
-            return;
-        }
-        for(const dataset of newChartData.datasets) {
-            if (!Array.isArray(dataset.data)) {
-                console.error('[ChartDataBudget] _updateChartView: Invalid dataset structure, missing data array:', dataset);
-                if(this.budgetChart) {
-                   this.budgetChart.data.labels = [];
-                   this.budgetChart.data.datasets = [];
-                   this.budgetChart.update();
-                }
-                return;
-            }
-        }
-
-        const periodLabel = (year, monthValue) =>
-            monthValue === "ALL" ? `${year}, tous les mois` : `${this.monthsArray[parseInt(monthValue)]} ${year}`;
-        const dynamicTitle = `Budget : ${periodLabel(selectedYearLeft, monthValueLeft)} et ${periodLabel(selectedYearRight, monthValueRight)}`
-            + ` (${BudgetChart.calculationLabel(selectedCalcType).toLowerCase()})`;
-
-        if (this.budgetChart) {
-            this.budgetChart.data = newChartData;
-            this.budgetChart.options.plugins.title.text = dynamicTitle;
-            this.budgetChart.update();
-        } else {
-            if (this.budgetChart) {
-               // console.warn('[ChartDataBudget] _updateChartView: budgetChart was not null before creation, destroying old instance.');
-               this.budgetChart.destroy();
-            }
-            try {
-                this.budgetChart = new Chart(this.budgetCtx, { // Assumes Chart is global
-                    type: 'bar',
-                    data: newChartData,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: Config.isBlurry() ? '' : 'Montant (€)'
-                                },
-                                ticks: {
-                                    callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value)))
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: false,
-                                    text: 'Catégories'
-                                }
-                            }
+        this.canvasContainer.style.height = `${Math.max(160, rows.length * BudgetChart.ROW_HEIGHT + 70)}px`;
+        // Couleurs des catégories de Bankin : pleine pour la période, claire pour la référence
+        const colors = this._categoryColors(rows.map((r) => r.name));
+        const light = colors.map((c) => BudgetChart.withAlpha(c, BudgetChart.COMPARISON_ALPHA));
+        const legendItem = (text, fillStyle, datasetIndex) => ({ text, fillStyle, strokeStyle: fillStyle, lineWidth: 0, datasetIndex, hidden: false });
+        const config = {
+            type: 'bar',
+            data: {
+                labels: rows.map((r) => r.name),
+                datasets: [
+                    { label: comparison.primaryLabel, data: rows.map((r) => r.primary), backgroundColor: colors, borderRadius: 4 },
+                    { label: comparison.comparisonLabel, data: rows.map((r) => r.comparison), backgroundColor: light, borderColor: colors, borderWidth: 1, borderRadius: 4 },
+                ],
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value))) },
+                    },
+                    y: { grid: { display: false } },
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        // Une couleur par catégorie : la légende montre « foncé / clair » en gris neutre
+                        labels: {
+                            generateLabels: () => [
+                                legendItem(comparison.primaryLabel, THEME.textMuted, 0),
+                                legendItem(comparison.comparisonLabel, BudgetChart.withAlpha('rgb(91, 107, 124)', BudgetChart.COMPARISON_ALPHA), 1),
+                            ],
                         },
-                        plugins: {
-                            legend: {
-                                position: 'top',
+                        onClick: () => {},
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: (context) => BudgetChart.formatTooltipLabel(context, Config.isBlurry(), 'x'),
+                            footer: (items) => {
+                                const row = rows[items[0]?.dataIndex];
+                                return row ? `Écart : ${formatDelta(row.delta)}` : '';
                             },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                callbacks: {
-                                    label: (context) => BudgetChart.formatTooltipLabel(context, Config.isBlurry())
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: dynamicTitle
-                            }
-                        }
-                    }
-                });
-                BaseChartData._attachAmountVisibilityListener(this.budgetChart);
-                // Logger.debug('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
-            } catch (error) {
-                console.error('[ChartDataBudget] _updateChartView: Error creating new budget bar chart:', error);
-                this.budgetChart = null;
-            }
+                        },
+                    },
+                },
+            },
+        };
+        if (this.budgetChart) {
+            BaseChartData._detachAmountVisibilityListener(this.budgetChart);
+            this.budgetChart.destroy();
+            this.budgetChart = null;
         }
+        if (!this.budgetCtx) return; // canvas indisponible (tests)
+        try {
+            this.budgetChart = new Chart(this.budgetCtx, /** @type {any} */ (config));
+            BaseChartData._attachAmountVisibilityListener(this.budgetChart);
+        } catch (error) {
+            console.error('[ChartDataBudget] Graphique impossible à créer :', error);
+            this.budgetChart = null;
+        }
+    }
+
+    /** Phrase de synthèse : « Dépenses : 1 950,00 € (Octobre 2026) contre 2 100,00 € (…) : −7 % ». */
+    _renderSummary(comparison, totals, rowCount) {
+        if (!this.summaryElement) return;
+        if (rowCount === 0) {
+            this.summaryElement.textContent = 'Aucune dépense sur ces périodes.';
+            return;
+        }
+        const delta = formatDelta(totals.delta);
+        this.summaryElement.textContent = Config.isBlurry()
+            ? `Dépenses ${comparison.primaryLabel.toLowerCase()} face à ${comparison.comparisonLabel.toLowerCase()} : ${delta}`
+            : `Dépenses : ${formatEuros(totals.primary)} (${comparison.primaryLabel}) contre ${formatEuros(totals.comparison)} (${comparison.comparisonLabel}), écart ${delta}`;
     }
 
     _createYearSelect(id, defaultSelectedYear, currentYear) {
