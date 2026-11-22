@@ -3,6 +3,7 @@
 import path from 'node:path';
 import { test as base, chromium, expect } from '@playwright/test';
 import { installBankinSimulator } from './bankin-simulator.js';
+import { waitForHeaderCapture } from './service-worker-ready.js';
 
 export const EXTENSION_PATH = path.resolve('.output/chrome-mv3');
 
@@ -23,8 +24,13 @@ export const test = base.extend({
         await context.close();
     },
 
+    /**
+     * Service worker de Pecunio, prêt à capter les en-têtes : Chrome lui
+     * transmet déjà les requêtes vers sync.bankin.com (voir service-worker-ready.js).
+     */
     serviceWorker: async ({ context }, use) => {
         const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+        await waitForHeaderCapture({ worker, context });
         await use(worker);
     },
 
@@ -34,8 +40,9 @@ export const test = base.extend({
 
     /**
      * Bankin simulé ; `bankin.apiCalls` liste les appels reçus par l'API.
-     * Attend le service worker : sinon, juste après le lancement du navigateur,
-     * l'appel authentifié de la page peut précéder l'écoute des en-têtes.
+     * Attend le service worker prêt : sinon, juste après le lancement du
+     * navigateur, l'appel authentifié de la page peut précéder l'écoute des
+     * en-têtes (aucun graphique, délai d'attente de 10 s).
      */
     bankin: async ({ context, serviceWorker }, use) => {
         await use(await installBankinSimulator(context));

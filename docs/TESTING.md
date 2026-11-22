@@ -92,11 +92,14 @@ Chaque test lance un Chromium avec l'extension construite (`.output/chrome-mv3`)
 
 Le service worker capture les en-têtes de l'appel simulé comme en réel (`webRequest` voit les requêtes interceptées par Playwright).
 
+Chaque test lance un Chromium neuf où l'extension vient d'être installée : Chrome ne transmet les requêtes à l'écouteur `webRequest` du service worker qu'un peu après son démarrage (plusieurs centaines de millisecondes sous charge). La fixture `serviceWorker` attend donc qu'une requête sonde vers `sync.bankin.com` soit vue par le service worker avant de rendre la main (`e2e/service-worker-ready.js`) ; sans cette attente, l'unique appel `/v2/accounts` de la page simulée pouvait passer inaperçu (aucun graphique, délai de 10 s de `DataManager`).
+
 | Fichier | Rôle |
 |---|---|
 | `playwright.config.js` | Un test à la fois, trace et capture d'écran en cas d'échec |
 | `e2e/fixtures.js` | `context` (Chromium + extension), `serviceWorker`, `extensionId`, `bankin`, `consoleErrors` (erreurs de console, exceptions et `alert()` de toutes les pages) ; `openPopup()` ouvre la popup dans un onglet |
 | `e2e/bankin-simulator.js` | Bankin simulé |
+| `e2e/service-worker-ready.js` | Attente du service worker prêt à capter les en-têtes (requête sonde) |
 | `e2e/bankin-pages.spec.js` | Pages Bankin : graphiques, mois, onglet Revenus, ↻, plusieurs onglets, connexion, masquage |
 | `e2e/popup-export.spec.js` | Popup : période propagée à l'onglet Bankin, export CSV (contenu vérifié), rapport puis PDF |
 
