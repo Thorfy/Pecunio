@@ -6,6 +6,11 @@ import { defineConfig } from 'wxt';
 // - Les fichiers de public/ (images, html2pdf) sont copiés tels quels.
 // Sortie : .output/chrome-mv3 (dossier à charger dans chrome://extensions).
 export default defineConfig({
+    // La page du rapport embarque html2pdf (jsPDF + html2canvas, ~1,2 Mo) :
+    // taille attendue pour une page d'extension chargée depuis le disque.
+    vite: () => ({
+        build: { chunkSizeWarningLimit: 1600 },
+    }),
     manifest: {
         name: 'Pecunio',
         description: 'Pecunio overload Bankin website', // à reformuler en phase 6 (D12)

@@ -1,18 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    // Chart.js 3 et ses plugins n'ont pas de champ « exports » : sans cela, Node
-    // charge la version UMD de chart.js et le plugin Sankey la version ESM
-    // (deux instances incompatibles). On résout comme Vite le fait pour le build.
-    resolve: {
-        mainFields: ['module', 'main'],
-    },
     test: {
-        server: {
-            deps: {
-                inline: ['chart.js', 'chartjs-chart-sankey', 'chartjs-adapter-date-fns'],
-            },
-        },
         environment: 'happy-dom',
         include: ['test/**/*.test.js'],
         setupFiles: ['test/setup/vitest.setup.js'],

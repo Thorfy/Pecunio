@@ -246,8 +246,11 @@ export class LineBarChart extends BaseChartData {
                     },
                     grid: {
                         color: "#e9f5f9",
-                        borderColor: "#d3eaf2",
                         tickColor: "#e9f5f9"
+                    },
+                    // Chart.js 4 : la couleur de l'axe est dans `border` (et non plus `grid.borderColor`)
+                    border: {
+                        color: "#d3eaf2"
                     },
                     display: true,
                     stacked: true,
@@ -261,8 +264,11 @@ export class LineBarChart extends BaseChartData {
                     stacked: cummulative,
                     grid: {
                         color: "#e9f5f9",
-                        borderColor: "#d3eaf2",
                         tickColor: "#e9f5f9"
+                    },
+                    // Chart.js 4 : la couleur de l'axe est dans `border` (et non plus `grid.borderColor`)
+                    border: {
+                        color: "#d3eaf2"
                     },
                     ticks: {
                         callback: (value) => (Config.isBlurry() ? '' : value)

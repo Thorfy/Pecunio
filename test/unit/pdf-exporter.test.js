@@ -6,7 +6,7 @@ beforeAll(() => loadScripts([...REPORT_SCRIPTS, 'js/report/PdfExporter.js']));
 /** Faux html2pdf().set().from().save() qui mémorise l'état du DOM au moment de l'export. */
 const fakeHtml2pdf = ({ fail = false } = {}) => {
     const calls = [];
-    globalThis.html2pdf = vi.fn(() => {
+    const html2pdf = vi.fn(() => {
         const chain = {
             set: (opt) => {
                 calls.push({ opt });
@@ -21,7 +21,7 @@ const fakeHtml2pdf = ({ fail = false } = {}) => {
         };
         return chain;
     });
-    return calls;
+    return { calls, html2pdf };
 };
 
 let container;
@@ -35,7 +35,6 @@ beforeEach(() => {
 
 afterEach(() => {
     container.remove();
-    delete globalThis.html2pdf;
 });
 
 describe('PdfExporter', () => {
@@ -77,9 +76,9 @@ describe('PdfExporter', () => {
     });
 
     test('exportToPdf : images pendant l\'export, canvas restaurés après', async () => {
-        const calls = fakeHtml2pdf();
+        const { calls, html2pdf } = fakeHtml2pdf();
         const chart = { update: vi.fn() };
-        await new PdfExporter(container, { fontReadyDelayMs: 0, filename: 'r.pdf' }).exportToPdf([chart]);
+        await new PdfExporter(container, { fontReadyDelayMs: 0, filename: 'r.pdf', html2pdf }).exportToPdf([chart]);
         expect(calls[0]).toMatchObject({ imagesDuringExport: 2, canvasesDuringExport: 0 });
         expect(calls[0].opt).toMatchObject({ filename: 'r.pdf', jsPDF: { format: 'a4' } });
         expect(container.querySelectorAll('canvas')).toHaveLength(2);
@@ -87,8 +86,8 @@ describe('PdfExporter', () => {
     });
 
     test('exportToPdf : canvas restaurés même si la génération échoue', async () => {
-        fakeHtml2pdf({ fail: true });
-        await expect(new PdfExporter(container, { fontReadyDelayMs: 0 }).exportToPdf()).rejects.toThrow('échec PDF');
+        const { html2pdf } = fakeHtml2pdf({ fail: true });
+        await expect(new PdfExporter(container, { fontReadyDelayMs: 0, html2pdf }).exportToPdf()).rejects.toThrow('échec PDF');
         expect(container.querySelectorAll('canvas')).toHaveLength(2);
     });
 
