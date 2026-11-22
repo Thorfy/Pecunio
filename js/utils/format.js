@@ -4,6 +4,15 @@
 
 const EUROS = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const PERCENT = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const NUMBER = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+
+/**
+ * Nombre (graduations des axes) : `-1 500`.
+ * @param {number} value
+ */
+export function formatNumber(value) {
+    return NUMBER.format(value);
+}
 
 /**
  * Montant en euros : `-1 234,50 €`.

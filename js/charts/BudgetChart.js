@@ -3,7 +3,7 @@ import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
-import { MONTH_NAMES, formatEuros } from '../utils/format.js';
+import { MONTH_NAMES, formatEuros, formatNumber } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
 export class BudgetChart extends BaseChartData {
@@ -486,7 +486,7 @@ export class BudgetChart extends BaseChartData {
                                     text: Config.isBlurry() ? '' : 'Montant (€)'
                                 },
                                 ticks: {
-                                    callback: (value) => (Config.isBlurry() ? '' : value)
+                                    callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value)))
                                 }
                             },
                             x: {

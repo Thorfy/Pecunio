@@ -7,7 +7,7 @@ import { LineBarChart } from '../../js/charts/LineBarChart.js';
 import { SankeyChart } from '../../js/charts/SankeyChart.js';
 import { Config } from '../../js/core/Config.js';
 import { DATE_LOCALE } from '../../js/lib/chart.js';
-import { formatEuros, formatPercent } from '../../js/utils/format.js';
+import { formatEuros, formatNumber, formatPercent } from '../../js/utils/format.js';
 
 /** Faux Settings : seules les méthodes utilisées par les graphiques. */
 const fakeSettings = (values = {}) => ({
@@ -486,6 +486,8 @@ describe('Interface en français (D9)', () => {
         expect(formatEuros(-1234.5)).toBe('-1\u202f234,50 €');
         expect(formatEuros(0)).toBe('0,00 €');
         expect(formatPercent(12.345)).toBe('12,3 %');
+        expect(formatNumber(-1500)).toBe('-1\u202f500');
+        expect(formatNumber(2.5)).toBe('2,5');
     });
 
     test('grand montant dans l\'infobulle de la comparaison budget', () => {
@@ -537,6 +539,12 @@ describe('LineBarChart — bouton de type de graphique (D10)', () => {
         chart.chartInstance = { config: { type: 'line' } };
         await chart.toggleChartType();
         expect(chrome.storage.local._data.chartType).toBe('bar');
+    });
+
+    test("graduations de l'axe des montants au format français", async () => {
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const config = await chart.getChartJsConfig();
+        expect(config.options.scales.y.ticks.callback(8000)).toBe('8\u202f000');
     });
 
     test('plus de bouton dessiné dans le canvas', async () => {

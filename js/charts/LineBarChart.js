@@ -5,7 +5,7 @@ import { DateRange } from '../core/DateRange.js';
 import { Chart, DATE_LOCALE } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
 import { ColorParser } from '../utils/ColorParser.js';
-import { formatEuros } from '../utils/format.js';
+import { formatEuros, formatNumber } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
 export class LineBarChart extends BaseChartData {
@@ -319,7 +319,7 @@ export class LineBarChart extends BaseChartData {
                         color: "#d3eaf2"
                     },
                     ticks: {
-                        callback: (value) => (Config.isBlurry() ? '' : value)
+                        callback: (value) => (Config.isBlurry() ? '' : formatNumber(Number(value)))
                     }
                 }
             }
