@@ -197,21 +197,6 @@ class LineBarChart extends BaseChartData {
         return data;
     }
 
-
-    async buildChart(formattedData) {
-        const chartJsConfig = await this.getChartJsConfig();
-        chartJsConfig.data = formattedData;
-
-        const homeBlock = document.getElementsByClassName("homeBlock")[0];
-        if (homeBlock) {
-            homeBlock.innerHTML = "";
-            const canvasDiv = createCanvasElement(homeBlock);
-            const ctx = canvasDiv.getContext('2d');
-
-            new Chart(ctx, chartJsConfig);
-        }
-    }
-
     /**
      * Retourne la configuration Chart.js standardisée
      * @returns {Promise<Object>} Configuration Chart.js avec type, data, options, plugins
