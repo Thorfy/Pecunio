@@ -69,7 +69,7 @@
 
         .stats-row {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 0;
             margin-bottom: 28px;
             border: 1px solid var(--line);
@@ -101,7 +101,7 @@
         .stat-cell.negative .value { color: var(--red); }
         @media (max-width: 560px) {
             .stats-row { grid-template-columns: repeat(2, 1fr); }
-            .stat-cell:nth-child(2) { border-right: none; }
+            .stat-cell:nth-child(2n) { border-right: none; }
         }
 
         .report-section {
@@ -285,6 +285,10 @@
                 <div class="label">Solde</div>
                 <div class="value" id="stat-balance">—</div>
             </div>
+            <div class="stat-cell">
+                <div class="label">Taux d'épargne</div>
+                <div class="value" id="stat-savings-rate">—</div>
+            </div>
         </div>
 
         <section class="report-section">
@@ -292,6 +296,14 @@
             <p class="section-desc">Comparaison des totaux sur la période</p>
             <div class="chart-wrapper charts-single">
                 <canvas id="chart-income-expense"></canvas>
+            </div>
+        </section>
+
+        <section class="report-section" id="section-savings">
+            <h2>Solde et épargne par mois</h2>
+            <p class="section-desc">Solde de chaque mois (revenus − dépenses) et part des revenus mise de côté</p>
+            <div class="chart-wrapper">
+                <canvas id="chart-savings"></canvas>
             </div>
         </section>
 

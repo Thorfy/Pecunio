@@ -10,6 +10,9 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 ## [Non publié]
 
 ### Ajouté
+- Épargne sur la page Comptes : solde de chaque mois (vert ou rouge) et taux d'épargne, sur la période du graphique des dépenses.
+- Plus fortes variations sur la page Catégories : les catégories dont la dépense s'écarte le plus de leur habitude (au même jour du mois pour le mois en cours).
+- Rapport PDF : taux d'épargne et, sur plusieurs mois, solde et épargne mois par mois.
 - Historique d'une catégorie : sur la page de détail d'une catégorie, ses 12 derniers mois par sous-catégorie, aux couleurs de Bankin, avec la médiane et le mois affiché mis en avant.
 - Revenus sur 12 mois : l'onglet Revenus montre l'évolution des revenus par source.
 - Rythme du mois sur la page Catégories : dépenses cumulées jour après jour, comparées au rythme habituel au même jour.

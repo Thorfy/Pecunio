@@ -118,10 +118,10 @@ describe('Contrat Bankin — PageController sur les vraies pages', () => {
     };
 
     test('page Comptes : graphique temporel et comparaison budget', async () => {
-        expect(await start('accounts', 'https://app2.bankin.com/accounts')).toEqual(['LineBarChart', 'BudgetChart']);
+        expect(await start('accounts', 'https://app2.bankin.com/accounts')).toEqual(['LineBarChart', 'SavingsChart', 'BudgetChart']);
     });
 
     test('page Catégories : types de dépenses et diagramme de flux, pour le mois affiché', async () => {
-        expect(await start('categories', 'https://app2.bankin.com/categories')).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
+        expect(await start('categories', 'https://app2.bankin.com/categories')).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'VariationsChart', 'SankeyChart']);
     });
 });

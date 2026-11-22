@@ -4,6 +4,7 @@ import '@fontsource/open-sans/latin-600.css';
 import '@fontsource/open-sans/latin-700.css';
 import { Chart } from '../../js/lib/chart.js';
 import html2pdf from 'html2pdf.js';
+import { savingsFromRows, savingsRate } from '../../js/charts/savings.js';
 import { PdfExporter } from '../../js/report/PdfExporter.js';
 import { ReportChartDataBuilder } from '../../js/report/ReportChartDataBuilder.js';
 import { ReportFilters } from '../../js/report/ReportFilters.js';
@@ -23,6 +24,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
     let sankeyChartInstance = null;
     let polarChartInstance = null;
     let incomeVsExpenseChartInstance = null;
+    let savingsChartInstance = null;
     let categoryChartData = null;
     let evolutionChartData = null;
     let sankeyChartData = null;
@@ -68,6 +70,87 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
         balanceEl.textContent = formatCurrency(balance);
         balanceEl.classList.toggle('positive', balance >= 0);
         balanceEl.classList.toggle('negative', balance < 0);
+        // Taux d'épargne : part des revenus mise de côté (U21, G1)
+        const rate = savingsRate(stats.totalIncome || 0, balance);
+        const rateEl = document.getElementById('stat-savings-rate');
+        rateEl.textContent = rate == null ? '—' : `${Math.sign(rate) * Math.round(Math.abs(rate) * 100)} %`;
+        rateEl.parentElement.classList.toggle('positive', rate != null && rate >= 0);
+        rateEl.parentElement.classList.toggle('negative', rate != null && rate < 0);
+    }
+
+    /**
+     * Solde de chaque mois (barres vertes ou rouges) et taux d'épargne (courbe),
+     * quand la période couvre au moins deux mois (U21, G1).
+     */
+    function renderSavingsChart(filteredData) {
+        const section = document.getElementById('section-savings');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-savings'));
+        const savings = savingsFromRows(ReportFilters.filterIncomeExpenseData(filteredData));
+        if (!section || !canvas || savings.months.length < 2) {
+            if (section) section.style.display = 'none';
+            return;
+        }
+        section.style.display = '';
+        if (savingsChartInstance) savingsChartInstance.destroy();
+        const label = (month) => {
+            const [year, mon] = month.split('-').map(Number);
+            return new Date(year, mon - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+        };
+        const percent = (rate) => `${Math.sign(rate) * Math.round(Math.abs(rate) * 100)} %`;
+        savingsChartInstance = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: savings.months.map(label),
+                datasets: [
+                    /** @type {any} */ ({
+                        type: 'line',
+                        label: "Taux d'épargne",
+                        data: savings.rate.map((r) => (r == null ? null : Math.max(-100, Math.min(100, r * 100)))),
+                        yAxisID: 'rate',
+                        borderColor: '#6562fc',
+                        backgroundColor: '#6562fc',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        tension: 0.25,
+                        order: 0,
+                    }),
+                    {
+                        label: 'Solde du mois',
+                        data: savings.balance,
+                        yAxisID: 'amount',
+                        backgroundColor: savings.balance.map((v) => (v >= 0 ? LIGHT_SUCCESS : LIGHT_DANGER)),
+                        borderRadius: 4,
+                        order: 1,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 400 },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => (context.dataset.yAxisID === 'rate'
+                                ? `Taux d'épargne : ${savings.rate[context.dataIndex] == null ? 'sans revenus' : percent(savings.rate[context.dataIndex])}`
+                                : `Solde du mois : ${formatCurrency(savings.balance[context.dataIndex])}`),
+                        },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    amount: { position: 'left', grid: { color: LIGHT_GRID } },
+                    rate: {
+                        position: 'right',
+                        suggestedMin: 0,
+                        suggestedMax: 50,
+                        grid: { drawOnChartArea: false },
+                        ticks: { callback: (value) => `${value} %` },
+                    },
+                },
+            },
+        });
     }
 
     function renderIncomeVsExpenseChart(incomeExpenseStats) {
@@ -256,6 +339,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
 
         const incomeExpenseStats = ReportFilters.computeIncomeExpenseForChart(filteredData);
         renderIncomeVsExpenseChart(incomeExpenseStats);
+        renderSavingsChart(filteredData);
 
         const expenseType = ReportChartDataBuilder.buildExpenseTypeData(filteredData);
         const ctxDonut = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-expense-type')).getContext('2d');
@@ -347,6 +431,7 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
         if (sankeyChartInstance) charts.push(sankeyChartInstance);
         if (polarChartInstance) charts.push(polarChartInstance);
         if (incomeVsExpenseChartInstance) charts.push(incomeVsExpenseChartInstance);
+        if (savingsChartInstance) charts.push(savingsChartInstance);
         const donutCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('chart-expense-type'));
         const donutChart = donutCanvas && typeof Chart !== 'undefined' ? Chart.getChart(donutCanvas) : null;
         if (donutChart) charts.push(donutChart);

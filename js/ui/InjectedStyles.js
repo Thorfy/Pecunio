@@ -357,6 +357,77 @@ export class InjectedStyles {
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             }
 
+            /* Page Catégories : rythme du mois et plus fortes variations côte à côte */
+            .pecunio-insights-row {
+                display: flex;
+                gap: 16px;
+                align-items: stretch;
+                margin-bottom: 12px;
+            }
+            .pecunio-insights-row > .pecunio-pace-wrapper {
+                flex: 2 1 0;
+                min-width: 0;
+                margin-bottom: 0;
+            }
+            .pecunio-insights-row > .pecunio-variations-wrapper {
+                flex: 1 1 0;
+                min-width: 0;
+                margin-bottom: 0;
+            }
+            @media (max-width: 1024px) {
+                .pecunio-insights-row {
+                    flex-direction: column;
+                }
+            }
+            .pecunio-variations {
+                list-style: none;
+                margin: 8px 0 0;
+                padding: 0;
+            }
+            .pecunio-variations li {
+                display: grid;
+                grid-template-columns: 10px 1fr auto;
+                column-gap: 8px;
+                align-items: center;
+                padding: 8px 0;
+                font-size: 14px;
+                border-top: 1px solid ${THEME.border};
+            }
+            .pecunio-variations li:first-child {
+                border-top: 0;
+            }
+            .pecunio-variation-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+            }
+            .pecunio-variation-name {
+                font-weight: 600;
+                color: ${THEME.text};
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .pecunio-variation-value {
+                font-weight: 700;
+                white-space: nowrap;
+            }
+            .pecunio-variation-up .pecunio-variation-value {
+                color: rgb(220, 53, 69);
+            }
+            .pecunio-variation-down .pecunio-variation-value {
+                color: rgb(16, 150, 104);
+            }
+            .pecunio-variation-detail {
+                grid-column: 2 / 4;
+                font-size: 12px;
+                color: ${THEME.textMuted};
+            }
+            .pecunio-variations-empty {
+                color: ${THEME.textMuted};
+            }
+
             /* Page Catégories : donut de Bankin et types de dépenses en un seul bloc */
             .pecunio-charts-row--merged {
                 gap: 0;

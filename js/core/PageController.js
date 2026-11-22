@@ -4,6 +4,8 @@ import { CategoryHistoryChart } from '../charts/CategoryHistoryChart.js';
 import { ExpenseTypeChart } from '../charts/ExpenseTypeChart.js';
 import { LineBarChart } from '../charts/LineBarChart.js';
 import { MonthPaceChart } from '../charts/MonthPaceChart.js';
+import { SavingsChart } from '../charts/SavingsChart.js';
+import { VariationsChart } from '../charts/VariationsChart.js';
 import { SankeyChart } from '../charts/SankeyChart.js';
 import { Chart } from '../lib/chart.js';
 import { AmountHider } from '../ui/AmountHider.js';
@@ -82,7 +84,7 @@ export class PageController {
         this.evt = evt;
         this.createDataManager = createDataManager;
         this.win = win;
-        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart };
+        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart, SavingsChart, VariationsChart };
 
         this.dataManager = null;
         this.charts = [];
@@ -372,6 +374,14 @@ export class PageController {
         this.charts.push(lineBarChart);
         await lineBarChart.render(lineBarChart.createContainer(mainContainer));
 
+        // Épargne mois par mois, sur la période du graphique temporel (G1, lot UX-3b)
+        const { SavingsChart: Savings } = this.chartClasses;
+        if (Savings) {
+            const savingsChart = new Savings(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
+            this.charts.push(savingsChart);
+            await savingsChart.render(mainContainer);
+        }
+
         const budgetBlock = this.document.createElement('div');
         budgetBlock.id = 'budgetChartBlock';
         budgetBlock.classList.add('pecunio-section');
@@ -396,7 +406,7 @@ export class PageController {
         }
 
         // Changement de mois : cartes de la construction précédente retirées
-        this._removeWrappers(['.pecunio-pace-wrapper']);
+        this._removeWrappers(['.pecunio-insights-row', '.pecunio-pace-wrapper', '.pecunio-variations-wrapper']);
         this._destroyCharts();
         const data = this._chartData();
         const rowContainer = ExpenseTypeChart.prepareContainer(categoryBlock);
@@ -405,13 +415,22 @@ export class PageController {
         this.charts.push(expenseTypeChart);
         await expenseTypeChart.render(rowContainer);
 
-        // Rythme du mois (lot UX-3a) : juste sous le donut et les types de
-        // dépenses, visible sans faire défiler (le diagramme des flux est long)
-        const { MonthPaceChart: PaceChart } = this.chartClasses;
+        // Rythme du mois (lot UX-3a) et plus fortes variations (lot UX-3b) côte
+        // à côte, juste sous les donuts : visibles sans faire défiler (le
+        // diagramme des flux est long)
+        const { MonthPaceChart: PaceChart, VariationsChart: Variations } = this.chartClasses;
+        const insights = this.document.createElement('div');
+        insights.className = 'pecunio-insights-row';
+        categoryBlock.appendChild(insights);
         if (PaceChart) {
             const paceChart = new PaceChart(data.transactions, data.categories, monthParams, this.settings);
             this.charts.push(paceChart);
-            await paceChart.render(categoryBlock);
+            await paceChart.render(insights);
+        }
+        if (Variations) {
+            const variationsChart = new Variations(data.transactions, data.categories, monthParams, this.settings);
+            this.charts.push(variationsChart);
+            await variationsChart.render(insights);
         }
 
         const sankeyChart = new SankeyChart(data.transactions, data.categories, monthParams, this.settings);
@@ -491,7 +510,9 @@ export class PageController {
      */
     _removeStaleCharts(page) {
         const selectors = [];
-        if (page !== PageController.PAGE.CATEGORIES) selectors.push('.pecunio-expense-type-wrapper', '.pecunio-sankey-wrapper', '.pecunio-pace-wrapper');
+        if (page !== PageController.PAGE.CATEGORIES) {
+            selectors.push('.pecunio-expense-type-wrapper', '.pecunio-sankey-wrapper', '.pecunio-insights-row', '.pecunio-pace-wrapper', '.pecunio-variations-wrapper');
+        }
         if (page !== PageController.PAGE.CATEGORY_DETAIL) selectors.push('.pecunio-history-wrapper');
         this._removeWrappers(selectors);
     }

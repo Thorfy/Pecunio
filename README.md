@@ -27,6 +27,10 @@
 
 <p align="center"><img src="docs/assets/screens/depenses-par-mois.png" alt="Graphique des dépenses par mois et par catégorie" width="90%"></p>
 
+**Votre épargne mois par mois** : le solde de chaque mois (vert quand vous mettez de côté, rouge en cas de déficit) et votre taux d'épargne, sur la même période.
+
+<p align="center"><img src="docs/assets/screens/epargne.png" alt="Solde et taux d'épargne de chaque mois" width="90%"></p>
+
 **La comparaison du budget** : le mois dernier (ou le mois en cours) face à la médiane des 12 mois précédents, ou cette année face à l'an dernier. Dépenses triées par catégorie, total et écart en un coup d'œil ; « Personnaliser » pour choisir d'autres périodes.
 
 <p align="center"><img src="docs/assets/screens/comparaison-budget.png" alt="Comparaison du budget entre deux années" width="90%"></p>
@@ -42,9 +46,14 @@
   </tr>
 </table>
 
-**Le rythme du mois** : vos dépenses cumulées jour après jour, face à votre rythme habituel. En avance ou en retard sur un mois normal ?
+**Le rythme du mois et les plus fortes variations** : vos dépenses cumulées jour après jour face à votre rythme habituel, et les catégories qui s'écartent le plus de leur habitude. Qu'est-ce qui a dérapé ce mois-ci ?
 
-<p align="center"><img src="docs/assets/screens/rythme-du-mois.png" alt="Rythme des dépenses du mois comparé au rythme habituel" width="90%"></p>
+<table>
+  <tr>
+    <td width="64%"><img src="docs/assets/screens/rythme-du-mois.png" alt="Rythme des dépenses du mois comparé au rythme habituel"></td>
+    <td width="36%"><img src="docs/assets/screens/variations.png" alt="Catégories qui s'écartent le plus de leur habitude"></td>
+  </tr>
+</table>
 
 ### Sur le détail d'une catégorie
 
@@ -61,7 +70,7 @@
       <p><b>La popup</b> règle la période (ce mois, 3 mois, 12 mois, tout ou dates libres) et les comptes analysés, et exporte :</p>
       <ul>
         <li><b>CSV</b> : toutes vos transactions de la période, avec la vraie date et le mois de rattachement choisi dans Bankin, prêtes pour un tableur ;</li>
-        <li><b>Rapport PDF</b> : un bilan mensuel ou annuel (revenus, dépenses, solde, répartitions, flux, évolution, détail des transactions).</li>
+        <li><b>Rapport PDF</b> : un bilan mensuel ou annuel (revenus, dépenses, solde, taux d'épargne et solde mois par mois, répartitions, flux, évolution, détail des transactions).</li>
       </ul>
       <img src="docs/assets/screens/rapport.png" alt="Rapport budgétaire PDF">
     </td>
