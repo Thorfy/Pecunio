@@ -68,8 +68,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: chrome-extension-${{ github.ref_name }}
+          name: chrome-extension
           path: .output/pecunio-*-chrome.zip
+          # .output est un dossier caché : ignoré par défaut depuis upload-artifact v4.4,
+          # le zip n'était pas envoyé et la publication échouait au job suivant (v0.6.0)
+          include-hidden-files: true
+          if-no-files-found: error
 
       - name: Rapport Playwright
         if: failure()
@@ -94,7 +98,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: chrome-extension-${{ github.ref_name }}
+          name: chrome-extension
 
       # Notes : section du changelog pour cette version, puis la liste des PR
       # générée par GitHub.
@@ -131,7 +135,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: chrome-extension-${{ github.ref_name }}
+          name: chrome-extension
 
       - name: Install webstore cli
         run: npm install -g chrome-webstore-upload-cli
