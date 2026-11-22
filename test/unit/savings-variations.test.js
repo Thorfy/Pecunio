@@ -1,6 +1,12 @@
 // Épargne mois par mois (G1) et plus fortes variations (G5), lot UX-3b.
 import { describe, expect, test } from 'vitest';
-import { buildSavings, savingsFromRows, savingsFromTimeline, savingsRate } from '../../js/charts/savings.js';
+// Imports en tête : chargés à froid dans un test (Chart.js), ils dépassaient
+// son délai de 5 s sous charge
+import { BaseChartData } from '../../js/charts/base/BaseChartData.js';
+import { buildSavings, savingsFromRows, savingsFromTimeline, savingsRate, zeroAlignedRanges } from '../../js/charts/savings.js';
+import { SavingsChart } from '../../js/charts/SavingsChart.js';
+import { buildVariations } from '../../js/charts/variations.js';
+import { VariationsChart } from '../../js/charts/VariationsChart.js';
 
 const nbsp = (text) => text.replace(/[\u202f\u00a0]/g, ' ');
 
@@ -52,7 +58,6 @@ describe('Épargne (G1)', () => {
     });
 
     test('phrase de synthèse : épargne, déficit, montants masqués', async () => {
-        const { SavingsChart } = await import('../../js/charts/SavingsChart.js');
         const saved = { total: { count: 11, income: 30000, balance: 3600, rate: 0.12 } };
         expect(nbsp(SavingsChart.summary(saved, false))).toBe('Sur 11 mois complets : 3 600,00 € mis de côté sur 30 000,00 € de revenus, soit 12 %');
         expect(SavingsChart.summary(saved, true)).toBe("Sur 11 mois complets : taux d'épargne 12 %");
@@ -79,7 +84,6 @@ describe('Plus fortes variations (G5)', () => {
     });
 
     test('écart à la médiane des 12 mois précédents, trié par écart en euros', async () => {
-        const { buildVariations } = await import('../../js/charts/variations.js');
         const transactions = [
             ...everyMonth('10', -200, 200), // Loisirs : 200 € d'habitude
             ...everyMonth('12', -400, 188), // Alimentation : 400 € d'habitude
@@ -95,7 +99,6 @@ describe('Plus fortes variations (G5)', () => {
     });
 
     test('mois en cours : comparaison au même jour ; petits écarts ignorés ; nouvelle catégorie', async () => {
-        const { buildVariations } = await import('../../js/charts/variations.js');
         const transactions = [
             ...everyMonth('05', -100, 188), // avant le 22 chaque mois
             ...everyMonth('28', -300, 188), // après le 22 : hors comparaison
@@ -108,7 +111,6 @@ describe('Plus fortes variations (G5)', () => {
     });
 
     test('ligne : écart et part, ou la part seule quand les montants sont masqués', async () => {
-        const { VariationsChart } = await import('../../js/charts/VariationsChart.js');
         const up = { id: 170, name: 'Loisirs', current: 290, usual: 200, diff: 90, pct: 0.45 };
         const line = VariationsChart.describe(up, false);
         expect(nbsp(line.value)).toBe('+90,00 € (+45 %)');
@@ -121,7 +123,6 @@ describe('Plus fortes variations (G5)', () => {
 
 describe('Épargne : axes alignés sur zéro', () => {
     test('un mois en déficit : le zéro des soldes et celui du taux à la même hauteur', async () => {
-        const { zeroAlignedRanges } = await import('../../js/charts/savings.js');
         const share = ({ min, max }) => -min / (max - min);
         const { left, right } = zeroAlignedRanges([800, -400, 1200], [30, -40, 35]);
         expect(share(left)).toBeCloseTo(share(right));
@@ -132,7 +133,6 @@ describe('Épargne : axes alignés sur zéro', () => {
     });
 
     test('aucun déficit : les deux axes partent de zéro ; taux absents ignorés', async () => {
-        const { zeroAlignedRanges } = await import('../../js/charts/savings.js');
         const { left, right } = zeroAlignedRanges([800, 200], [30, null]);
         expect(left.min).toBe(0);
         expect(right.min).toBe(0);
@@ -142,7 +142,6 @@ describe('Épargne : axes alignés sur zéro', () => {
 
 describe('Textes avec montants et masquage', () => {
     test("réécrits à chaque bascule de l'œil ; une nouvelle liaison remplace l'ancienne", async () => {
-        const { BaseChartData } = await import('../../js/charts/base/BaseChartData.js');
         const p = document.createElement('p');
         document.body.appendChild(p);
         const toggle = (isBlurry) => window.dispatchEvent(new CustomEvent('pecunio_amounts_visibility_changed', { detail: { isBlurry } }));

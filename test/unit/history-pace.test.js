@@ -2,6 +2,10 @@
 import { describe, expect, test } from 'vitest';
 import { buildCategoryHistory, findCategory } from '../../js/charts/categoryHistory.js';
 import { buildMonthPace } from '../../js/charts/monthPace.js';
+// Imports en tête : chargés à froid dans un test (Chart.js), ils dépassaient
+// son délai de 5 s sous charge
+import { CategoryHistoryChart } from '../../js/charts/CategoryHistoryChart.js';
+import { MonthPaceChart } from '../../js/charts/MonthPaceChart.js';
 
 const t = (date, amount, categoryId, extra = {}) => ({ date, amount, category: { id: categoryId }, ...extra });
 
@@ -118,7 +122,6 @@ describe('buildMonthPace', () => {
 
 describe('Phrases de synthèse', () => {
     test('historique : mois affiché face à la médiane, revenus ou dépenses', async () => {
-        const { CategoryHistoryChart } = await import('../../js/charts/CategoryHistoryChart.js');
         const history = { totals: [800, 840], median: 800, isIncome: false };
         expect(CategoryHistoryChart.summary(history, 'Octobre 2026', false).replace(/[\u202f\u00a0]/g, ' '))
             .toBe('Octobre 2026 : 840,00 € dépensés, contre 800,00 € habituellement (médiane des 12 mois précédents), écart +5 %');
@@ -142,7 +145,6 @@ describe('Phrases de synthèse', () => {
     });
 
     test('rythme : au jour J du mois en cours, ou sur le mois écoulé', async () => {
-        const { MonthPaceChart } = await import('../../js/charts/MonthPaceChart.js');
         const days = Array.from({ length: 30 }, (_, i) => i + 1);
         const pace = { days, lastDay: 22, spent: 900, usual: 1000, delta: -0.1 };
         expect(MonthPaceChart.summary(pace, false).replace(/[\u202f\u00a0]/g, ' '))
