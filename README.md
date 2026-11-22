@@ -51,14 +51,18 @@ Tous les graphiques sont interactifs et se mettent à jour selon vos filtres et 
 Prérequis : Node.js 20+.
 
 ```bash
-npm install              # outillage (ESLint, Prettier)
-npm run check            # cohérence manifest/pages HTML + lint
+npm install              # outillage (ESLint, Prettier, Vitest)
+npm run check            # cohérence manifest/pages HTML + lint + tests
+npm test                 # tests unitaires
+npm run test:tz          # tests sous 3 fuseaux horaires
 npm run lint:fix         # corrections automatiques du lint
 bash scripts/package.sh  # zip de l'extension dans dist/ (Linux/macOS/CI)
 ```
 
+Les tests sont décrits dans [docs/TESTING.md](docs/TESTING.md).
+
 Pour tester en local : `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier du dépôt.
 
-La CI (`.github/workflows/ci.yml`) lance ces vérifications sur chaque PR. Un tag `vX.Y.Z` (identique à la version du manifest) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
+La CI (`.github/workflows/ci.yml`) lance ces vérifications et les tests (sous Paris, New York et UTC) sur chaque PR. Un tag `vX.Y.Z` (identique à la version du manifest) construit le zip et l'envoie sur le Chrome Web Store **en brouillon** ; la publication se fait à la main.
 
 Le plan de modernisation est décrit dans [docs/AUDIT-MODERNISATION.md](docs/AUDIT-MODERNISATION.md).
