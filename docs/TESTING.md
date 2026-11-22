@@ -24,7 +24,7 @@ npm run test:bugs      # exécute les tests de bugs connus comme des tests norma
 | `test/helpers/page-controller.js` | Fausse fenêtre et fausses classes de graphiques pour `PageController` |
 | `test/fixtures/bankin.js` | Données **synthétiques** au format de l'API Bankin (`tx()`, `CATEGORIES`, `ACCOUNTS`, `apiPage()`…) |
 | `test/fixtures/bankin-pages/*.html` | Captures **anonymisées** des pages Comptes et Catégories de Bankin |
-| `test/unit/*.test.js` | Tests, un fichier par domaine |
+| `test/unit/*.test.js` | Tests, un fichier par domaine ; `popup.test.js` charge le HTML réel de la popup et appelle directement son initialisation |
 | `test/contract/*.test.js` | Tests de contrat : l'adaptateur `BankinPage` sur les captures des vraies pages |
 
 ### Écrire un test
@@ -95,8 +95,9 @@ Le service worker capture les en-têtes de l'appel simulé comme en réel (`webR
 | Fichier | Rôle |
 |---|---|
 | `playwright.config.js` | Un test à la fois, trace et capture d'écran en cas d'échec |
-| `e2e/fixtures.js` | `context` (Chromium + extension), `serviceWorker`, `bankin`, `consoleErrors` (erreurs de console de toutes les pages) |
+| `e2e/fixtures.js` | `context` (Chromium + extension), `serviceWorker`, `extensionId`, `bankin`, `consoleErrors` (erreurs de console, exceptions et `alert()` de toutes les pages) ; `openPopup()` ouvre la popup dans un onglet |
 | `e2e/bankin-simulator.js` | Bankin simulé |
-| `e2e/*.spec.js` | Scénarios ; chacun vérifie aussi l'absence d'erreur dans la console |
+| `e2e/bankin-pages.spec.js` | Pages Bankin : graphiques, mois, onglet Revenus, ↻, plusieurs onglets, connexion, masquage |
+| `e2e/popup-export.spec.js` | Popup : période propagée à l'onglet Bankin, export CSV (contenu vérifié), rapport puis PDF |
 
 En cas d'échec : `npx playwright show-trace test-results/<test>/trace.zip` rejoue le test pas à pas. En CI, le job « Tests de bout en bout » publie `playwright-report/` et `test-results/` quand il échoue.
