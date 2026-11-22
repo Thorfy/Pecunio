@@ -42,6 +42,20 @@ export const test = base.extend({
     },
 
     /**
+     * Requêtes vers d'autres sites que Bankin (vie privée : « rien n'est
+     * envoyé ailleurs que vers Bankin »), de toutes les pages du test.
+     */
+    externalRequests: async ({ context }, use) => {
+        const requests = [];
+        context.on('request', (request) => {
+            const { protocol, hostname } = new URL(request.url());
+            const isWeb = protocol === 'http:' || protocol === 'https:';
+            if (isWeb && hostname !== 'bankin.com' && !hostname.endsWith('.bankin.com')) requests.push(request.url());
+        });
+        await use(requests);
+    },
+
+    /**
      * Erreurs de la console, exceptions et boîtes `alert()` (la popup signale
      * ainsi ses échecs) de toutes les pages du test.
      */

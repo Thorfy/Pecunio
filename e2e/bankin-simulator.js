@@ -102,6 +102,13 @@ const appScript = (authHeaders, bodies) => `
     render(pathname);
   };
   loadAccounts();
+  // Comme Bankin au chargement : mise à jour des montants qui réécrit leur
+  // attribut class (et efface toute classe ajoutée par une extension)
+  setTimeout(() => {
+    document.querySelectorAll('.dbl.fs14.fw7.lh18.elp, .amountGreen, .amountRed, .amountBlack').forEach((el) => {
+      el.className = el.className.split(' ').filter((c) => !c.startsWith('pecunio')).join(' ');
+    });
+  }, 1500);
 })();`;
 
 function renderPage(pathname) {

@@ -57,7 +57,6 @@ beforeEach(() => {
     vi.spyOn(LoadingScreen, 'show').mockImplementation(() => {});
     vi.spyOn(ReviewPrompt, 'tryShow').mockImplementation(() => Promise.resolve());
     vi.spyOn(AmountHider.prototype, 'insertButton').mockImplementation(() => {});
-    vi.spyOn(AmountHider, 'refreshBlur').mockImplementation(() => {});
 });
 
 afterEach(() => {

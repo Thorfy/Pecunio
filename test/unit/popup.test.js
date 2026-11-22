@@ -173,6 +173,25 @@ describe('Popup — rapport PDF', () => {
     });
 });
 
+describe('Pages de l\'extension — vie privée (U12)', () => {
+    test.each(['entrypoints/popup/index.html', 'entrypoints/report/index.html'])(
+        '%s ne charge aucune ressource externe (images, polices, scripts)',
+        (file) => {
+            const html = readFileSync(resolve(file), 'utf8');
+            // Seuls les liens cliquables (<a href>) peuvent viser un autre site
+            const external = html.match(/<(?!a\s)[a-z]+[^>]*\s(?:src|href)="https?:\/\/[^"]+"/gi) || [];
+            expect(external).toEqual([]);
+            expect(html).not.toMatch(/url\(\s*['"]?https?:/i);
+        },
+    );
+
+    test('version affichée localement, sans badge distant', async () => {
+        const { $ } = await openPopup(cached());
+        expect($('#currentVersion').textContent).toBe('0.0.0-test');
+        expect(document.querySelector('img[src^="http"]')).toBeNull();
+    });
+});
+
 describe('Popup — épinglage', () => {
     test('extension non épinglée : instructions affichées', async () => {
         const { $ } = await openPopup(cached(), { pinned: false });

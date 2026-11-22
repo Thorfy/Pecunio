@@ -57,13 +57,34 @@ test.describe('Page Comptes', () => {
         const header = page.locator('.dbl.fs14.fw7.lh18.elp');
         const amounts = page.locator('.amountGreen');
 
+        // Flou réellement appliqué par le navigateur (règle CSS du masquage)
         await page.locator('#hideButton').click();
-        await expect(header).toHaveClass(/pecunio-blurred/);
-        await expect(amounts.first()).toHaveClass(/pecunio-blurred/);
+        await expect(header).toHaveCSS('filter', /blur/);
+        await expect(amounts.first()).toHaveCSS('filter', /blur/);
 
         await page.locator('#hideButton').click();
-        await expect(header).not.toHaveClass(/pecunio-blurred/);
-        await expect(amounts.first()).not.toHaveClass(/pecunio-blurred/);
+        await expect(header).toHaveCSS('filter', 'none');
+        await expect(amounts.first()).toHaveCSS('filter', 'none');
+        expect(consoleErrors).toEqual([]);
+    });
+
+    test('9b — masquage conservé au rechargement et après la mise à jour des montants par Bankin (U1, B25)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        await page.locator('#hideButton').click();
+        await expect(page.locator('#hideButton')).toHaveAttribute('src', /eyeClose\.png$/);
+
+        for (let i = 0; i < 2; i++) {
+            await page.reload();
+            await expect(page.locator(LINE_CHART)).toBeVisible();
+            // Après la réécriture des classes par Bankin (1,5 s après le chargement)
+            await page.waitForTimeout(2000);
+            // Icône, solde et montants dans le même état : masqués
+            await expect(page.locator('#hideButton')).toHaveAttribute('src', /eyeClose\.png$/);
+            await expect(page.locator('.dbl.fs14.fw7.lh18.elp')).toHaveCSS('filter', /blur/);
+            await expect(page.locator('.amountGreen').first()).toHaveCSS('filter', /blur/);
+        }
         expect(consoleErrors).toEqual([]);
     });
 });

@@ -2,24 +2,10 @@
 // (scripts/capture-readme-screens.mjs) : deux ans de transactions inventées
 // pour un foyer fictif, avec la taxonomie et les couleurs de catégories de
 // Bankin. Aucune donnée réelle.
-
-/** Couleurs des catégories parentes de Bankin (classes CSS `categoryColor_<id>`). */
-export const CATEGORY_COLORS = {
-    2: 'rgb(84, 222, 61)', // Entrées d'argent
-    159: 'rgb(137, 209, 255)', // Impôts & Taxes
-    160: 'rgb(159, 195, 211)', // Divers
-    161: 'rgb(103, 127, 224)', // Logement
-    162: 'rgb(254, 51, 102)', // Achats & Shopping
-    163: 'rgb(252, 93, 106)', // Santé
-    164: 'rgb(183, 134, 103)', // Banque
-    165: 'rgb(0, 203, 203)', // Auto & Transports
-    168: 'rgb(255, 178, 0)', // Alimentation & Restau.
-    170: 'rgb(155, 89, 182)', // Loisirs & Sorties
-    171: 'rgb(194, 148, 194)', // Abonnements
-};
+import { BANKIN_CATEGORY_COLORS } from '../js/bankin/categoryColors.js';
 
 /** Feuille de style équivalente à celle de Bankin pour ces couleurs. */
-export const CATEGORY_COLORS_CSS = Object.entries(CATEGORY_COLORS)
+export const CATEGORY_COLORS_CSS = Object.entries(BANKIN_CATEGORY_COLORS)
     .map(([id, color]) => `.categoryColor_${id} { background-color: ${color}; }`)
     .join('\n');
 

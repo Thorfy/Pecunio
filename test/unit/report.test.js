@@ -89,7 +89,7 @@ describe('ReportChartDataBuilder', () => {
             row({ date: null, amount: -99 }),
             row({ date: '2024-01-20', amount: 50 }),
         ]);
-        expect(data.labels).toEqual(['Jan 2024', 'Fév 2024']);
+        expect(data.labels).toEqual(['janv. 2024', 'févr. 2024']);
         expect(data.datasets.map((d) => [d.label, d.data])).toEqual([
             ['A', [5, 10]],
             ['B', [7, 0]],
@@ -101,8 +101,31 @@ describe('ReportChartDataBuilder', () => {
             row({ date: '2024-01-29', budgetMonth: '2024-02', amount: -10, parentCategoryName: 'A' }),
             row({ date: '2024-02-03', budgetMonth: '2024-02', amount: -5, parentCategoryName: 'A' }),
         ]);
-        expect(data.labels).toEqual(['Fév 2024']);
+        expect(data.labels).toEqual(['févr. 2024']);
         expect(data.datasets[0].data).toEqual([15]);
+    });
+
+    test('couleurs des catégories de Bankin (U20), repli pour une catégorie inconnue', () => {
+        const rows = [
+            row({ amount: -30, parentCategoryId: 168, parentCategoryName: 'Alimentation' }),
+            row({ amount: -20, parentCategoryId: 161, parentCategoryName: 'Logement' }),
+            row({ amount: -10, parentCategoryId: 99999, parentCategoryName: 'Inconnue' }),
+        ];
+        expect(ReportChartDataBuilder.buildCategoryData(rows).colors).toEqual([
+            'rgba(255, 178, 0, 0.85)',
+            'rgba(103, 127, 224, 0.85)',
+            'rgba(255, 159, 64, 0.85)', // repli : 3e couleur
+        ]);
+        expect(ReportChartDataBuilder.buildEvolutionData(rows).datasets[0].backgroundColor).toBe('rgba(255, 178, 0, 0.85)');
+    });
+
+    test('Sankey : sous-catégories de la couleur de leur parent', () => {
+        const { data, colorMap } = ReportChartDataBuilder.buildSankeyData([
+            row({ amount: -30, parentCategoryId: 168, parentCategoryName: 'Alimentation', categoryName: 'Supermarché' }),
+        ]);
+        const idOf = (to) => data.find((d) => d.to === to).id;
+        expect(colorMap[idOf('Alimentation')]).toBe('rgba(255, 178, 0, 0.9)');
+        expect(colorMap[idOf('Supermarché')]).toBe('rgba(255, 178, 0, 0.9)');
     });
 
     test('Sankey : Dépenses → parents → sous-catégories', () => {

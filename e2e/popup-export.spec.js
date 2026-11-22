@@ -58,7 +58,7 @@ test('8a — export CSV : fichier téléchargé, période et contenu attendus', 
     expect(consoleErrors).toEqual([]);
 });
 
-test('8b — rapport PDF : page du rapport puis PDF téléchargé', async ({ context, extensionId, bankin, consoleErrors }) => {
+test('8b — rapport PDF : page du rapport puis PDF téléchargé', async ({ context, extensionId, bankin, consoleErrors, externalRequests }) => {
     await openBankin(context);
     const popup = await openPopup(context, extensionId);
     await popup.locator('#pdfYear').selectOption('2024');
@@ -78,5 +78,7 @@ test('8b — rapport PDF : page du rapport puis PDF téléchargé', async ({ con
     const pdf = await readFile(await download.path());
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
     expect(pdf.length).toBeGreaterThan(10_000);
+    // Popup et rapport sans service tiers (badges, polices) : U12
+    expect(externalRequests).toEqual([]);
     expect(consoleErrors).toEqual([]);
 });

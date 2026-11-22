@@ -1,3 +1,7 @@
+// Open Sans (police de Bankin) embarquée : plus de Google Fonts (vie privée, U12)
+import '@fontsource/open-sans/latin-400.css';
+import '@fontsource/open-sans/latin-600.css';
+import '@fontsource/open-sans/latin-700.css';
 import { Chart } from '../../js/lib/chart.js';
 import html2pdf from 'html2pdf.js';
 import { PdfExporter } from '../../js/report/PdfExporter.js';
@@ -167,7 +171,8 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
                 animation: { duration: 400 },
                 plugins: { legend: { position: 'bottom' } },
                 scales: {
-                    x: { grid: { color: LIGHT_GRID } },
+                    // Barres empilées : sur les deux axes, sinon elles flottent côte à côte (U18)
+                    x: { stacked: isBar, grid: { color: LIGHT_GRID } },
                     y: { beginAtZero: true, stacked: isBar, grid: { color: LIGHT_GRID } }
                 }
             }
@@ -221,8 +226,9 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
             polarChartInstance.destroy();
             polarChartInstance = null;
         }
+        // Donut : une aire polaire déforme les proportions et ses graduations sont illisibles (U19)
         polarChartInstance = new Chart(canvas.getContext('2d'), {
-            type: 'polarArea',
+            type: 'doughnut',
             data: {
                 labels: polarChartData.labels,
                 datasets: [{
@@ -236,8 +242,8 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 400 },
-                plugins: { legend: { position: 'bottom' } },
-                scales: { r: { grid: { color: LIGHT_GRID } } }
+                cutout: '55%',
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
