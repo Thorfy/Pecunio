@@ -10,8 +10,11 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 ## [Non publié]
 
 ### Ajouté
+- Historique d'une catégorie : sur la page de détail d'une catégorie, ses 12 derniers mois par sous-catégorie, aux couleurs de Bankin, avec la médiane et le mois affiché mis en avant.
+- Revenus sur 12 mois : l'onglet Revenus montre l'évolution des revenus par source.
+- Rythme du mois sur la page Catégories : dépenses cumulées jour après jour, comparées au rythme habituel au même jour.
 - Popup refaite à l'identité Pecunio : période en un clic (ce mois, 3 mois, 12 mois, tout), sections plus claires, actions rares repliées dans « Avancé », astuce d'épinglage refermable.
-- Types de dépenses : total du mois au centre du graphique et part de chaque type dans la légende.
+- Page Catégories : répartition par catégorie (donut de Bankin) et par type de dépense réunies en un bloc compact, au même format ; type principal du mois en tête et part de chaque type dans la légende.
 - Flux financiers plus lisibles : petits montants regroupés, « Non dépensé » et « Dépassement » quand les dépenses dépassent les revenus.
 - Graphique des dépenses : période au choix (6, 12, 24 mois ou tout), 12 mois par défaut, ligne du solde de chaque mois, vue simplifiée (5 catégories principales + « Autres ») ou toutes les catégories.
 - Comparaison du budget repensée : « Mois dernier », « Ce mois-ci » ou « Cette année » en un clic, dépenses triées en barres horizontales, total et écart affichés ; « Personnaliser » pour d'autres périodes.
@@ -22,6 +25,7 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 - Les catégories masquées dans la légende du graphique temporel le sont aussi dans la comparaison budget, et le restent d'une session à l'autre.
 
 ### Corrigé
+- Mois en cours : une transaction de fin du mois précédent rattachée à ce mois dans Bankin (un salaire du 29 octobre compté en novembre) manquait aux graphiques de la page Comptes et au rythme du mois.
 - Masquage des montants : certains montants restaient visibles après le chargement de la page alors que l'œil indiquait « masqué ».
 - Rapport PDF : graphique « Par catégorie » qui sortait de la page, barres « empilées » décalées, aire polaire remplacée par un donut, mois en français (« janv. 2024 ») et couleurs des catégories identiques à celles de Bankin.
 - Graphiques dans la police et les couleurs de Bankin ; plus d'emojis dans les titres et légendes.

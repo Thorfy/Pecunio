@@ -78,10 +78,10 @@ describe('PageController.detectPage', () => {
         expect(PageController.detectPage(href)).toBe(PAGE()[page]);
     });
 
-    test('seules les pages Comptes et Catégories ont des graphiques', () => {
+    test('pages avec graphiques : Comptes, Catégories et détail d\'une catégorie (historique)', () => {
         expect(PageController.hasCharts(PAGE().ACCOUNTS)).toBe(true);
         expect(PageController.hasCharts(PAGE().CATEGORIES)).toBe(true);
-        expect(PageController.hasCharts(PAGE().CATEGORY_DETAIL)).toBe(false);
+        expect(PageController.hasCharts(PAGE().CATEGORY_DETAIL)).toBe(true);
         expect(PageController.hasCharts(PAGE().SIGNIN)).toBe(false);
     });
 });
@@ -220,11 +220,38 @@ describe('PageController — construction des graphiques', () => {
         expect(controller.buildCount).toBe(0);
     });
 
-    test('page Catégories : types de dépenses + Sankey pour le mois affiché', async () => {
+    test('page Catégories : types de dépenses, flux et rythme du mois pour le mois affiché', async () => {
         const { controller, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
         await controller.requestBuild();
-        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'SankeyChart']);
+        // Rythme du mois avant le diagramme des flux (visible sans défiler)
+        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
         expect(charts.created[0].args[2]).toEqual(['septembre', '2026']);
+        expect(charts.created[1].args[2]).toEqual(['septembre', '2026']);
+        // Reconstruction (changement de mois) : une seule carte de rythme
+        await controller.requestBuild();
+        expect(document.querySelectorAll('.pecunio-pace-wrapper')).toHaveLength(1);
+        expect(charts.created[1].destroy).toHaveBeenCalled();
+    });
+
+    test("page de détail d'une catégorie : historique de la catégorie de l'adresse", async () => {
+        const { controller, charts } = setup({ href: 'https://app2.bankin.com/categories/159', dom: CATEGORIES_DOM });
+        await controller.requestBuild();
+        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart']);
+        expect(charts.created[0].args[2]).toEqual({ categoryId: 159, monthParams: ['septembre', '2026'] });
+        // À côté du donut de Bankin, comme sur la page Catégories
+        expect(document.querySelector('.pecunio-charts-row > .pecunio-history-wrapper')).not.toBeNull();
+    });
+
+    test("détail : changement de mois ou de catégorie, un seul historique à jour", async () => {
+        const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories/161', dom: CATEGORIES_DOM });
+        await controller.start();
+        await controller.requestBuild();
+        expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(1);
+        navigate(win, 'https://app2.bankin.com/categories/2');
+        await controller.whenIdle();
+        expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(1);
+        expect(charts.created.at(-1).args[2].categoryId).toBe(2);
+        expect(charts.created.slice(0, -1).every((c) => c.destroy.mock.calls.length >= 1)).toBe(true);
     });
 
     test('B16 — chaque reconstruction détruit les graphiques précédents', async () => {
@@ -311,23 +338,30 @@ describe('PageController — navigation (B6)', () => {
     test('B6 — onglet Revenus : les graphiques de dépenses sont retirés et détruits', async () => {
         const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
         await controller.start();
-        expect(document.querySelectorAll('.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper')).toHaveLength(2);
+        const expenseWrappers = '.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper, .pecunio-pace-wrapper';
+        expect(document.querySelectorAll(expenseWrappers)).toHaveLength(3);
 
         navigate(win, 'https://app2.bankin.com/categories/2');
         await controller.whenIdle();
 
-        expect(document.querySelectorAll('.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper')).toHaveLength(0);
-        expect(charts.created.every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
-        expect(charts.created).toHaveLength(2);
+        expect(document.querySelectorAll(expenseWrappers)).toHaveLength(0);
+        const [expenseType, pace, sankey, history] = charts.created;
+        expect([expenseType, sankey, pace].every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
+        // Onglet Revenus : historique des revenus (lot UX-3a)
+        expect(history.kind).toBe('CategoryHistoryChart');
+        expect(history.args[2]).toEqual({ categoryId: 2, monthParams: ['septembre', '2026'] });
+        expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(1);
     });
 
     test('retour sur l\'onglet Dépenses : graphiques reconstruits', async () => {
         const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories/2', dom: CATEGORIES_DOM });
         await controller.start();
-        expect(charts.created).toHaveLength(0);
+        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart']);
         navigate(win, 'https://app2.bankin.com/categories');
         await controller.whenIdle();
-        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'SankeyChart']);
+        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart', 'ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
+        // L'historique ne reste pas sur la page Catégories
+        expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(0);
     });
 
     test('plusieurs signaux pour une même navigation : une seule reconstruction', async () => {

@@ -315,9 +315,23 @@ export class InjectedStyles {
                 min-width: 0;
             }
 
+            /* Page de détail d'une catégorie : donut étroit, historique à côté */
+            .pecunio-charts-row--detail > .pecunio-donut-wrapper {
+                flex: 0 0 340px;
+            }
+            .pecunio-charts-row--detail > .pecunio-history-wrapper {
+                flex: 1 1 0;
+                min-width: 0;
+                margin-bottom: 0;
+            }
+
             @media (max-width: 1024px) {
                 .pecunio-charts-row {
                     flex-direction: column;
+                }
+                .pecunio-charts-row--detail > .pecunio-donut-wrapper,
+                .pecunio-charts-row--detail > .pecunio-history-wrapper {
+                    flex: 1 1 100%;
                 }
                 .pecunio-donut-wrapper,
                 .pecunio-expense-type-wrapper {
@@ -341,6 +355,76 @@ export class InjectedStyles {
                 padding: 16px;
                 border: 1px solid #e1e5e9;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            /* Page Catégories : donut de Bankin et types de dépenses en un seul bloc */
+            .pecunio-charts-row--merged {
+                gap: 0;
+                background: #fff;
+                border: 1px solid #e1e5e9;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+            .pecunio-charts-row--merged > .pecunio-donut-wrapper,
+            .pecunio-charts-row--merged > .pecunio-expense-type-wrapper {
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+                background: transparent;
+            }
+            .pecunio-charts-row--merged > .pecunio-expense-type-wrapper {
+                border-left: 1px solid ${THEME.border};
+            }
+            @media (max-width: 1024px) {
+                .pecunio-charts-row--merged > .pecunio-expense-type-wrapper {
+                    border-left: 0;
+                    border-top: 1px solid ${THEME.border};
+                }
+            }
+
+            /* Donut de Bankin compact : marges internes de son SVG rognées, centre
+               à la hauteur de celui des types de dépenses (légende dessous) */
+            .pecunio-donut-wrapper .cntr.dtb.active {
+                display: block;
+                width: auto;
+                height: auto;
+            }
+            .pecunio-donut-wrapper .cntr.dtb.active > .dtc {
+                display: block;
+            }
+            .pecunio-donut-wrapper #donutChart {
+                margin: -18px auto -24px !important;
+            }
+
+            /* En-têtes des deux donuts au même format : chiffre, légende */
+            .pecunio-donut-wrapper .cntr.dtb.active > .dtc > .mt2.tac,
+            .pecunio-donut-header {
+                margin: 4px 0 0;
+                min-height: 70px;
+                text-align: center;
+                /* Au-dessus du SVG du donut, remonté sur sa marge transparente :
+                   sans cela, il recouvre l'œil de masquage (clic perdu) */
+                position: relative;
+                z-index: 1;
+            }
+            .pecunio-donut-wrapper .mt2.tac .fs2,
+            .pecunio-donut-figure {
+                font-size: 20px;
+                line-height: 26px;
+            }
+            .pecunio-donut-figure {
+                display: block;
+                font-weight: 700;
+                color: ${THEME.text};
+            }
+            .pecunio-donut-wrapper .mt2.tac .fs1,
+            .pecunio-donut-caption {
+                font-size: 12px;
+                line-height: 16px;
+                color: ${THEME.textMuted};
+            }
+            .pecunio-donut-caption {
+                display: block;
             }
 
             .pecunio-sankey-wrapper {
@@ -551,6 +635,26 @@ export class InjectedStyles {
     /**
      * Organise le contenu existant dans un wrapper donut
      */
+    /**
+     * Ligne de cartes du bloc des catégories : donut de Bankin dans une carte
+     * « Catégories », puis les cartes Pecunio. Page Catégories : donut et types
+     * de dépenses fondus en un seul bloc ; `detail` : page de détail d'une
+     * catégorie (donut étroit à côté de l'historique).
+     * @param {Element} categBlock
+     * @param {{ detail?: boolean }} [options]
+     * @returns {HTMLElement}
+     */
+    static prepareChartsRow(categBlock, { detail = false } = {}) {
+        this.inject();
+        this.cleanupPecunioElements(categBlock);
+        let row = /** @type {HTMLElement | null} */ (categBlock.querySelector('.pecunio-charts-row'));
+        if (!row) row = this.createChartsRow();
+        row.classList.toggle('pecunio-charts-row--detail', detail);
+        row.classList.toggle('pecunio-charts-row--merged', !detail);
+        this.organizeDonutContent(categBlock, row);
+        return row;
+    }
+
     static organizeDonutContent(container, chartsRowContainer) {
         let donutWrapper = container.querySelector('.pecunio-donut-wrapper');
         
@@ -560,10 +664,9 @@ export class InjectedStyles {
             donutWrapper.appendChild(donutTitle);
             
             const existingContent = Array.from(container.children);
+            // Contenu de Bankin seulement : les cartes Pecunio restent en place
             existingContent.forEach(child => {
-                if (!child.classList.contains('pecunio-charts-row') && 
-                    !child.classList.contains('pecunio-expense-type-wrapper') &&
-                    !child.classList.contains('pecunio-sankey-wrapper')) {
+                if (![...child.classList].some((c) => c.startsWith('pecunio-'))) {
                     donutWrapper.appendChild(child);
                 }
             });

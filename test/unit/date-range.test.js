@@ -73,9 +73,17 @@ describe('DateRange — mois de rattachement Bankin', () => {
         expect(DateRange.getBudgetMonth({ date: '2024-03-15' })).toBe('2024-03');
     });
 
-    test('avec current_month : date décalée, jour conservé', () => {
-        expect(DateRange.getBudgetDate({ date: '2024-01-28', current_month: 1 })).toBe('2024-02-28');
-        expect(DateRange.getBudgetDate({ date: '2024-01-31', current_month: 1 })).toBe('2024-02-29');
+    test('rattachée à un mois suivant : 1er jour de ce mois', () => {
+        // Salaire du 29 octobre rattaché à novembre : il compte dès le 1er
+        // novembre, pas le 29 (après aujourd'hui en cours de mois)
+        expect(DateRange.getBudgetDate({ date: '2026-10-29', current_month: 1 })).toBe('2026-11-01');
+        expect(DateRange.getBudgetDate({ date: '2024-01-31', current_month: 2 })).toBe('2024-03-01');
+        expect(DateRange.getBudgetMonth({ date: '2026-10-29', current_month: 1 })).toBe('2026-11');
+    });
+
+    test('rattachée à un mois précédent : dernier jour de ce mois', () => {
+        expect(DateRange.getBudgetDate({ date: '2024-03-02', current_month: -1 })).toBe('2024-02-29');
+        expect(DateRange.getBudgetDate({ date: '2024-01-05', current_month: -1 })).toBe('2023-12-31');
         expect(DateRange.getBudgetMonth({ date: '2024-01-05', current_month: -1 })).toBe('2023-12');
     });
 

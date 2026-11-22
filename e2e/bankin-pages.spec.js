@@ -117,11 +117,41 @@ test.describe('Page Comptes', () => {
 });
 
 test.describe('Page Catégories', () => {
+    test('9c — œil de masquage cliquable au-dessus du donut compact (Catégories, Revenus)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        const html = page.locator('html');
+        await page.goto(bankinUrl('/categories'));
+        await expect(page.locator('.pecunio-pace-wrapper canvas')).toBeVisible();
+        for (const path of ['/categories', '/categories/2']) {
+            if (path !== '/categories') {
+                await page.evaluate((p) => window.__bankinNavigate(p), path);
+                await expect(page.locator('.pecunio-history-wrapper canvas')).toBeVisible();
+            }
+            await expect(page.locator('#hideButton')).toBeVisible();
+            // Vrai clic : échoue si un autre élément (le SVG du donut) recouvre l'œil
+            await page.locator('#hideButton').click({ timeout: 3000 });
+            await expect(html).toHaveClass(/pecunio-amounts-hidden/);
+            await page.locator('#hideButton').click({ timeout: 3000 });
+            await expect(html).not.toHaveClass(/pecunio-amounts-hidden/);
+        }
+        expect(consoleErrors).toEqual([]);
+    });
+
     test('2 — types de dépenses et flux financiers, mis à jour au changement de mois', async ({ context, bankin, consoleErrors }) => {
         const page = await context.newPage();
         await page.goto(bankinUrl('/categories'));
         await expect(page.locator(EXPENSE_TYPE_CHART)).toBeVisible();
         await expect(page.locator(SANKEY_CHART)).toBeVisible();
+        // Rythme du mois (lot UX-3a)
+        await expect(page.locator('.pecunio-pace-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-pace-wrapper')).toContainText('Rythme du mois');
+        // Juste sous le donut et les types de dépenses, avant les flux financiers
+        const paceFirst = await page.evaluate(() => {
+            const pace = document.querySelector('.pecunio-pace-wrapper');
+            const sankey = document.querySelector('.pecunio-sankey-wrapper');
+            return Boolean(pace.compareDocumentPosition(sankey) & Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+        expect(paceFirst).toBe(true);
 
         // Changement de mois : les graphiques sont reconstruits (nouveaux canvas)
         await page.locator(SANKEY_CHART).evaluate((canvas) => canvas.setAttribute('data-avant', ''));
@@ -130,6 +160,7 @@ test.describe('Page Catégories', () => {
         await expect(page.locator(`${SANKEY_CHART}:not([data-avant])`)).toBeVisible();
         await expect(page.locator(SANKEY_CHART)).toHaveCount(1);
         await expect(page.locator(EXPENSE_TYPE_CHART)).toHaveCount(1);
+        await expect(page.locator('.pecunio-pace-wrapper')).toHaveCount(1);
         expect(consoleErrors).toEqual([]);
     });
 
@@ -141,13 +172,42 @@ test.describe('Page Catégories', () => {
         await page.evaluate(() => window.__bankinNavigate('/categories/2'));
         await expect(page.locator('.pecunio-sankey-wrapper')).toHaveCount(0);
         await expect(page.locator('.pecunio-expense-type-wrapper')).toHaveCount(0);
+        await expect(page.locator('.pecunio-pace-wrapper')).toHaveCount(0);
+        // Onglet Revenus : historique des revenus sur 12 mois (lot UX-3a)
+        await expect(page.locator('.pecunio-history-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-history-wrapper')).toContainText('Revenus sur 12 mois');
+        await expectDonutBesideHistory(page);
+
+        // Autre catégorie : l'historique est remplacé, pas ajouté
+        await page.evaluate(() => window.__bankinNavigate('/categories/159'));
+        await expect(page.locator('.pecunio-history-wrapper')).toContainText('Logement sur 12 mois');
+        await expect(page.locator('.pecunio-history-wrapper')).toHaveCount(1);
 
         // Retour sur Dépenses : les graphiques reviennent
         await page.evaluate(() => window.__bankinNavigate('/categories'));
         await expect(page.locator(SANKEY_CHART)).toBeVisible();
+        await expect(page.locator('.pecunio-history-wrapper')).toHaveCount(0);
+        await expect(page.locator('.pecunio-charts-row--detail')).toHaveCount(0);
+
+        // Onglet Revenus ouvert directement : même mise en page
+        const direct = await context.newPage();
+        await direct.goto(bankinUrl('/categories/2'));
+        await expect(direct.locator('.pecunio-history-wrapper canvas')).toBeVisible();
+        await expectDonutBesideHistory(direct);
         expect(consoleErrors).toEqual([]);
     });
 });
+
+/** Détail d'une catégorie : donut de Bankin dans une carte, à sa taille, l'historique à côté. */
+async function expectDonutBesideHistory(page) {
+    const donut = page.locator('.pecunio-charts-row--detail > .pecunio-donut-wrapper');
+    await expect(donut).toContainText('Catégories');
+    await expect(page.locator('.categoryChart .h100')).toHaveCount(0);
+    const history = page.locator('.pecunio-charts-row--detail > .pecunio-history-wrapper');
+    const [d, h] = [await donut.boundingBox(), await history.boundingBox()];
+    expect(Math.abs(d.y - h.y)).toBeLessThan(2);
+    expect(h.x).toBeGreaterThanOrEqual(d.x + d.width);
+}
 
 test.describe('Plusieurs onglets et connexion', () => {
     test('5 — deux onglets Bankin affichent tous les deux leurs graphiques (B1)', async ({ context, bankin, consoleErrors }) => {

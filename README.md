@@ -42,6 +42,16 @@
   </tr>
 </table>
 
+**Le rythme du mois** : vos dépenses cumulées jour après jour, face à votre rythme habituel. En avance ou en retard sur un mois normal ?
+
+<p align="center"><img src="docs/assets/screens/rythme-du-mois.png" alt="Rythme des dépenses du mois comparé au rythme habituel" width="90%"></p>
+
+### Sur le détail d'une catégorie
+
+**L'historique sur 12 mois**, par sous-catégorie, avec la médiane et le mois affiché mis en avant : vos courses augmentent-elles ? Sur l'onglet Revenus, l'évolution de vos revenus par source.
+
+<p align="center"><img src="docs/assets/screens/historique-categorie.png" alt="Historique d'une catégorie sur 12 mois" width="90%"></p>
+
 ### Dans la popup et le rapport
 
 <table>

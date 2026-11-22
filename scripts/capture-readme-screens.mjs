@@ -61,6 +61,13 @@ await bankin.locator('.pecunio-sankey-wrapper canvas').waitFor();
 await settle(bankin);
 await bankin.locator('.pecunio-expense-type-wrapper').screenshot({ path: `${OUT}/types-de-depenses.png` });
 await bankin.locator('.pecunio-sankey-wrapper').screenshot({ path: `${OUT}/flux-financiers.png` });
+await bankin.locator('.pecunio-pace-wrapper').screenshot({ path: `${OUT}/rythme-du-mois.png` });
+
+// Détail d'une catégorie : historique sur 12 mois
+await bankin.goto('https://app2.bankin.com/categories/161');
+await bankin.locator('.pecunio-history-wrapper canvas').waitFor();
+await settle(bankin);
+await bankin.locator('.pecunio-history-wrapper').screenshot({ path: `${OUT}/historique-categorie.png` });
 
 // Popup et rapport PDF
 const popup = await context.newPage();

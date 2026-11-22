@@ -102,3 +102,12 @@ export function formatDelta(delta) {
     if (Math.abs(delta) < 0.005) return '=';
     return DELTA.format(delta);
 }
+
+/**
+ * Écart en toutes lettres pour une phrase : « écart +5 % », « sans écart ».
+ * @param {number} delta
+ */
+export function deltaText(delta) {
+    const formatted = formatDelta(delta);
+    return formatted === '=' ? 'sans écart' : `écart ${formatted}`;
+}

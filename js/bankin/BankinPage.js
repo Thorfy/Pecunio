@@ -90,9 +90,24 @@ export class BankinPage {
         return BANKIN_PAGE.OTHER;
     }
 
-    /** Pages où Pecunio affiche des graphiques. */
+    /** Pages où Pecunio affiche des graphiques (détail d'une catégorie : historique, lot UX-3a). */
     static hasCharts(page) {
-        return page === BANKIN_PAGE.ACCOUNTS || page === BANKIN_PAGE.CATEGORIES;
+        return page === BANKIN_PAGE.ACCOUNTS || page === BANKIN_PAGE.CATEGORIES || page === BANKIN_PAGE.CATEGORY_DETAIL;
+    }
+
+    /**
+     * Identifiant de la catégorie d'une page de détail : « /categories/161 » → 161
+     * (« /categories/2 » : onglet Revenus, catégorie « Entrées d'argent »).
+     * @param {string} href
+     * @returns {number | null}
+     */
+    static categoryIdFromUrl(href) {
+        try {
+            const match = /^\/categories\/(\d+)\/?$/.exec(new URL(href).pathname);
+            return match ? Number(match[1]) : null;
+        } catch {
+            return null;
+        }
     }
 
     /** Pages Catégories (dépenses, revenus, détail d'une catégorie). */
