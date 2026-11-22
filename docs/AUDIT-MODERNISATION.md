@@ -77,7 +77,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | D9 | Interface mi-française mi-anglaise (« Toggle chart type », « All Months », mois de l'axe en anglais) — ✅ 4c : graphiques en français (libellés, mois des axes, montants `1 234,50 €`) | ✅ 4c |
 | D10 | Bouton « Toggle chart type » dessiné dans le canvas : inaccessible au clavier, aux lecteurs d'écran et aux tests e2e — ✅ 4c : vrai bouton HTML « Afficher en courbes / en barres » | ✅ 4c |
 | D11 | Aucun indicateur visible pendant les ~6 s avant l'affichage des graphiques — ✅ 2b : bandeau « chargement de vos données… » après 1,5 s | 2b |
-| D12 | Description du manifest : « Pecunio overload Bankin website » | 6 |
+| D12 | Description du manifest : « Pecunio overload Bankin website » — ✅ 6 : « Enrichit Bankin : graphiques de dépenses et de budget, flux financiers, masquage des montants, export CSV et rapport PDF. » (test de la limite de 132 caractères) | ✅ 6 |
 | D13 | 35 warnings ESLint (surtout `prefer-const`) | ✅ 3c |
 | D14 | Visibilité des catégories stockée sous des clés de premier niveau nommées d'après les catégories (`"Logement": true`) : collisions possibles avec les autres clés, nettoyage impossible — ✅ 4a : préférence `hiddenCategories`, anciennes clés migrées | ✅ 4a |
 
@@ -186,7 +186,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 
 **5a — Playwright et pages Bankin** ✅ _(#29)_ : extension construite chargée dans Chromium face à un Bankin simulé (`e2e/`) ; POC concluant : `webRequest` voit les requêtes interceptées par Playwright, les en-têtes sont capturés comme en réel. Scénarios 1 à 6 et 9 ; job CI « Tests de bout en bout ».
 
-**5b — Popup, export et composants** ✅ _(branche `test/phase-5b-popup-export`)_ : scénarios 7 (période changée dans la popup → onglet Bankin redessiné), 8a (CSV téléchargé, contenu de la période vérifié) et 8b (page du rapport puis PDF téléchargé et valide) ; les `alert()` de la popup comptent comme des erreurs. Tests de composants : popup (HTML réel dans happy-dom : période, comptes, export CSV, rapport, épinglage) et `AmountHider` (sur les captures réelles des pages) ; `ReviewPrompt` était déjà couvert. Correction B25.
+**5b — Popup, export et composants** ✅ _(#30)_ : scénarios 7 (période changée dans la popup → onglet Bankin redessiné), 8a (CSV téléchargé, contenu de la période vérifié) et 8b (page du rapport puis PDF téléchargé et valide) ; les `alert()` de la popup comptent comme des erreurs. Tests de composants : popup (HTML réel dans happy-dom : période, comptes, export CSV, rapport, épinglage) et `AmountHider` (sur les captures réelles des pages) ; `ReviewPrompt` était déjà couvert. Correction B25.
 
 - **POC en premier (½ j)** : vérifier que `webRequest.onBeforeSendHeaders` voit les requêtes interceptées par Playwright ; sinon le test injecte les headers dans `chrome.storage.session`. ✅ Il les voit.
 - Tests de composants (Vitest + happy-dom) : popup (comptes, dates, export), AmountHider, ReviewPrompt.
@@ -201,11 +201,11 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
   8. export CSV (contenu vérifié) et génération du rapport PDF ;
   9. masquage des montants : flou appliqué puis retiré.
 
-### Phase 6 — CI/CD et release _(½ j)_
-- PR : lint → types → unitaires (3 fuseaux, seuil de couverture) → build → e2e.
-- Tag `vX.Y.Z` : version unique (`package.json` → manifest), build, zip, envoi au store en brouillon ou en déploiement progressif ; changelog généré.
-- Dependabot / Renovate (npm + Actions) ; description du manifest corrigée (D12).
-- `--auto-publish` réactivable une fois les e2e stables.
+### Phase 6 — CI/CD et release _(½ j)_ ✅ _(branche `ci/phase-6-release`)_
+- PR : lint, types, unitaires (3 fuseaux, seuil de couverture), build et zip, e2e — jobs `check`, `test` et `e2e` de `ci.yml` (en parallèle). ✅
+- Tag `vX.Y.Z` : tag = version de `package.json` (reprise dans le manifest) et section correspondante dans `CHANGELOG.md` vérifiés ; **tous** les contrôles relancés (dont fuseaux et e2e) ; zip ; **release GitHub en brouillon** (notes du changelog + PR générées) ; envoi au store en brouillon. Lancement manuel (« Run workflow ») = répétition générale sans release ni envoi. Procédure : `docs/RELEASE.md`. ✅
+- Dependabot (npm + Actions, phase 3b) ✅ ; description du manifest corrigée (D12) ✅.
+- `--auto-publish` : **non réactivé**, la publication reste manuelle (décision du 22/11/2026).
 
 ### Récapitulatif
 
@@ -217,8 +217,8 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
 | 3 Modules + WXT | 2–3 j | ✅ 3a (#16), 3b (#17), 3c (#23) | B15, B21–B24, D3–D6, D13 |
 | 4 Types + adaptateur | 2–3 j | ✅ 4a (#25), 4b (#27), 4c (#28) | D1, D8–D10, D14 |
-| 5 e2e | 2 j | 5a ✅ (#29), 5b ✅ PR à merger | non-régression de tout le registre ; B25 |
-| 6 CI/CD | ½ j | | D12 |
+| 5 e2e | 2 j | ✅ 5a (#29), 5b (#30) | non-régression de tout le registre ; B25 |
+| 6 CI/CD | ½ j | ✅ PR à merger | D12 |
 
 **Total : 11 à 14 jours.** Les phases 0 → 2 règlent tout ce que voient les utilisateurs ; 3 → 6 rendent le code durable.
 
@@ -230,7 +230,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | Build | ✅ WXT | — |
 | TypeScript | ✅ JSDoc + `checkJs` (pas de conversion en `.ts`) | — |
 | Données | ✅ Cache purgé à la déconnexion de Bankin ; durée de validité inchangée (10 min) | — |
-| Publication | Réactiver la publication automatique après la phase 5, ou garder une validation manuelle ? | phase 6 |
+| Publication | ✅ Validation manuelle conservée : envoi au store en brouillon, publication depuis le tableau de bord (décidé le 22/11/2026) | — |
 
 ## 7. Recette manuelle (avant chaque merge de phase 2 à 4)
 

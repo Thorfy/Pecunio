@@ -13,7 +13,8 @@ export default defineConfig({
     }),
     manifest: {
         name: 'Pecunio',
-        description: 'Pecunio overload Bankin website', // à reformuler en phase 6 (D12)
+        // Affichée sur le Chrome Web Store et dans chrome://extensions (132 caractères au plus)
+        description: 'Enrichit Bankin : graphiques de dépenses et de budget, flux financiers, masquage des montants, export CSV et rapport PDF.',
         // Chrome accepte une chaîne ; les types du manifest attendent { email }
         author: /** @type {any} */ ('Remy Lefebvre'),
         icons: { 64: 'asset/icon.png' },
