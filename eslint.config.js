@@ -44,6 +44,24 @@ export default [
         },
     },
     {
+        // Tests de bout en bout (Playwright) : Node, plus le code évalué dans
+        // les pages et le service worker (navigateur, chrome.*)
+        files: ['e2e/**/*.js', 'playwright.config.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: {
+                ...globals.node,
+                ...globals.browser,
+                ...globals.webextensions,
+            },
+        },
+        rules: {
+            // Les fixtures Playwright sont demandées par déstructuration, parfois sans être lues
+            'no-unused-vars': ['error', { args: 'none' }],
+        },
+    },
+    {
         // Outillage (Node, modules ES)
         files: ['*.config.js', 'scripts/**/*.{js,mjs}'],
         languageOptions: {

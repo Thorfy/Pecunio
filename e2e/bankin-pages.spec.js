@@ -1,0 +1,131 @@
+// Scénarios de bout en bout sur les pages Bankin (extension chargée, Bankin simulé).
+// Numéros : plan de modernisation, phase 5 (docs/AUDIT-MODERNISATION.md).
+import { bankinUrl, expect, test } from './fixtures.js';
+
+const LINE_CHART = '#originalChartContainer canvas';
+const BUDGET_CHART = '#budgetChartBlock canvas';
+const EXPENSE_TYPE_CHART = '.pecunio-expense-type-wrapper canvas';
+const SANKEY_CHART = '.pecunio-sankey-wrapper canvas';
+const TOGGLE = '.pecunio-chart-type-toggle';
+
+/** Nombre d'appels à l'API des transactions reçus par le Bankin simulé. */
+const transactionCalls = (bankin) => bankin.apiCalls.filter((call) => call.startsWith('/v2/transactions')).length;
+
+test.describe('Page Comptes', () => {
+    test('1 — en-têtes capturés, graphique temporel et comparaison budget affichés', async ({ context, serviceWorker, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        await expect(page.locator(BUDGET_CHART)).toBeVisible();
+
+        // Le service worker a capturé les en-têtes de l'appel de Bankin (en session, pas sur disque)
+        const stored = await serviceWorker.evaluate(() => chrome.storage.session.get('pecunio_auth_headers'));
+        expect(Object.keys(stored.pecunio_auth_headers).sort()).toEqual(['Authorization', 'Bankin-Version', 'Client-Id', 'Client-Secret']);
+        expect(transactionCalls(bankin)).toBe(1);
+        expect(consoleErrors).toEqual([]);
+    });
+
+    test('4 — bouton de type × 2 puis ↻ : un seul rechargement (B4, B5, D10)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        const toggle = page.locator(TOGGLE);
+        await expect(toggle).toHaveText('Afficher en courbes');
+
+        await toggle.click();
+        await expect(page.locator(TOGGLE)).toHaveText('Afficher en barres');
+        // Au clavier : le bouton est un vrai bouton HTML (D10)
+        await page.locator(TOGGLE).focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator(TOGGLE)).toHaveText('Afficher en courbes');
+        await expect(page.locator(TOGGLE)).toHaveCount(1);
+
+        const before = transactionCalls(bankin);
+        await page.locator('.refreshIcon').click();
+        await expect.poll(() => transactionCalls(bankin)).toBe(before + 1);
+        // Laisser passer d'éventuels rechargements en double
+        await page.waitForTimeout(2500);
+        expect(transactionCalls(bankin)).toBe(before + 1);
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        await expect(page.locator(BUDGET_CHART)).toHaveCount(1);
+        expect(consoleErrors).toEqual([]);
+    });
+
+    test('9 — masquage des montants : flou appliqué puis retiré', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        const header = page.locator('.dbl.fs14.fw7.lh18.elp');
+        const amounts = page.locator('.amountGreen');
+
+        await page.locator('#hideButton').click();
+        await expect(header).toHaveClass(/pecunio-blurred/);
+        await expect(amounts.first()).toHaveClass(/pecunio-blurred/);
+
+        await page.locator('#hideButton').click();
+        await expect(header).not.toHaveClass(/pecunio-blurred/);
+        await expect(amounts.first()).not.toHaveClass(/pecunio-blurred/);
+        expect(consoleErrors).toEqual([]);
+    });
+});
+
+test.describe('Page Catégories', () => {
+    test('2 — types de dépenses et flux financiers, mis à jour au changement de mois', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/categories'));
+        await expect(page.locator(EXPENSE_TYPE_CHART)).toBeVisible();
+        await expect(page.locator(SANKEY_CHART)).toBeVisible();
+
+        // Changement de mois : les graphiques sont reconstruits (nouveaux canvas)
+        await page.locator(SANKEY_CHART).evaluate((canvas) => canvas.setAttribute('data-avant', ''));
+        await page.locator('#monthSelector a', { hasText: 'Févr.' }).click();
+        await expect(page.locator('#monthSelector .active')).toHaveText('Février 2024');
+        await expect(page.locator(`${SANKEY_CHART}:not([data-avant])`)).toBeVisible();
+        await expect(page.locator(SANKEY_CHART)).toHaveCount(1);
+        await expect(page.locator(EXPENSE_TYPE_CHART)).toHaveCount(1);
+        expect(consoleErrors).toEqual([]);
+    });
+
+    test('3 — onglet Revenus : aucun graphique de dépenses périmé (B6)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/categories'));
+        await expect(page.locator(SANKEY_CHART)).toBeVisible();
+
+        await page.evaluate(() => window.__bankinNavigate('/categories/2'));
+        await expect(page.locator('.pecunio-sankey-wrapper')).toHaveCount(0);
+        await expect(page.locator('.pecunio-expense-type-wrapper')).toHaveCount(0);
+
+        // Retour sur Dépenses : les graphiques reviennent
+        await page.evaluate(() => window.__bankinNavigate('/categories'));
+        await expect(page.locator(SANKEY_CHART)).toBeVisible();
+        expect(consoleErrors).toEqual([]);
+    });
+});
+
+test.describe('Plusieurs onglets et connexion', () => {
+    test('5 — deux onglets Bankin affichent tous les deux leurs graphiques (B1)', async ({ context, bankin, consoleErrors }) => {
+        const accounts = await context.newPage();
+        await accounts.goto(bankinUrl('/accounts'));
+        const categories = await context.newPage();
+        await categories.goto(bankinUrl('/categories'));
+        await expect(accounts.locator(LINE_CHART)).toBeVisible();
+        await expect(categories.locator(SANKEY_CHART)).toBeVisible();
+        expect(consoleErrors).toEqual([]);
+    });
+
+    test('6 — page de connexion : rien de chargé, aucune erreur, en-têtes oubliés (B12, D8)', async ({ context, serviceWorker, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        const calls = bankin.apiCalls.length;
+
+        await page.goto(bankinUrl('/signin'));
+        await expect
+            .poll(() => serviceWorker.evaluate(() => chrome.storage.session.get('pecunio_auth_headers')))
+            .toEqual({});
+        // Au-delà du délai d'authentification (10 s) : aucune erreur, aucun appel à l'API
+        await page.waitForTimeout(11_000);
+        expect(bankin.apiCalls.length).toBe(calls);
+        await expect(page.locator('#pecunio-status-banner')).toHaveCount(0);
+        expect(consoleErrors).toEqual([]);
+    });
+});

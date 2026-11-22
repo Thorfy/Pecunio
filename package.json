@@ -22,11 +22,13 @@
     "test:coverage": "vitest run --coverage",
     "test:tz": "node scripts/test-timezones.mjs",
     "test:bugs": "vitest run --mode bugs",
+    "test:e2e": "wxt build && playwright test",
     "snapshot:snippet": "node scripts/print-snapshot-snippet.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.65.1",
     "@types/chrome": "^0.3.7",
     "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.5",

@@ -65,6 +65,7 @@ npm run zip         # zip pour le Chrome Web Store dans .output/
 npm run check       # lint + types + tests + build
 npm test            # tests unitaires
 npm run test:tz     # tests sous 3 fuseaux horaires
+npm run test:e2e    # scénarios de bout en bout (Playwright, Bankin simulé)
 npm run typecheck   # vérification des types (tsc sur le JSDoc)
 npm run lint:fix    # corrections automatiques du lint
 ```
