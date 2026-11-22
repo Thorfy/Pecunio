@@ -1,0 +1,20 @@
+# Dépendances
+node_modules/
+
+# Builds et paquets
+dist/
+.output/
+*.zip
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+
+# Éditeurs / OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Réglages locaux Claude Code
+.claude/settings.local.json
