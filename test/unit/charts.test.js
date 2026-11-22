@@ -6,6 +6,8 @@ import { ExpenseTypeChart } from '../../js/charts/ExpenseTypeChart.js';
 import { LineBarChart } from '../../js/charts/LineBarChart.js';
 import { SankeyChart } from '../../js/charts/SankeyChart.js';
 import { Config } from '../../js/core/Config.js';
+import { DATE_LOCALE } from '../../js/lib/chart.js';
+import { formatEuros, formatNumber, formatPercent } from '../../js/utils/format.js';
 
 /** Faux Settings : seules les méthodes utilisées par les graphiques. */
 const fakeSettings = (values = {}) => ({
@@ -211,8 +213,8 @@ describe('BudgetChart — calculs', () => {
         const chart = await budget();
         const data = await chart.prepareData(2024, 2, 2024, 1);
         expect(data.labels).toEqual(['Alimentation & Restau.', 'Banque', "Entrées d'argent"]);
-        expect(data.datasets[0].label).toBe('Actual Feb 2024');
-        expect(data.datasets[1].label).toBe('Actual Jan 2024');
+        expect(data.datasets[0].label).toBe('Réel févr. 2024');
+        expect(data.datasets[1].label).toBe('Réel janv. 2024');
         expect(data.datasets[0].data[0]).toBeCloseTo(-158.3);
         expect(data.datasets[1].data[0]).toBeCloseTo(-165.5);
     });
@@ -222,7 +224,7 @@ describe('BudgetChart — calculs', () => {
         vi.setSystemTime(new Date(2024, 2, 20));
         const chart = await budget();
         const data = await chart.prepareData(2024, 'ALL', 2024, 'ALL', 'average');
-        expect(data.datasets.map((d) => d.label)).toEqual(['Average 2024', 'Average 2024']);
+        expect(data.datasets.map((d) => d.label)).toEqual(['Moyenne 2024', 'Moyenne 2024']);
     });
 
     test('aucune transaction dans la période → aucune donnée organisée', async () => {
@@ -244,11 +246,11 @@ describe('SankeyChart — données', () => {
             ['Salaires', 'Budget', 2500],
             ['Alimentation & Restau.', 'Supermarché / Epicerie', 120.5],
             ['Alimentation & Restau.', 'Restaurants', 45],
-            ['Depenses', 'Alimentation & Restau.', 165.5],
+            ['Dépenses', 'Alimentation & Restau.', 165.5],
             ['Logement', 'Loyer', 800],
-            ['Depenses', 'Logement', 800],
+            ['Dépenses', 'Logement', 800],
             ['Budget', 'Restant', 1534.5],
-            ['Budget', 'Depenses', 965.5],
+            ['Budget', 'Dépenses', 965.5],
         ]);
     });
 
@@ -256,8 +258,8 @@ describe('SankeyChart — données', () => {
         const data = await sankey([tx({ amount: -50, categoryId: 188, date: '2024-01-10' })]);
         expect(flows(data)).toEqual([
             ['Alimentation & Restau.', 'Supermarché / Epicerie', 50],
-            ['Depenses', 'Alimentation & Restau.', 50],
-            ['Budget', 'Depenses', 50],
+            ['Dépenses', 'Alimentation & Restau.', 50],
+            ['Budget', 'Dépenses', 50],
         ]);
     });
 
@@ -267,14 +269,14 @@ describe('SankeyChart — données', () => {
         expect(chart.getDataFormated(CATEGORIES, {})).toEqual([]);
         expect(chart.convertDataToSankeyFormat(null)).toEqual([]);
         expect(chart.convertDataToSankeyFormat([null, { id: 1, name: 'x', transactions: 'bad', child: [{ name: 'y', transactions: 'bad' }] }])).toEqual([
-            { from: 'Budget', to: 'Depenses', flow: 0, id: 163 },
+            { from: 'Budget', to: 'Dépenses', flow: 0, id: 163 },
         ]);
     });
 
     // --- B18 ------------------------------------------------------------
     test('B18 — un remboursement réduit la dépense de sa catégorie', async () => {
         const data = await sankey([tx({ amount: -100, categoryId: 188, date: '2024-01-10' }), tx({ amount: 40, categoryId: 188, date: '2024-01-12' })]);
-        expect(data.find((d) => d.from === 'Depenses').flow).toBe(60);
+        expect(data.find((d) => d.from === 'Dépenses').flow).toBe(60);
         expect(data.find((d) => d.to === 'Supermarché / Epicerie').flow).toBe(60);
     });
 
@@ -404,24 +406,24 @@ describe('Graphiques — mois de rattachement Bankin (current_month)', () => {
 describe('BudgetChart — infobulle', () => {
     // Contexte d'infobulle tel que Chart.js le fournit pour un graphique en barres :
     // `parsed` est un objet { x, y }, `raw` la valeur d'origine.
-    const barContext = (y, label = 'Median 2026') => ({ dataset: { label }, parsed: { x: 0, y }, raw: y });
+    const barContext = (y, label = 'Médiane 2026') => ({ dataset: { label }, parsed: { x: 0, y }, raw: y });
 
     test('B20 — affiche le montant de la barre, pas NaN', () => {
-        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), false)).toBe('Median 2026: -158.30 €');
-        expect(BudgetChart.formatTooltipLabel(barContext(0, 'Actual Jan 2024'), false)).toBe('Actual Jan 2024: 0.00 €');
+        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), false)).toBe('Médiane 2026 : -158,30 €');
+        expect(BudgetChart.formatTooltipLabel(barContext(0, 'Réel janv. 2024'), false)).toBe('Réel janv. 2024 : 0,00 €');
     });
 
     test('accepte aussi une valeur numérique simple', () => {
-        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: 12 }, false)).toBe('A: 12.00 €');
-        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, raw: 5 }, false)).toBe('A: 5.00 €');
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: 12 }, false)).toBe('A : 12,00 €');
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, raw: 5 }, false)).toBe('A : 5,00 €');
     });
 
     test('valeur absente : pas de NaN', () => {
-        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: {} }, false)).toBe('A: —');
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: {} }, false)).toBe('A : —');
     });
 
     test('montants masqués : seulement le libellé', () => {
-        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), true)).toBe('Median 2026');
+        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), true)).toBe('Médiane 2026');
         expect(BudgetChart.formatTooltipLabel({ dataset: {} }, true)).toBe('');
     });
 });
@@ -476,5 +478,78 @@ describe('LineBarChart — taille (B23)', () => {
         const config = await chart.getChartJsConfig();
         expect(config.options.maintainAspectRatio).toBe(false);
         expect(config.options.responsive).toBe(true);
+    });
+});
+
+describe('Interface en français (D9)', () => {
+    test('montants et pourcentages au format français', () => {
+        expect(formatEuros(-1234.5)).toBe('-1\u202f234,50 €');
+        expect(formatEuros(0)).toBe('0,00 €');
+        expect(formatPercent(12.345)).toBe('12,3 %');
+        expect(formatNumber(-1500)).toBe('-1\u202f500');
+        expect(formatNumber(2.5)).toBe('2,5');
+    });
+
+    test('grand montant dans l\'infobulle de la comparaison budget', () => {
+        const context = { dataset: { label: 'Médiane 2026' }, parsed: { x: 0, y: -2500 } };
+        expect(BudgetChart.formatTooltipLabel(context, false)).toBe('Médiane 2026 : -2\u202f500,00 €');
+    });
+
+    test('comparaison budget : mois et calculs en français', async () => {
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        expect(chart.monthsArray[0]).toBe('Tous les mois');
+        expect(chart.monthsArray.slice(1, 4)).toEqual(['Janvier', 'Février', 'Mars']);
+        expect(BudgetChart.calculationLabel('median')).toBe('Médiane');
+        expect(BudgetChart.calculationLabel('average')).toBe('Moyenne');
+    });
+
+    test('graphique temporel : mois de l\'axe en français', async () => {
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const config = await chart.getChartJsConfig();
+        expect(config.options.scales.x.adapters.date.locale).toBe(DATE_LOCALE);
+        expect(DATE_LOCALE.code).toBe('fr');
+    });
+});
+
+describe('LineBarChart — bouton de type de graphique (D10)', () => {
+    test('vrai bouton HTML, au libellé explicite', () => {
+        const onToggle = vi.fn();
+        const button = LineBarChart.createChartTypeToggle('bar', onToggle);
+        expect(button.tagName).toBe('BUTTON');
+        expect(button.type).toBe('button');
+        expect(button.textContent).toBe('Afficher en courbes');
+        expect(LineBarChart.createChartTypeToggle('line', () => {}).textContent).toBe('Afficher en barres');
+        button.click();
+        expect(onToggle).toHaveBeenCalledTimes(1);
+    });
+
+    test('bascule : enregistre l\'autre type et prévient PageController', async () => {
+        const settings = { ...fakeSettings({}), setSetting: vi.fn(() => Promise.resolve()) };
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, settings);
+        chart.chartInstance = { config: { type: 'bar' } };
+        const changed = vi.fn();
+        window.addEventListener('pecunio_chart_type_changed', changed, { once: true });
+        await chart.toggleChartType();
+        expect(settings.setSetting).toHaveBeenCalledWith('chartType', 'line');
+        expect(changed).toHaveBeenCalled();
+    });
+
+    test('sans préférences : type enregistré directement dans le stockage', async () => {
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, null);
+        chart.chartInstance = { config: { type: 'line' } };
+        await chart.toggleChartType();
+        expect(chrome.storage.local._data.chartType).toBe('bar');
+    });
+
+    test("graduations de l'axe des montants au format français", async () => {
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const config = await chart.getChartJsConfig();
+        expect(config.options.scales.y.ticks.callback(8000)).toBe('8\u202f000');
+    });
+
+    test('plus de bouton dessiné dans le canvas', async () => {
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const config = await chart.getChartJsConfig();
+        expect(config.plugins).toBeUndefined();
     });
 });

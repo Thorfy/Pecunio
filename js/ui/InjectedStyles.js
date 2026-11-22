@@ -110,6 +110,32 @@ export class InjectedStyles {
                 border-color: #adb5bd;
             }
 
+            .pecunio-chart-toolbar {
+                display: flex;
+                justify-content: flex-start;
+                margin-bottom: 8px;
+            }
+
+            /* Bankin stylise tous les <button> (pleine largeur, marges, fond violet en !important) */
+            .pecunio-chart-toolbar .pecunio-chart-type-toggle {
+                width: auto;
+                margin: 0;
+                padding: 6px 12px;
+                background-color: #f8f9fa !important;
+                color: #495057;
+                font-family: inherit;
+                line-height: 1.4;
+            }
+
+            .pecunio-chart-toolbar .pecunio-chart-type-toggle:hover {
+                background-color: #e9ecef !important;
+            }
+
+            .pecunio-chart-type-toggle:focus-visible {
+                outline: 2px solid #667eea;
+                outline-offset: 2px;
+            }
+
             .pecunio-canvas-container {
                 position: relative;
                 width: 100%;

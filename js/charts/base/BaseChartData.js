@@ -1,6 +1,7 @@
 import { Config } from '../../core/Config.js';
 import { DateRange } from '../../core/DateRange.js';
 import { TransactionFilter } from '../../core/TransactionFilter.js';
+import { SHORT_MONTH_NAMES } from '../../utils/format.js';
 
 /**
  * Interface IChart - Contrat que tous les charts doivent respecter
@@ -271,8 +272,7 @@ export class BaseChartData {
      * @returns {string} Nom court du mois
      */
     getMonthName(monthNumber) {
-        const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return monthNames[monthNumber] || '';
+        return SHORT_MONTH_NAMES[monthNumber] || '';
     }
 
     /**
