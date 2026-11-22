@@ -1,8 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { ACCOUNTS, AUTH_HEADERS, CATEGORIES, apiPage, jsonResponse, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { knownBug } from '../helpers/known-bug.js';
 import { loadContentScripts } from '../helpers/load.js';
-import { NOT_UTC } from '../helpers/timezone.js';
 
 beforeAll(loadContentScripts);
 
@@ -80,31 +78,62 @@ describe('DataManager._fetchPaginatedData', () => {
     });
 
     // --- B3 -------------------------------------------------------------
-    knownBug('B3 — attendu : 404 n\'est pas retentée', async () => {
+    test('B3 — une erreur 404 n\'est pas retentée', async () => {
         const calls = mockFetch({ '/v2/accounts': jsonResponse({}, 404) });
         await expect(authenticatedManager()._fetchPaginatedData('/v2/accounts', [], 3, 0)).rejects.toBeInstanceOf(APIError);
         expect(calls['/v2/accounts']).toBe(1);
     });
 
-    test('B3 — comportement actuel : l\'échec d\'une page fait réinsérer la page précédente', async () => {
-        mockFetch({
+    test('B3 — une page en échec est retentée seule : aucune transaction en double', async () => {
+        const calls = mockFetch({
             '/v2/transactions?limit=500': jsonResponse(apiPage([tx({ id: 1 }), tx({ id: 2 })], '/v2/transactions?page=2')),
-            '/v2/transactions?page=2': [new Error('coupure'), new Error('coupure'), new Error('coupure'), new Error('coupure'), jsonResponse(apiPage([tx({ id: 3 })]))],
+            '/v2/transactions?page=2': [new Error('coupure'), jsonResponse({}, 503), jsonResponse(apiPage([tx({ id: 3 })]))],
         });
         const data = await authenticatedManager()._fetchPaginatedData('/v2/transactions?limit=500', [], 3, 0);
-        expect(data.map((t) => t.id)).toEqual([1, 2, 1, 2, 3]);
+        expect(data.map((t) => t.id)).toEqual([1, 2, 3]);
+        expect(calls['/v2/transactions?limit=500']).toBe(1);
+        expect(calls['/v2/transactions?page=2']).toBe(3);
     });
 
-    knownBug('B3 — attendu : aucune transaction en double après des erreurs de pagination', async () => {
+    test('B3 — une page définitivement en échec fait échouer le chargement (pas de données partielles)', async () => {
         mockFetch({
-            '/v2/transactions?limit=500': jsonResponse(apiPage([tx({ id: 1 }), tx({ id: 2 })], '/v2/transactions?page=2')),
-            '/v2/transactions?page=2': [new Error('coupure'), new Error('coupure'), new Error('coupure'), new Error('coupure'), jsonResponse(apiPage([tx({ id: 3 })]))],
+            '/v2/transactions?limit=500': jsonResponse(apiPage([tx({ id: 1 })], '/v2/transactions?page=2')),
+            '/v2/transactions?page=2': new Error('coupure'),
         });
-        const data = await authenticatedManager()._fetchPaginatedData('/v2/transactions?limit=500', [], 3, 0).catch(() => []);
-        const ids = data.map((t) => t.id);
-        expect(new Set(ids).size).toBe(ids.length);
+        await expect(authenticatedManager()._fetchPaginatedData('/v2/transactions?limit=500', [], 2, 0)).rejects.toBeInstanceOf(APIError);
+    });
+
+    test('B3 — erreur 429 (trop de requêtes) retentée', async () => {
+        const calls = mockFetch({ '/v2/accounts': [jsonResponse({}, 429), jsonResponse(apiPage(ACCOUNTS))] });
+        await authenticatedManager()._fetchPaginatedData('/v2/accounts', [], 3, 0);
+        expect(calls['/v2/accounts']).toBe(2);
+    });
+
+    test('délai entre les tentatives croissant', async () => {
+        vi.useFakeTimers();
+        const calls = mockFetch({ '/v2/accounts': [new Error('a'), new Error('b'), jsonResponse(apiPage(ACCOUNTS))] });
+        const pending = authenticatedManager()._fetchPaginatedData('/v2/accounts', [], 3, 100);
+        await vi.advanceTimersByTimeAsync(99);
+        expect(calls['/v2/accounts']).toBe(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(calls['/v2/accounts']).toBe(2);
+        await vi.advanceTimersByTimeAsync(200);
+        await expect(pending).resolves.toHaveLength(2);
+    });
+
+    test('réponse JSON vide → ValidationError', async () => {
+        mockFetch({ '/v2/accounts': jsonResponse(null) });
+        await expect(authenticatedManager()._fetchPaginatedData('/v2/accounts', [], 0, 0)).rejects.toBeInstanceOf(ValidationError);
     });
 });
+
+/** Cache de test : instance CacheStore sur le faux chrome.storage. */
+const cacheWith = async (local = {}) => {
+    Object.assign(chrome.storage.local._data, local);
+    const store = new CacheStore();
+    await store.waitForInitialization();
+    return store;
+};
 
 describe('DataManager — validation et cache', () => {
     test('_validateFetchedData garde les éléments valides', () => {
@@ -124,28 +153,56 @@ describe('DataManager — validation et cache', () => {
     });
 
     test('_loadDataWithCache : cache récent utilisé sans appel réseau', async () => {
-        globalThis.settingClass = { getSetting: (key) => ({ cache_data_accounts: ACCOUNTS, cache_time_accounts: Date.now() })[key] };
+        const dm = authenticatedManager();
+        dm.cacheStore = await cacheWith({ cache_data_accounts: ACCOUNTS, cache_time_accounts: Date.now() });
         globalThis.fetch = vi.fn();
-        const data = await authenticatedManager()._loadDataWithCache('accounts');
+        const data = await dm._loadDataWithCache('accounts');
         expect(data).toHaveLength(2);
         expect(fetch).not.toHaveBeenCalled();
     });
 
-    test('_loadDataWithCache : cache périmé → appel API puis mise en cache', async () => {
-        const setSettings = vi.fn(() => Promise.resolve());
-        globalThis.settingClass = {
-            getSetting: (key) => ({ cache_data_accounts: ACCOUNTS, cache_time_accounts: Date.now() - 10 * 60 * 1000 })[key],
-            setSettings,
-        };
+    test('_loadDataWithCache : cache invalide → appel API', async () => {
+        const dm = authenticatedManager();
+        dm.cacheStore = await cacheWith({ cache_data_accounts: [{ id: 1 }], cache_time_accounts: Date.now() });
         mockFetch({ '/v2/accounts?limit=500': jsonResponse(apiPage(ACCOUNTS)) });
-        await authenticatedManager()._loadDataWithCache('accounts');
-        expect(setSettings).toHaveBeenCalledWith({ cache_data_accounts: ACCOUNTS, cache_time_accounts: expect.any(Number) });
+        expect(await dm._loadDataWithCache('accounts')).toHaveLength(2);
+    });
+
+    test('_loadDataWithCache : cache périmé → appel API puis mise en cache', async () => {
+        const dm = authenticatedManager();
+        dm.cacheStore = await cacheWith({ cache_data_accounts: ACCOUNTS, cache_time_accounts: Date.now() - 10 * 60 * 1000 });
+        mockFetch({ '/v2/accounts?limit=500': jsonResponse(apiPage(ACCOUNTS)) });
+        await dm._loadDataWithCache('accounts');
+        expect(chrome.storage.local._data.cache_data_accounts).toEqual(ACCOUNTS);
+        expect(dm.cacheStore.isFresh('accounts')).toBe(true);
+    });
+
+    test('B13 — le cache ne passe plus par les réglages', async () => {
+        const dm = authenticatedManager();
+        dm.cacheStore = await cacheWith();
+        globalThis.settingClass = { setSettings: vi.fn(), getSetting: vi.fn() };
+        mockFetch({ '/v2/accounts?limit=500': jsonResponse(apiPage(ACCOUNTS)) });
+        await dm._loadDataWithCache('accounts');
+        expect(settingClass.setSettings).not.toHaveBeenCalled();
+        expect(settingClass.getSetting).not.toHaveBeenCalled();
+    });
+
+    test('refreshData vide le cache puis recharge tout', async () => {
+        const dm = authenticatedManager();
+        dm.cacheStore = await cacheWith({ cache_data_accounts: [{ id: 9, name: 'ancien' }], cache_time_accounts: Date.now() });
+        dm.initializationPromise = Promise.resolve();
+        mockFetch({
+            '/v2/transactions?limit=500': jsonResponse(apiPage(sampleTransactions())),
+            '/v2/categories?limit=200': jsonResponse(apiPage(CATEGORIES)),
+            '/v2/accounts?limit=500': jsonResponse(apiPage(ACCOUNTS)),
+        });
+        const data = await dm.refreshData();
+        expect(data.accounts).toEqual(ACCOUNTS);
     });
 });
 
 describe('DataManager — authentification au démarrage', () => {
     test('attend les en-têtes du service worker puis charge les données', async () => {
-        globalThis.settingClass = { getSetting: () => undefined, setSettings: () => Promise.resolve() };
         mockFetch({
             '/v2/transactions?limit=500': jsonResponse(apiPage(sampleTransactions())),
             '/v2/categories?limit=200': jsonResponse(apiPage(CATEGORIES)),
@@ -154,7 +211,7 @@ describe('DataManager — authentification au démarrage', () => {
         const loaded = vi.fn();
         evt.listen('data_loaded', loaded);
 
-        const dm = new DataManager();
+        const dm = new DataManager({ cacheStore: await cacheWith() });
         const [port] = chrome.runtime.connectedPorts;
         port.onMessage.dispatch({ data: { Authorization: 'x' } }); // incomplet : ignoré
         port.onMessage.dispatch({ data: AUTH_HEADERS });
@@ -163,6 +220,7 @@ describe('DataManager — authentification au démarrage', () => {
         expect(data.transactions).toHaveLength(13);
         expect(dm.getCachedData().accounts).toHaveLength(2);
         expect(loaded).toHaveBeenCalled();
+        expect(chrome.storage.local._data.cache_data_transactions).toHaveLength(13);
     });
 
     test('pas d\'en-têtes en 10 s → AuthenticationError', async () => {
@@ -206,8 +264,8 @@ describe('DataManager — fonctions de regroupement', () => {
         expect(kept.map((t) => t.id)).not.toContain(6);
     });
 
-    // --- B9 (tout fuseau sauf UTC) -------------------------------------
-    (NOT_UTC ? knownBug : test)('B9 — attendu : filterTransactions inclut le jour de début', () => {
+    // --- B9 ----------------------------------------------------------------
+    test('B9 — filterTransactions inclut le jour de début, quel que soit le fuseau', () => {
         const kept = authenticatedManager().filterTransactions([tx({ id: 1, date: '2024-03-15' })], {
             startDate: '2024-03-15',
             endDate: '2024-03-31',

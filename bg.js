@@ -1,55 +1,99 @@
 /**
- * Service worker Pecunio - Interception des en-têtes d'authentification Bankin.
- * Les noms des en-têtes requis doivent rester alignés avec Config.API.REQUIRED_HEADERS
- * (js/core/Config.js) car le DataManager les utilise pour l'authentification.
+ * Service worker Pecunio - Capture des en-têtes d'authentification Bankin.
+ *
+ * Bankin authentifie ses appels à sync.bankin.com avec quatre en-têtes. On les
+ * capture sur les requêtes /v2/accounts et on les transmet aux onglets Bankin
+ * (content scripts) via un port par onglet.
+ *
+ * - Plusieurs onglets : un port par onglet, tous reçoivent les en-têtes (bug B1).
+ * - Onglet ouvert après la capture : les en-têtes lui sont renvoyés dès sa connexion (bug B2).
+ * - Service worker endormi puis relancé par Chrome (MV3) : les en-têtes sont conservés
+ *   dans chrome.storage.session (en mémoire, effacé à la fermeture du navigateur,
+ *   inaccessible aux content scripts) (bug B2).
+ *
+ * Les noms des en-têtes doivent rester alignés avec Config.API.REQUIRED_HEADERS.
  */
-const allHeaders = {};
-const requiredHeader = ["Authorization", "Bankin-Version", "Client-Id", "Client-Secret"];
-let portEvent = false;
+const REQUIRED_HEADERS = ['Authorization', 'Bankin-Version', 'Client-Id', 'Client-Secret'];
+const SESSION_KEY = 'pecunio_auth_headers';
+
+/** @type {Map<number, chrome.runtime.Port>} */
+const portsByTabId = new Map();
+
+/** Copie en mémoire des en-têtes ; null tant qu'ils n'ont pas été relus depuis la session. */
+let headersCache = null;
+
+async function readStoredHeaders() {
+    if (headersCache) return headersCache;
+    try {
+        const stored = await chrome.storage.session.get(SESSION_KEY);
+        headersCache = stored[SESSION_KEY] || null;
+    } catch (error) {
+        console.warn('[BG] Lecture des en-têtes impossible :', error.message);
+    }
+    return headersCache;
+}
+
+function postHeaders(port, headers) {
+    try {
+        port.postMessage({ data: headers });
+        return true;
+    } catch (error) {
+        console.warn('[BG] Envoi des en-têtes impossible :', error.message);
+        return false;
+    }
+}
+
+function broadcastHeaders(headers) {
+    for (const [tabId, port] of portsByTabId) {
+        if (!postHeaders(port, headers)) portsByTabId.delete(tabId);
+    }
+}
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
-    function (info) {
-        info.requestHeaders.forEach(headerRow => {
-            if (requiredHeader.includes(headerRow.name)) {
-                allHeaders[headerRow.name] = headerRow.value;
-            }
-        });
-        if (portEvent){
-            portEvent.postMessage({
-                'data': allHeaders
-            });
+    (info) => {
+        const captured = {};
+        for (const header of info.requestHeaders || []) {
+            if (REQUIRED_HEADERS.includes(header.name)) captured[header.name] = header.value;
         }
+        if (Object.keys(captured).length === 0) return;
 
+        headersCache = { ...(headersCache || {}), ...captured };
+        chrome.storage.session
+            .set({ [SESSION_KEY]: headersCache })
+            .catch((error) => console.warn('[BG] Sauvegarde des en-têtes impossible :', error.message));
+        broadcastHeaders(headersCache);
     },
     {
         urls: ['https://sync.bankin.com/v2/accounts*'],
-        types: ['main_frame', 'sub_frame', 'xmlhttprequest']
+        types: ['main_frame', 'sub_frame', 'xmlhttprequest'],
     },
-    ['requestHeaders']
+    ['requestHeaders'],
 );
 
-chrome.runtime.onConnect.addListener(port => {
-    portEvent = port;
+chrome.runtime.onConnect.addListener((port) => {
+    const tabId = port.sender?.tab?.id;
+    if (tabId == null) return;
+
+    portsByTabId.set(tabId, port);
+    port.onDisconnect.addListener(() => {
+        if (portsByTabId.get(tabId) === port) portsByTabId.delete(tabId);
+    });
+
+    readStoredHeaders().then((headers) => {
+        if (headers && portsByTabId.get(tabId) === port) postHeaders(port, headers);
+    });
 });
 
-// Écouter les messages pour ouvrir la popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'openPopup') {
-        // Essayer d'ouvrir la popup
-        // Note: openPopup() nécessite un user gesture, donc cela peut ne pas fonctionner
-        // mais on essaie quand même pour être sûr que l'utilisateur voit la popup
-        chrome.action.openPopup()
-            .then(() => {
-                // Si la popup s'ouvre avec succès, retirer le badge s'il existe
-                chrome.action.setBadgeText({ text: '' });
-            })
-            .catch(error => {
-                // Si l'ouverture échoue (pas de user gesture), on peut au moins mettre un badge
-                console.log("[BG] Impossible d'ouvrir la popup automatiquement:", error.message);
-                // Mettre un badge pour indiquer qu'il y a quelque chose à voir
-                chrome.action.setBadgeText({ text: '!' });
-                chrome.action.setBadgeBackgroundColor({ color: '#667eea' });
-            });
-    }
-    return true; // Indique qu'on répondra de manière asynchrone si nécessaire
+chrome.runtime.onMessage.addListener((message) => {
+    if (message?.action !== 'openPopup') return false;
+    // openPopup() exige un geste utilisateur : en cas d'échec, un badge signale la popup.
+    chrome.action
+        .openPopup()
+        .then(() => chrome.action.setBadgeText({ text: '' }))
+        .catch((error) => {
+            console.log("[BG] Impossible d'ouvrir la popup automatiquement :", error.message);
+            chrome.action.setBadgeText({ text: '!' });
+            chrome.action.setBadgeBackgroundColor({ color: '#667eea' });
+        });
+    return false; // pas de réponse asynchrone
 });

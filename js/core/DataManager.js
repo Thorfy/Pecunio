@@ -197,7 +197,11 @@ class DataManager {
     static ENDPOINTS = Config.API.ENDPOINTS;
     static CACHE_DURATION = Config.API.CACHE_DURATION;
 
-    constructor() {
+    /**
+     * @param {{ cacheStore?: CacheStore }} [deps] cache API (par défaut, l'instance globale `cacheStore`)
+     */
+    constructor({ cacheStore: store = typeof cacheStore !== 'undefined' ? cacheStore : null } = {}) {
+        this.cacheStore = store;
         this.port = chrome.runtime.connect();
         this.authHeader = null;
         this.cachedData = {
@@ -305,35 +309,20 @@ class DataManager {
      * Charge les données avec gestion du cache et validation
      */
     async _loadDataWithCache(dataType) {
-        const cacheKey = Config.getCacheKey(dataType);
-        const timeKey = Config.getCacheTimeKey(dataType);
+        await this.cacheStore.waitForInitialization();
 
-        // Vérifier le cache
-        const cachedData = settingClass.getSetting(cacheKey);
-        const cachedTime = settingClass.getSetting(timeKey);
-
-        if (cachedData && cachedTime && (Date.now() - cachedTime < DataManager.CACHE_DURATION)) {
-            // Valider les données en cache aussi
+        if (this.cacheStore.isFresh(dataType, DataManager.CACHE_DURATION)) {
             try {
-                const validatedCache = this._validateFetchedData(cachedData, dataType);
+                const validatedCache = this._validateFetchedData(this.cacheStore.get(dataType), dataType);
                 evt.dispatch(`cache_data_${dataType}_loaded`);
                 return validatedCache;
             } catch (error) {
                 console.warn(`[DataManager] Cached ${dataType} data is invalid, fetching fresh data:`, error.message);
-                // Si le cache est invalide, continuer pour charger des données fraîches
             }
         }
 
-        // Charger les données fraîches
         const freshData = await this._fetchDataFromAPI(dataType);
-        
-        // Mettre en cache
-        const cacheObject = {
-            [cacheKey]: freshData,
-            [timeKey]: Date.now()
-        };
-        await settingClass.setSettings(cacheObject);
-
+        await this.cacheStore.set(dataType, freshData);
         return freshData;
     }
 
@@ -421,118 +410,100 @@ class DataManager {
     }
 
     /**
-     * Récupère les données paginées depuis l'API avec retry automatique amélioré
-     * @param {string} url - URL à récupérer
-     * @param {Array} globalData - Tableau pour accumuler les données
-     * @param {number} retryCount - Nombre de tentatives restantes
-     * @param {number} baseDelay - Délai de base pour le retry en ms (augmente exponentiellement)
-     * @returns {Promise<Array>} Données récupérées
+     * Récupère toutes les pages d'une ressource de l'API (pagination `next_uri`).
+     * Les pages sont lues l'une après l'autre ; chaque page a ses propres nouvelles
+     * tentatives, si bien qu'une erreur ne fait jamais relire une page déjà
+     * ajoutée (bug B3).
+     * @param {string} url - Chemin de la première page (ex. /v2/transactions?limit=500)
+     * @param {Array} [globalData] - Tableau où accumuler les ressources
+     * @param {number} [retryCount] - Nouvelles tentatives par page (erreurs réseau, 5xx, 429)
+     * @param {number} [baseDelay] - Délai de base entre deux tentatives, en ms (linéaire)
+     * @returns {Promise<Array>} Ressources de toutes les pages
      */
-    async _fetchPaginatedData(url, globalData, retryCount = 3, baseDelay = 1000) {
-        // Vérifier que l'authentification est complète
+    async _fetchPaginatedData(url, globalData = [], retryCount = 3, baseDelay = 1000) {
         if (!this.authHeader) {
             throw new AuthenticationError(
                 'Cannot fetch data: Authentication headers not available. Please wait for initialization to complete.'
             );
         }
-        
-        const myInit = {
+
+        let nextUrl = url;
+        while (nextUrl) {
+            const page = await this._fetchPageWithRetry(nextUrl, retryCount, baseDelay);
+            if (Array.isArray(page.resources)) {
+                for (const resource of page.resources) globalData.push(resource);
+            }
+            const next = page.pagination && page.pagination.next_uri;
+            nextUrl = typeof next === 'string' && next.length > 0 ? next : null;
+        }
+        return globalData;
+    }
+
+    /**
+     * Récupère une page avec nouvelles tentatives sur les erreurs temporaires.
+     * Pas de nouvelle tentative sur les erreurs d'authentification, de validation
+     * ou les erreurs HTTP 4xx (hors 429).
+     */
+    async _fetchPageWithRetry(url, retryCount, baseDelay) {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await this._fetchPage(url);
+            } catch (error) {
+                const retryable = error instanceof APIError
+                    ? error.retryable === true
+                    : !(error instanceof DataManagerError);
+                if (!retryable || attempt >= retryCount) {
+                    if (error instanceof DataManagerError) throw error;
+                    throw new APIError(
+                        `Failed to fetch data: ${error.message}`,
+                        null,
+                        DataManager.DOMAIN + url,
+                        { originalError: error.message }
+                    );
+                }
+                const delay = baseDelay * (attempt + 1);
+                console.warn(`[DataManager] ${error.message} (${url}), new attempt in ${delay}ms (${retryCount - attempt} left)`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    /** Récupère et valide une seule page de l'API. */
+    async _fetchPage(url) {
+        const fullUrl = DataManager.DOMAIN + url;
+        const response = await fetch(fullUrl, {
             method: 'GET',
             headers: this.authHeader,
             mode: 'cors',
             cache: 'default'
-        };
+        });
 
-        const fullUrl = DataManager.DOMAIN + url;
-
-        try {
-            const response = await fetch(fullUrl, myInit);
-            
-            if (!response.ok) {
-                if (response.status === 401 || response.status === 403) {
-                    throw new AuthenticationError(
-                        `Authentication error! status: ${response.status}. Please refresh Bankin page.`,
-                        { statusCode: response.status, url: fullUrl }
-                    );
-                }
-                
-                // Retry pour les erreurs serveur (5xx) et certaines erreurs réseau
-                if ((response.status >= 500 || response.status === 429) && retryCount > 0) {
-                    const delay = baseDelay * (4 - retryCount); // Backoff exponentiel
-                    console.warn(`[DataManager] Server error ${response.status} for ${url}, retrying in ${delay}ms... (${retryCount} attempts left)`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return this._fetchPaginatedData(url, globalData, retryCount - 1, baseDelay);
-                }
-                
-                throw new APIError(
-                    `HTTP error! status: ${response.status}`,
-                    response.status,
-                    fullUrl
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                throw new AuthenticationError(
+                    `Authentication error! status: ${response.status}. Please refresh Bankin page.`,
+                    { statusCode: response.status, url: fullUrl }
                 );
             }
-
-            const data = await response.json();
-            
-            // Valider la structure des données
-            if (!data || typeof data !== 'object') {
-                throw new ValidationError(
-                    'Invalid response format: expected object',
-                    'api_response',
-                    data
-                );
-            }
-
-            // Valider la présence de resources ou pagination
-            if (!data.resources && !data.pagination) {
-                throw new ValidationError(
-                    'Invalid API response: missing both resources and pagination',
-                    'api_response',
-                    data
-                );
-            }
-
-            if (data.resources && Array.isArray(data.resources) && data.resources.length) {
-                Array.prototype.push.apply(globalData, data.resources);
-            }
-
-            // Récupérer la page suivante si elle existe
-            if (data.pagination && data.pagination.next_uri && typeof data.pagination.next_uri === 'string' && data.pagination.next_uri.length) {
-                await this._fetchPaginatedData(data.pagination.next_uri, globalData, retryCount, baseDelay);
-            }
-
-            return globalData;
-        } catch (error) {
-            // Ne pas retry pour les erreurs d'authentification ou de validation
-            if (error instanceof AuthenticationError || error instanceof ValidationError) {
-                throw error;
-            }
-
-            // Retry pour les erreurs réseau et autres erreurs temporaires
-            if (retryCount > 0) {
-                const delay = baseDelay * (4 - retryCount); // Backoff exponentiel
-                console.warn(`[DataManager] Error fetching data from ${url}, retrying in ${delay}ms... (${retryCount} attempts left):`, error.message);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                return this._fetchPaginatedData(url, globalData, retryCount - 1, baseDelay);
-            }
-            
-            // Si c'est déjà une APIError, la relancer
-            if (error instanceof APIError) {
-                throw error;
-            }
-            
-            // Sinon, créer une APIError générique
-            console.error(`[DataManager] Error fetching data from ${url}:`, error);
-            throw new APIError(
-                `Failed to fetch data: ${error.message}`,
-                null,
-                fullUrl,
-                { originalError: error.message }
-            );
+            const error = new APIError(`HTTP error! status: ${response.status}`, response.status, fullUrl);
+            error.retryable = response.status >= 500 || response.status === 429;
+            throw error;
         }
+
+        const data = await response.json();
+        if (!data || typeof data !== 'object') {
+            throw new ValidationError('Invalid response format: expected object', 'api_response', data);
+        }
+        if (!data.resources && !data.pagination) {
+            throw new ValidationError('Invalid API response: missing both resources and pagination', 'api_response', data);
+        }
+        return data;
     }
 
     /**
-     * Filtre les transactions selon les critères donnés
+     * Filtre les transactions (période sur la date budgétaire, comptes, catégories exclues).
+     * @param {Array} transactions - Transactions brutes Bankin
+     * @param {{ startDate?: string, endDate?: string, accountsSelected?: number[], excludeCategories?: number[] }} [options]
      */
     filterTransactions(transactions, options = {}) {
         const {
@@ -541,48 +512,10 @@ class DataManager {
             accountsSelected = null,
             excludeCategories = Config.CATEGORIES.EXCEPTION_IDS
         } = options;
-
-        return transactions.filter(transaction => {
-            // Vérifier les données requises
-            if (!transaction || !transaction.date || !transaction.category || !transaction.account) {
-                return false;
-            }
-
-                    // Exclure les catégories d'exception
-        if (Config.isExceptionCategory(transaction.category.id)) {
-            return false;
-        }
-
-            // Traiter la date
-            let transactionDate = new Date(transaction.date);
-            if (transaction.current_month != null && typeof transaction.current_month === 'number') {
-                transactionDate.setDate(1);
-                transactionDate.setMonth(transactionDate.getMonth() + transaction.current_month);
-            }
-
-            // Filtrer par date
-            if (startDate || endDate) {
-                const dateString = transactionDate.toDateString();
-                const dateTimestamp = Date.parse(dateString);
-
-                if (startDate && dateTimestamp < Date.parse(startDate)) {
-                    return false;
-                }
-                if (endDate && dateTimestamp > Date.parse(endDate)) {
-                    return false;
-                }
-            }
-
-            // Filtrer par compte
-            if (accountsSelected && accountsSelected.length > 0) {
-                const accountId = parseInt(transaction.account.id);
-                if (!accountsSelected.includes(accountId)) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
+        return TransactionFilter.apply(
+            (transactions || []).filter(t => t && t.category && t.account),
+            { startDate, endDate, accountsSelected, excludeCategoryIds: excludeCategories }
+        );
     }
 
     /**
@@ -673,18 +606,8 @@ class DataManager {
             );
         }
         
-        // Vider le cache (suppression explicite pour forcer un rechargement)
-        const cacheKeys = [
-            Config.getCacheKey('transactions'),
-            Config.getCacheTimeKey('transactions'),
-            Config.getCacheKey('categories'),
-            Config.getCacheTimeKey('categories'),
-            Config.getCacheKey('accounts'),
-            Config.getCacheTimeKey('accounts')
-        ];
-        for (const key of cacheKeys) {
-            await settingClass.removeSetting(key);
-        }
+        await this.cacheStore.waitForInitialization();
+        await this.cacheStore.clear();
 
         // Recharger les données
         return this._loadAllData();

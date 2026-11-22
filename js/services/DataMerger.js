@@ -11,8 +11,9 @@ class DataMerger {
         this.accountsMap = this._buildAccountMap();
         this.categoryMap = this._buildCategoryMap();
         
-        this.startDate = startDate ? new Date(startDate) : null;
-        this.endDate = endDate ? new Date(endDate) : null;
+        // Bornes de période en `YYYY-MM-DD` (heure locale), voir DateRange
+        this.startDate = DateRange.toDateOnly(startDate);
+        this.endDate = DateRange.toDateOnly(endDate);
         this.accountsSelected = accountsSelected;
     }
 
@@ -27,27 +28,18 @@ class DataMerger {
             return [];
         }
 
-        console.log('[DataMerger] Validating', rawTransactions.length, 'raw transactions');
         
         const validTransactions = rawTransactions
             .map(rawTransaction => {
                 try {
                     return Transaction.fromRaw(rawTransaction);
                 } catch (error) {
-                    console.warn('[DataMerger] Invalid transaction skipped:', error.message, rawTransaction);
+                    console.warn('[DataMerger] Invalid transaction skipped:', error.message);
                     return null;
                 }
             })
-            .filter(transaction => {
-                if (!transaction) return false;
-                const isValid = transaction.isValid();
-                if (!isValid) {
-                    console.warn('[DataMerger] Invalid transaction filtered out:', transaction);
-                }
-                return isValid;
-            });
-            
-        console.log('[DataMerger] Valid transactions after validation:', validTransactions.length);
+            .filter(transaction => transaction && transaction.isValid());
+
         return validTransactions;
     }
 
@@ -134,51 +126,24 @@ class DataMerger {
         const filteredTransactions = this._filterTransactions();
         const mergedData = this._mergeTransactionsWithMetadata(filteredTransactions);
         
-        // Trier les transactions par date
-        mergedData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Trier par date (chaînes YYYY-MM-DD)
+        mergedData.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
         
         return mergedData;
     }
 
     /**
-     * Filtre les transactions selon les critères définis
+     * Filtre les transactions (période sur la date budgétaire, comptes sélectionnés).
+     * L'export garde toutes les catégories, y compris virements internes et
+     * épargne ; le rapport PDF les exclut ensuite (ReportFilters).
      * @returns {Array<Transaction>} Transactions filtrées
      */
     _filterTransactions() {
-        console.log('[DataMerger] Filtering transactions...');
-        console.log('[DataMerger] Total transactions before filter:', this.transactions.length);
-        console.log('[DataMerger] Date range:', this.startDate, 'to', this.endDate);
-        console.log('[DataMerger] Selected accounts:', this.accountsSelected);
-        
-        const toDateOnly = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const startStr = this.startDate ? toDateOnly(this.startDate) : null;
-        const endStr = this.endDate ? toDateOnly(this.endDate) : null;
-
-        const filtered = this.transactions.filter(transaction => {
-            const adjustedDate = transaction.getAdjustedDate();
-            const dateOnly = toDateOnly(adjustedDate);
-
-            // Filtre par date (comparaison en date seule pour éviter les soucis de fuseau horaire)
-            if (startStr && endStr) {
-                if (dateOnly < startStr || dateOnly > endStr) {
-                    console.log(`[DataMerger] Transaction ${transaction.id} filtered out by date: ${dateOnly} not in range [${startStr}, ${endStr}]`);
-                    return false;
-                }
-            }
-
-            // Filtre par compte
-            if (this.accountsSelected && this.accountsSelected.length > 0) {
-                if (!this.accountsSelected.includes(transaction.accountId)) {
-                    console.log(`[DataMerger] Transaction ${transaction.id} filtered out by account: ${transaction.accountId} not in selected`);
-                    return false;
-                }
-            }
-
-            return true;
+        return TransactionFilter.apply(this.transactions, {
+            startDate: this.startDate,
+            endDate: this.endDate,
+            accountsSelected: this.accountsSelected,
         });
-        
-        console.log('[DataMerger] Transactions after filter:', filtered.length);
-        return filtered;
     }
 
     /**
@@ -188,25 +153,59 @@ class DataMerger {
      */
     _mergeTransactionsWithMetadata(transactions) {
         return transactions.map(transaction => {
-            const category = this.categoryMap.get(transaction.categoryId) || {};
-            const account = this.accountsMap.get(transaction.accountId) || {};
-            
+            const category = this.categoryMap.get(transaction.categoryId) || null;
+            const account = this.accountsMap.get(transaction.accountId) || null;
+            const parent = category && category.parentId != null ? this.categoryMap.get(category.parentId) : null;
+
             return {
                 transactionId: transaction.id,
-                date: transaction.getAdjustedDate().toISOString().split('T')[0],
+                // Date réelle de la transaction + mois de rattachement Bankin (décision B10)
+                date: DateRange.toDateOnly(transaction.date),
+                budgetMonth: transaction.getBudgetMonth(),
                 amount: transaction.amount,
                 description: transaction.description,
-                accountId: account.id || null,
-                accountName: account.getDisplayName(),
-                categoryId: category.id || null,
-                categoryName: category.name || 'Uncategorized',
-                parentCategoryId: category.parentId || null,
-                parentCategoryName: category.parentId ? 
-                    (this.categoryMap.get(category.parentId)?.name || 'Uncategorized') : 
-                    'Uncategorized',
+                // Compte supprimé ou fermé : on garde son id (bug B8)
+                accountId: account ? account.id : transaction.accountId,
+                accountName: account ? account.getDisplayName() : DataMerger.UNKNOWN_ACCOUNT,
+                categoryId: category ? category.id : null,
+                categoryName: category ? category.name : 'Uncategorized',
+                parentCategoryId: category ? category.parentId : null,
+                parentCategoryName: parent ? parent.name : 'Uncategorized',
                 expenseType: transaction.expense_type
             };
         });
+    }
+
+    static UNKNOWN_ACCOUNT = 'Compte inconnu';
+
+    static CSV_COLUMNS = [
+        ['Transaction ID', 'transactionId'],
+        ['Date', 'date'],
+        ['Budget Month', 'budgetMonth'],
+        ['Amount', 'amount'],
+        ['Description', 'description'],
+        ['Account ID', 'accountId'],
+        ['Account Name', 'accountName'],
+        ['Category ID', 'categoryId'],
+        ['Category Name', 'categoryName'],
+        ['Parent Category ID', 'parentCategoryId'],
+        ['Parent Category Name', 'parentCategoryName'],
+        ['Expense Type', 'expenseType'],
+    ];
+
+    /**
+     * Cellule CSV (RFC 4180) : textes entre guillemets avec guillemets doublés ;
+     * un texte commençant par = + - @ (ou tabulation / retour) est préfixé d'une
+     * apostrophe pour qu'un tableur ne l'exécute pas comme une formule (bug B7).
+     * @param {unknown} value
+     * @returns {string}
+     */
+    static escapeCsvCell(value) {
+        if (value == null) return '';
+        if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
+        let text = String(value);
+        if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+        return `"${text.replace(/"/g, '""')}"`;
     }
 
     /**
@@ -215,56 +214,34 @@ class DataMerger {
      * @returns {string} Contenu CSV
      */
     convertToCSV(data) {
-        const header = [
-            "Transaction ID", "Date", "Amount", "Description", 
-            "Account ID", "Account Name", "Category ID", "Category Name", 
-            "Parent Category ID", "Parent Category Name", "Expense Type"
-        ];
-        
-        const csvRows = [header.join(",")];
-
-        data.forEach(row => {
-            const values = [
-                row.transactionId,
-                row.date,
-                row.amount,
-                `"${row.description}"`,
-                row.accountId,
-                `"${row.accountName}"`,
-                row.categoryId,
-                `"${row.categoryName}"`,
-                row.parentCategoryId,
-                `"${row.parentCategoryName}"`,
-                row.expenseType
-            ];
-            csvRows.push(values.join(","));
-        });
-
-        return csvRows.join("\r\n");
+        const header = DataMerger.CSV_COLUMNS.map(([label]) => label).join(',');
+        const rows = data.map(row =>
+            DataMerger.CSV_COLUMNS.map(([, key]) => DataMerger.escapeCsvCell(row[key])).join(',')
+        );
+        return [header, ...rows].join('\r\n');
     }
 
     /**
-     * Exporte les données fusionnées au format CSV
+     * Exporte les données fusionnées au format CSV (fichier téléchargé).
+     * Fichier en UTF-8 avec BOM pour qu'Excel affiche correctement les accents.
      */
     exportToCSV() {
-        try {
-            const mergedData = this.mergeData();
-            const csvContent = this.convertToCSV(mergedData);
-            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+        const mergedData = this.mergeData();
+        const csvContent = this.convertToCSV(mergedData);
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
 
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `transaction_export_${new Date().toLocaleDateString()}.csv`);
-            
-            document.body.appendChild(link);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `transaction_export_${DateRange.getTodayInputValue()}.csv`;
+        document.body.appendChild(link);
+        try {
             link.click();
+        } finally {
             document.body.removeChild(link);
-            
-            console.log(`[DataMerger] Exported ${mergedData.length} transactions to CSV`);
-        } catch (error) {
-            console.error('[DataMerger] Error exporting to CSV:', error);
-            throw error;
+            setTimeout(() => URL.revokeObjectURL(url), 0);
         }
+        return mergedData.length;
     }
 
     /**

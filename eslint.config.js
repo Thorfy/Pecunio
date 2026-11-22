@@ -13,6 +13,9 @@ const projectGlobals = Object.fromEntries(
     [
         // core
         'Config',
+        'DateRange',
+        'TransactionFilter',
+        'CacheStore',
         'Evt',
         'Settings',
         'DataManager',
@@ -47,6 +50,7 @@ const projectGlobals = Object.fromEntries(
         // instances créées par injected.js / popup.js
         'evt',
         'settingClass',
+        'cacheStore',
         'dataManager',
         // librairies tierces chargées depuis libs/
         'Chart',

@@ -49,18 +49,28 @@ class Transaction {
     }
 
     /**
-     * Retourne la date ajustée selon current_month
-     * @returns {Date}
+     * Date budgétaire `YYYY-MM-DD` : date réelle décalée du mois de rattachement
+     * Bankin (`current_month`), jour conservé. Voir DateRange.getBudgetDate.
+     * @returns {string|null}
+     */
+    getBudgetDate() {
+        return DateRange.getBudgetDate(this);
+    }
+
+    /**
+     * Mois de rattachement `YYYY-MM`.
+     * @returns {string|null}
+     */
+    getBudgetMonth() {
+        return DateRange.getBudgetMonth(this);
+    }
+
+    /**
+     * Date budgétaire sous forme de Date locale (minuit).
+     * @returns {Date|null}
      */
     getAdjustedDate() {
-        const adjustedDate = new Date(this.date);
-        
-        if (this.current_month != null && typeof this.current_month === 'number') {
-            adjustedDate.setDate(1);
-            adjustedDate.setMonth(adjustedDate.getMonth() + this.current_month);
-        }
-        
-        return adjustedDate;
+        return DateRange.toLocalDate(this.getBudgetDate());
     }
 
     /**

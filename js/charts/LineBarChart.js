@@ -22,13 +22,9 @@ class LineBarChart extends BaseChartData {
         if (refreshIcon) {
             refreshIcon.addEventListener("click", async () => {
                 try {
-                    const cacheObject = {
-                        ['cache_data_transactions']: "",
-                        ['cache_time_transactions']: ""
-                    };
+                    // refreshData() vide tout le cache avant de recharger les données
                     setTimeout(async () => {
                         try {
-                            await settingsInstance.setSettings(cacheObject);
                             await dataManager.refreshData();
                         } catch (error) {
                             console.error("[LineBarChart] Error refreshing data:", error);
@@ -157,21 +153,17 @@ class LineBarChart extends BaseChartData {
             const transactionObject = {};
 
             transactions.forEach(transaction => {
-                // Utiliser la date ajustée qui tient compte de current_month
-                const adjustedDate = this.getAdjustedDate(transaction);
-                if (!adjustedDate) {
+                // Mois de rattachement Bankin (current_month), sans décalage de fuseau
+                const budgetDate = DateRange.getBudgetDate(transaction);
+                if (!budgetDate) {
                     return; // Ignorer les transactions sans date valide
                 }
-                
-                const month = `${adjustedDate.getMonth() + 1}`.padStart(2, "0");
-                const year = adjustedDate.getUTCFullYear();
-                const stringDate = [year, month].join("-");
+                const stringDate = budgetDate.slice(0, 7);
 
                 if (isCumulative) {
                     transactionObject[stringDate] = (transactionObject[stringDate] || 0) + transaction.amount;
                 } else {
-                    // Utiliser la date ajustée pour l'affichage
-                    dateValueObject.push({ x: adjustedDate.toISOString().split('T')[0], y: transaction.amount, name: transaction.name });
+                    dateValueObject.push({ x: budgetDate, y: transaction.amount, name: transaction.name });
                 }
             });
 

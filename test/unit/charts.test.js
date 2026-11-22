@@ -1,8 +1,6 @@
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { CATEGORIES, sampleTransactions, tx } from '../fixtures/bankin.js';
-import { knownBug } from '../helpers/known-bug.js';
 import { loadContentScripts } from '../helpers/load.js';
-import { WEST_OF_UTC } from '../helpers/timezone.js';
 
 beforeAll(loadContentScripts);
 
@@ -124,15 +122,15 @@ describe('BaseChartData.applySettingOnDataByMonth (page Catégories)', () => {
     });
 
     // --- B19 ------------------------------------------------------------
-    knownBug('B19 — attendu : les graphiques de la page Catégories fonctionnent avec un navigateur en anglais', () => {
+    test('B19 — les graphiques de la page Catégories fonctionnent avec un navigateur en anglais', () => {
         forceBrowserLocale('en-US');
         const chart = new BaseChartData(sampleTransactions(), CATEGORIES);
         // Bankin affiche « février 2024 » quelle que soit la langue du navigateur.
         expect(ids(chart.applySettingOnDataByMonth('février', '2024'))).toEqual([7, 8, 9, 10, 11]);
     });
 
-    // --- B9 (ouest de UTC) ------------------------------------------------
-    (WEST_OF_UTC ? knownBug : test)('B9 — attendu : une transaction du 1er janvier est rangée en janvier', () => {
+    // --- B9 ----------------------------------------------------------------
+    test('B9 — une transaction du 1er janvier est rangée en janvier, quel que soit le fuseau', () => {
         forceBrowserLocale('fr-FR');
         const chart = new BaseChartData([tx({ id: 1, date: '2024-01-01' })], CATEGORIES);
         expect(ids(chart.applySettingOnDataByMonth('janvier', '2024'))).toEqual([1]);
@@ -157,7 +155,7 @@ describe('BaseChartData.mergeTransactionByCategory', () => {
     });
 
     // --- B17 ------------------------------------------------------------
-    knownBug('B17 — attendu : une catégorie parente sans sous-catégories ne fait pas planter le regroupement', () => {
+    test('B17 — une catégorie parente sans sous-catégories ne fait pas planter le regroupement', () => {
         const categories = [...CATEGORIES, { id: 500, name: 'Sans enfants' }];
         const chart = new BaseChartData([], categories);
         const map = chart.mergeTransactionByCategory([tx({ id: 1, categoryId: 188 })], categories);
@@ -285,14 +283,22 @@ describe('SankeyChart — données', () => {
     });
 
     // --- B18 ------------------------------------------------------------
-    test('B18 — comportement actuel : un remboursement s\'ajoute aux dépenses', async () => {
-        const data = await sankey([tx({ amount: -100, categoryId: 188, date: '2024-01-10' }), tx({ amount: 40, categoryId: 188, date: '2024-01-12' })]);
-        expect(data.find((d) => d.from === 'Depenses').flow).toBe(140);
-    });
-
-    knownBug('B18 — attendu : un remboursement réduit la dépense de sa catégorie', async () => {
+    test('B18 — un remboursement réduit la dépense de sa catégorie', async () => {
         const data = await sankey([tx({ amount: -100, categoryId: 188, date: '2024-01-10' }), tx({ amount: 40, categoryId: 188, date: '2024-01-12' })]);
         expect(data.find((d) => d.from === 'Depenses').flow).toBe(60);
+        expect(data.find((d) => d.to === 'Supermarché / Epicerie').flow).toBe(60);
+    });
+
+    test('B18 — catégorie entièrement remboursée : aucun flux', async () => {
+        const data = await sankey([tx({ amount: -50, categoryId: 189, date: '2024-01-10' }), tx({ amount: 50, categoryId: 189, date: '2024-01-12' })]);
+        expect(data.some((d) => d.to === 'Restaurants')).toBe(false);
+    });
+
+    test('netFlow : revenus et dépenses nets, arrondis au centime, jamais négatifs', () => {
+        expect(SankeyChart.netFlow([{ amount: -0.1 }, { amount: -0.2 }], false)).toBe(0.3);
+        expect(SankeyChart.netFlow([{ amount: 2500 }, { amount: -100 }], true)).toBe(2400);
+        expect(SankeyChart.netFlow([{ amount: 10 }], false)).toBe(0);
+        expect(SankeyChart.netFlow([null, { amount: 'x' }], true)).toBe(0);
     });
 });
 
@@ -348,10 +354,85 @@ describe('LineBarChart — données', () => {
         expect(data.datasets.find((d) => d.label === 'Logement').hidden).toBe(true);
     });
 
-    // --- B9 (ouest de UTC) ------------------------------------------------
-    (WEST_OF_UTC ? knownBug : test)('B9 — attendu : une dépense du 1er janvier 2024 est tracée en 2024-01', async () => {
+    // --- B9 ----------------------------------------------------------------
+    test('B9 — une dépense du 1er janvier 2024 est tracée en 2024-01, quel que soit le fuseau', async () => {
         const chart = new LineBarChart([tx({ date: '2024-01-01', categoryId: 188 })], CATEGORIES, null, {}, fakeSettings({}));
         const data = await chart.prepareData();
         expect(data.datasets.find((d) => d.label === 'Alimentation & Restau.').data[0].x).toBe('2024-01');
+    });
+});
+
+describe('Graphiques — mois de rattachement Bankin (current_month)', () => {
+    const moved = () => [
+        tx({ id: 1, amount: -100, date: '2024-01-29', categoryId: 180, current_month: 1 }), // rattachée à février
+        tx({ id: 2, amount: -50, date: '2024-01-10', categoryId: 180 }),
+    ];
+
+    test('page Catégories : la transaction apparaît dans son mois de rattachement', () => {
+        const chart = new BaseChartData(moved(), CATEGORIES);
+        expect(ids(chart.applySettingOnDataByMonth('février', 2024))).toEqual([1]);
+        expect(ids(chart.applySettingOnDataByMonth('janvier', 2024))).toEqual([2]);
+        expect(ids(chart.applySettingOnDataByMonth(2, '2024'))).toEqual([1]);
+    });
+
+    test('page Catégories : mois inconnu → aucune transaction', () => {
+        const chart = new BaseChartData(moved(), CATEGORIES);
+        expect(chart.applySettingOnDataByMonth('brumaire', 2024)).toEqual([]);
+        expect(chart.applySettingOnDataByMonth('février', 'x')).toEqual([]);
+    });
+
+    test('graphique temporel : montant compté dans le mois de rattachement', async () => {
+        const chart = new LineBarChart(moved(), CATEGORIES, null, {}, fakeSettings({}));
+        const data = await chart.prepareData();
+        expect(data.datasets.find((d) => d.label === 'Logement').data).toEqual([
+            { x: '2024-02', y: -100 },
+            { x: '2024-01', y: -50 },
+        ]);
+    });
+
+    test('budget : montant rangé dans le mois de rattachement', async () => {
+        const chart = new BudgetChart(moved(), CATEGORIES, null, {}, fakeSettings({}));
+        await chart.initializationPromise;
+        expect(chart.organizedData[2024][2].Logement).toEqual([-100]);
+        expect(chart.organizedData[2024][1].Logement).toEqual([-50]);
+    });
+
+    test('la période des réglages porte sur le mois de rattachement', () => {
+        const chart = new BaseChartData(moved(), CATEGORIES, null, null, fakeSettings({ startDate: '2024-02-01', endDate: '2024-02-29' }));
+        expect(ids(chart.applySettingOnData())).toEqual([1]);
+    });
+
+    test('« pas de date de fin » : la période s\'étend jusqu\'à aujourd\'hui', () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(2024, 2, 20, 12));
+        const transactions = [tx({ id: 1, date: '2024-03-19' }), tx({ id: 2, date: '2024-03-25' })];
+        const settings = { startDate: '2024-01-01', endDate: '2024-01-31', noEndDate: true };
+        const chart = new BaseChartData(transactions, CATEGORIES, null, null, fakeSettings(settings));
+        expect(ids(chart.applySettingOnData())).toEqual([1]);
+    });
+});
+
+describe('BudgetChart — infobulle', () => {
+    // Contexte d'infobulle tel que Chart.js le fournit pour un graphique en barres :
+    // `parsed` est un objet { x, y }, `raw` la valeur d'origine.
+    const barContext = (y, label = 'Median 2026') => ({ dataset: { label }, parsed: { x: 0, y }, raw: y });
+
+    test('B20 — affiche le montant de la barre, pas NaN', () => {
+        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), false)).toBe('Median 2026: -158.30 €');
+        expect(BudgetChart.formatTooltipLabel(barContext(0, 'Actual Jan 2024'), false)).toBe('Actual Jan 2024: 0.00 €');
+    });
+
+    test('accepte aussi une valeur numérique simple', () => {
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: 12 }, false)).toBe('A: 12.00 €');
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, raw: 5 }, false)).toBe('A: 5.00 €');
+    });
+
+    test('valeur absente : pas de NaN', () => {
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: {} }, false)).toBe('A: —');
+    });
+
+    test('montants masqués : seulement le libellé', () => {
+        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), true)).toBe('Median 2026');
+        expect(BudgetChart.formatTooltipLabel({ dataset: {} }, true)).toBe('');
     });
 });

@@ -1,7 +1,8 @@
 
 const evt = new Evt();
 const settingClass = new Settings();
-const dataManager = new DataManager();
+const cacheStore = new CacheStore();
+const dataManager = new DataManager({ cacheStore });
 
 let setting = {};
 let currentUrl = location.href;
@@ -64,8 +65,8 @@ setInterval(() => {
  */
 function getCommonChartData() {
     return {
-        transactions: settingClass.getSetting('cache_data_transactions'),
-        categories: settingClass.getSetting('cache_data_categories'),
+        transactions: cacheStore.get('transactions'),
+        categories: cacheStore.get('categories'),
         accountsSelected: settingClass.getSetting('accountsSelected'),
         settings: setting,
         settingsInstance: settingClass
@@ -77,6 +78,7 @@ async function build() {
 
     // Attendre l'initialisation (qui inclut déjà loadSettings())
     await settingClass.waitForInitialization();
+    await cacheStore.waitForInitialization();
     // Mettre à jour la variable setting
     setting = settingClass.getAllSettings();
     // Sync global pour les charts (évite mutations chart.options = stack overflow)

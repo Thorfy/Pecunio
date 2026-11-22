@@ -179,13 +179,6 @@ class Config {
      * Méthode utilitaire pour formater une date pour les inputs HTML
      */
     static toDateInputValue(date) {
-        if (!date) {
-            return new Date().toISOString().split('T')[0];
-        }
-        const d = new Date(date);
-        if (isNaN(d.getTime())) {
-            return new Date().toISOString().split('T')[0];
-        }
-        return d.toISOString().split('T')[0];
+        return DateRange.toDateOnly(date) || DateRange.getTodayInputValue();
     }
 } 
