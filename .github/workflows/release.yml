@@ -105,7 +105,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v heading="## [${version}]" '
             index($0, heading) == 1 { found = 1; next }
-            found && index($0, "## [") == 1 { exit }
+            found && index($0, "## ") == 1 { exit }
             found { print }
           ' CHANGELOG.md > release-notes.md
           gh release create "$GITHUB_REF_NAME" pecunio-*-chrome.zip \

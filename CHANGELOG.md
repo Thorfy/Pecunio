@@ -9,6 +9,8 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 
 ## [Non publié]
 
+## [0.6.0] - 2026-11-22
+
 ### Ajouté
 - Épargne sur la page Comptes : solde de chaque mois (vert ou rouge) et taux d'épargne, sur la période du graphique des dépenses.
 - Plus fortes variations sur la page Catégories : les catégories dont la dépense s'écarte le plus de leur habitude (au même jour du mois pour le mois en cours).
@@ -28,7 +30,7 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 - Les catégories masquées dans la légende du graphique temporel le sont aussi dans la comparaison budget, et le restent d'une session à l'autre.
 
 ### Corrigé
-- Mois en cours : une transaction de fin du mois précédent rattachée à ce mois dans Bankin (un salaire du 29 octobre compté en novembre) manquait aux graphiques de la page Comptes et au rythme du mois.
+- Mois en cours : une transaction de fin du mois précédent rattachée à ce mois dans Bankin (par exemple un salaire versé en fin de mois et compté le mois suivant) manquait aux graphiques de la page Comptes et au rythme du mois.
 - Masquage des montants : certains montants restaient visibles après le chargement de la page alors que l'œil indiquait « masqué ».
 - Rapport PDF : graphique « Par catégorie » qui sortait de la page, barres « empilées » décalées, aire polaire remplacée par un donut, mois en français (« janv. 2024 ») et couleurs des catégories identiques à celles de Bankin.
 - Graphiques dans la police et les couleurs de Bankin ; plus d'emojis dans les titres et légendes.
@@ -55,7 +57,7 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 
 ### Technique
 - Construction avec WXT, code en modules, dépendances à jour (Chart.js 4).
-- Tests : environ 400 tests unitaires, tests de contrat sur des captures anonymisées des pages Bankin, scénarios de bout en bout avec Playwright ; intégration continue sur chaque PR.
+- Tests : près de 500 tests unitaires, tests de contrat sur des captures anonymisées des pages Bankin, scénarios de bout en bout avec Playwright ; intégration continue sur chaque PR.
 
 ## Versions précédentes
 
