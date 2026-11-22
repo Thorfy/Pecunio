@@ -41,6 +41,7 @@
     "wxt": "^0.21.5"
   },
   "dependencies": {
+    "@fontsource/open-sans": "^5.3.0",
     "chart.js": "4.6.1",
     "chartjs-adapter-date-fns": "3.0.0",
     "chartjs-chart-sankey": "0.22.0",

@@ -301,7 +301,7 @@ describe('ExpenseTypeChart — données', () => {
 
     test('répartit les dépenses du mois par type, sans revenus ni exceptions', async () => {
         const data = await expenseType(sampleTransactions());
-        expect(data.labels).toEqual(['🏠 Essentiel', '🎯 Plaisir']);
+        expect(data.labels).toEqual(['Essentiel', 'Plaisir']);
         expect(data.datasets[0].data).toEqual([920.5, 45]);
         expect(data.expenseTypes).toEqual(['ESSENTIAL', 'PLEASURE']);
     });
@@ -313,7 +313,7 @@ describe('ExpenseTypeChart — données', () => {
 
     test('sans paramètres : toutes les transactions ; type inconnu affiché tel quel', async () => {
         const data = await expenseType([tx({ amount: -5, expense_type: 'MYSTERE' })], null);
-        expect(data.labels).toEqual(['📦 MYSTERE']);
+        expect(data.labels).toEqual(['MYSTERE']);
     });
 
     test('couleurs', () => {

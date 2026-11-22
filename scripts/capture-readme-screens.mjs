@@ -78,6 +78,8 @@ await report.waitForLoadState();
 await report.locator('table tbody tr').first().waitFor();
 await settle(report);
 await report.screenshot({ path: `${OUT}/rapport.png`, clip: { x: 0, y: 0, width: 1100, height: 1000 } });
+// Rapport complet, hors README (vérification de la mise en page)
+if (process.env.FULL_REPORT) await report.screenshot({ path: path.resolve('test-results/rapport-complet.png'), fullPage: true });
 
 await context.close();
 console.log(`Captures enregistrées dans ${OUT}`);

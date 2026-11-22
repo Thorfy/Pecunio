@@ -66,6 +66,24 @@ test.describe('Page Comptes', () => {
         await expect(amounts.first()).not.toHaveClass(/pecunio-blurred/);
         expect(consoleErrors).toEqual([]);
     });
+
+    test('9b — masquage conservé au rechargement, état cohérent (U1, B25)', async ({ context, bankin, consoleErrors }) => {
+        const page = await context.newPage();
+        await page.goto(bankinUrl('/accounts'));
+        await expect(page.locator(LINE_CHART)).toBeVisible();
+        await page.locator('#hideButton').click();
+        await expect(page.locator('#hideButton')).toHaveAttribute('src', /eyeClose\.png$/);
+
+        for (let i = 0; i < 2; i++) {
+            await page.reload();
+            await expect(page.locator(LINE_CHART)).toBeVisible();
+            // Icône, solde et montants dans le même état : masqués
+            await expect(page.locator('#hideButton')).toHaveAttribute('src', /eyeClose\.png$/);
+            await expect(page.locator('.dbl.fs14.fw7.lh18.elp')).toHaveClass(/pecunio-blurred/);
+            await expect(page.locator('.amountGreen').first()).toHaveClass(/pecunio-blurred/);
+        }
+        expect(consoleErrors).toEqual([]);
+    });
 });
 
 test.describe('Page Catégories', () => {

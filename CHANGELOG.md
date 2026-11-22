@@ -17,6 +17,8 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 - Les catégories masquées dans la légende du graphique temporel le sont aussi dans la comparaison budget, et le restent d'une session à l'autre.
 
 ### Corrigé
+- Rapport PDF : graphique « Par catégorie » qui sortait de la page, barres « empilées » décalées, aire polaire remplacée par un donut, mois en français (« janv. 2024 ») et couleurs des catégories identiques à celles de Bankin.
+- Graphiques dans la police et les couleurs de Bankin ; plus d'emojis dans les titres et légendes.
 - Plusieurs onglets Bankin ouverts : chacun affiche ses graphiques (seul le dernier fonctionnait).
 - Graphiques absents après une mise en veille du navigateur ou à l'ouverture d'un nouvel onglet.
 - Page Catégories vide quand Chrome n'est pas en français.
@@ -33,6 +35,7 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 - « Réinitialiser les paramètres » n'efface plus les données en cache ni le rapport.
 
 ### Sécurité et vie privée
+- La popup et le rapport ne contactent plus aucun service tiers : badges de version (shields.io) retirés, police du rapport embarquée au lieu de Google Fonts.
 - Dès que Bankin affiche sa page de connexion (déconnexion, session expirée), Pecunio efface ses données en cache, le dernier rapport et les en-têtes d'authentification ; seules les préférences sont gardées.
 - Plus aucune transaction écrite dans la console du navigateur.
 - Données des très anciennes versions de l'extension effacées à la mise à jour.

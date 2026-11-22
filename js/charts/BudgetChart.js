@@ -64,7 +64,7 @@ export class BudgetChart extends BaseChartData {
         // Appliquer les classes Pecunio au conteneur
         InjectedStyles.applyContainerClasses(this.containerElement);
 
-        const budgetTitle = InjectedStyles.createTitle("📊 Comparaison Budget Médian");
+        const budgetTitle = InjectedStyles.createTitle("Comparaison du budget");
         this.containerElement.appendChild(budgetTitle);
 
         const selectorContainer = document.createElement('div');

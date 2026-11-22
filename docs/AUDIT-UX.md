@@ -95,12 +95,20 @@ Pistes écartées pour l'instant : prévision de fin de mois (peu fiable sans hi
 
 | Lot | Contenu | Pourquoi d'abord |
 |---|---|---|
-| **UX-1 Corrections** | U1 (vérifier), U12 (shields.io), U17, U18, U19, U20 ; police et couleurs de Bankin (§3, `theme.js`) | Défauts visibles et vie privée ; base visuelle commune pour la suite |
+| **UX-1 Corrections** ✅ | U1 (vérifier), U12 (shields.io), U17, U18, U19, U20 ; police et couleurs de Bankin (§3, `theme.js`) | Défauts visibles et vie privée ; base visuelle commune pour la suite |
 | **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) | Les écrans existants deviennent utiles sans rien ajouter |
 | **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
 | **UX-4 Exploration** | G4 (récurrents), G6, G7, G9, G8 | Plus d'effort ou de valeur à confirmer |
 
 Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, recette sur le vrai Bankin, une PR.
+
+### Suivi
+
+**UX-1** ✅ _(branche `feat/ux-1-fixes-theme`)_ :
+- U1 : scénario e2e « masquage conservé au rechargement » (icône, solde et montants dans le même état) ; vérifié avec B25.
+- U12 : badges `img.shields.io` retirés de la popup ; **le rapport chargeait aussi sa police depuis Google Fonts** : Open Sans est désormais embarquée (`@fontsource/open-sans`). Test unitaire (aucune ressource externe dans la popup et le rapport) et scénario e2e (aucune requête hors Bankin).
+- U17 : grille du rapport en `minmax(0, 1fr)`. U18 : barres empilées sur les deux axes. U19 : donut au lieu de l'aire polaire. U20 : mois via `Intl` (« janv. 2024 ») et couleurs des catégories de Bankin dans le rapport (`js/bankin/categoryColors.js`), sous-catégories du flux de la couleur de leur parent.
+- §3 : `js/ui/theme.js` (Open Sans, bleu nuit `#00213c`, violet `#6562fc`) appliqué à Chart.js et au CSS injecté ; emojis retirés des titres et légendes ; cartes côte à côte de même hauteur ; titre « Comparaison du budget ».
 
 ## 6. Questions à trancher
 

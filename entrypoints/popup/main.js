@@ -20,11 +20,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     await settingClass.waitForInitialization();
     await cacheStore.waitForInitialization();
 
-    const currentVersionImg = document.querySelector("#currentVersion");
-    const currentVersionBadge = /** @type {HTMLImageElement} */ (document.querySelector("#currentVersionBadge"));
-    const cvSource = "https://img.shields.io/badge/installed-" + chrome.runtime.getManifest().version + "-blue";
-    currentVersionImg.textContent = chrome.runtime.getManifest().version;
-    currentVersionBadge.src = cvSource;
+    // Version installée (locale : aucune requête vers un service tiers, U12)
+    document.querySelector("#currentVersion").textContent = chrome.runtime.getManifest().version;
 
     // Retirer le badge si présent (l'utilisateur a ouvert la popup)
     chrome.action.setBadgeText({ text: '' });

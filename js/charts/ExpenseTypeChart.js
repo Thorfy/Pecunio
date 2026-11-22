@@ -16,27 +16,23 @@ export class ExpenseTypeChart extends BaseChartData {
     }
 
     /**
-     * Mapping centralisé des types de dépenses (name, icon, color)
+     * Mapping centralisé des types de dépenses (libellé, couleur)
      */
     static EXPENSE_TYPE_MAPPING = {
         'ESSENTIAL': { 
             name: 'Essentiel', 
-            icon: '🏠', 
             color: 'rgba(102, 126, 234, 0.8)' 
         },
         'PLEASURE': { 
             name: 'Plaisir', 
-            icon: '🎯', 
             color: 'rgba(255, 99, 132, 0.8)' 
         },
         'OTHER': { 
             name: 'Autre', 
-            icon: '📦', 
             color: 'rgba(199, 199, 199, 0.8)' 
         },
         'SAVING': { 
             name: 'Épargne', 
-            icon: '💰', 
             color: 'rgba(75, 192, 192, 0.8)' 
         }
     };
@@ -215,14 +211,13 @@ export class ExpenseTypeChart extends BaseChartData {
                         callbacks: {
                             label: (context) => {
                                 const label = context.label || '';
-                                const labelWithoutIcon = label.replace(/^[^\s]+\s/, '');
-                                if (Config.isBlurry()) return labelWithoutIcon;
+                                if (Config.isBlurry()) return label;
                                 const value = context.parsed || 0;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 if (total === 0 || label === 'Aucune donnée') {
                                     return 'Aucune donnée disponible';
                                 }
-                                return `${labelWithoutIcon} : ${formatEuros(value)} (${formatPercent((value / total) * 100)})`;
+                                return `${label} : ${formatEuros(value)} (${formatPercent((value / total) * 100)})`;
                             }
                         }
                     }
@@ -233,16 +228,13 @@ export class ExpenseTypeChart extends BaseChartData {
     }
 
     /**
-     * Formate le nom de l'expense_type pour l'affichage avec icône
+     * Libellé d'un type de dépense (sans emoji : rendu variable selon le système)
      * @param {string} expenseType - Type de dépense brut
-     * @returns {string} Type formaté avec icône
+     * @returns {string} Libellé affiché
      */
     _formatExpenseType(expenseType) {
-        const mapped = ExpenseTypeChart.EXPENSE_TYPE_MAPPING[expenseType] || { 
-            name: expenseType, 
-            icon: '📦' 
-        };
-        return `${mapped.icon} ${mapped.name}`;
+        const mapped = ExpenseTypeChart.EXPENSE_TYPE_MAPPING[expenseType] || { name: expenseType };
+        return mapped.name;
     }
 
     /**

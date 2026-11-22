@@ -1,8 +1,9 @@
 import { Chart } from '../lib/chart.js';
+import { THEME } from './theme.js';
 
 /**
  * InjectedStyles - Styles partagés pour tous les éléments injectés sur Bankin
- * Design cohérent avec la popup mais adapté pour l'espace réduit du site
+ * Police et couleurs de Bankin (voir theme.js)
  */
 export class InjectedStyles {
     static getStyles() {
@@ -15,13 +16,13 @@ export class InjectedStyles {
                 margin: 12px 0;
                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
                 border: 1px solid #e1e5e9;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-family: ${THEME.fontFamily};
             }
 
             .pecunio-title {
                 font-size: 18px;
                 font-weight: 600;
-                color: #333;
+                color: ${THEME.text};
                 margin-bottom: 16px;
                 display: flex;
                 align-items: center;
@@ -32,7 +33,7 @@ export class InjectedStyles {
                 content: '';
                 width: 3px;
                 height: 18px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
+                background: ${THEME.accent};
                 border-radius: 2px;
             }
 
@@ -41,7 +42,7 @@ export class InjectedStyles {
                 border-radius: 8px;
                 padding: 12px;
                 margin-bottom: 12px;
-                border: 1px solid #f0f0f0;
+                border: 1px solid ${THEME.border};
             }
 
             .pecunio-controls {
@@ -78,7 +79,7 @@ export class InjectedStyles {
 
             .pecunio-select:focus {
                 outline: none;
-                border-color: #667eea;
+                border-color: ${THEME.accent};
                 box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
             }
 
@@ -90,7 +91,7 @@ export class InjectedStyles {
                 font-weight: 500;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                background: linear-gradient(135deg, #667eea, #764ba2);
+                background: ${THEME.accent};
                 color: white;
             }
 
@@ -132,7 +133,7 @@ export class InjectedStyles {
             }
 
             .pecunio-chart-type-toggle:focus-visible {
-                outline: 2px solid #667eea;
+                outline: 2px solid ${THEME.accent};
                 outline-offset: 2px;
             }
 
@@ -206,12 +207,12 @@ export class InjectedStyles {
             /* Styles pour les tooltips/infos */
             .pecunio-info {
                 font-size: 12px;
-                color: #666;
+                color: ${THEME.textMuted};
                 margin-top: 8px;
                 padding: 8px;
                 background: #f8f9fa;
                 border-radius: 6px;
-                border-left: 3px solid #667eea;
+                border-left: 3px solid ${THEME.accent};
             }
 
             /* Styles pour les badges/étiquettes */
@@ -221,7 +222,7 @@ export class InjectedStyles {
                 font-size: 11px;
                 font-weight: 500;
                 border-radius: 4px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
+                background: ${THEME.accent};
                 color: white;
             }
 
@@ -239,7 +240,8 @@ export class InjectedStyles {
                 gap: 16px;
                 margin-bottom: 16px;
                 width: 100%;
-                align-items: flex-start;
+                /* Cartes côte à côte de même hauteur */
+                align-items: stretch;
             }
 
             .pecunio-donut-wrapper,
