@@ -304,8 +304,8 @@ export class PageController {
         this._lastSignature = signature;
         this.buildCount++;
         this.win.setTimeout(() => {
+            // Bouton inséré une fois ; l'état enregistré est réappliqué à chaque construction
             new AmountHider(this.settings, this.bankin);
-            AmountHider.refreshBlur(this.settings, this.bankin);
         }, Config.INTERVALS.HIDDER_DELAY);
         ReviewPrompt.tryShow();
     }

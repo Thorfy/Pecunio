@@ -105,7 +105,7 @@ Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, 
 ### Suivi
 
 **UX-1** ✅ _(branche `feat/ux-1-fixes-theme`)_ :
-- U1 : scénario e2e « masquage conservé au rechargement » (icône, solde et montants dans le même état) ; vérifié avec B25.
+- U1 : **le défaut persistait après B25 sur le vrai Bankin**. Cause : au chargement, Bankin met à jour ses montants en réécrivant leur attribut `class`, ce qui effaçait la classe de flou posée élément par élément par Pecunio. Le masquage repose désormais sur une classe posée sur `<html>` et une règle CSS qui floute tous les montants ciblés par l'adaptateur, y compris ceux réécrits ou ajoutés plus tard. Le Bankin simulé reproduit cette réécriture ; le scénario e2e 9b échoue avec l'ancienne version et passe avec la nouvelle.
 - U12 : badges `img.shields.io` retirés de la popup ; **le rapport chargeait aussi sa police depuis Google Fonts** : Open Sans est désormais embarquée (`@fontsource/open-sans`). Test unitaire (aucune ressource externe dans la popup et le rapport) et scénario e2e (aucune requête hors Bankin).
 - U17 : grille du rapport en `minmax(0, 1fr)`. U18 : barres empilées sur les deux axes. U19 : donut au lieu de l'aire polaire. U20 : mois via `Intl` (« janv. 2024 ») et couleurs des catégories de Bankin dans le rapport (`js/bankin/categoryColors.js`), sous-catégories du flux de la couleur de leur parent.
 - §3 : `js/ui/theme.js` (Open Sans, bleu nuit `#00213c`, violet `#6562fc`) appliqué à Chart.js et au CSS injecté ; emojis retirés des titres et légendes ; cartes côte à côte de même hauteur ; titre « Comparaison du budget ».

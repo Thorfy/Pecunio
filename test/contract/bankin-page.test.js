@@ -90,7 +90,6 @@ describe('Contrat Bankin — PageController sur les vraies pages', () => {
         vi.spyOn(LoadingScreen, 'show').mockImplementation(() => {});
         vi.spyOn(ReviewPrompt, 'tryShow').mockImplementation(() => Promise.resolve());
         vi.spyOn(AmountHider.prototype, 'insertButton').mockImplementation(() => {});
-        vi.spyOn(AmountHider, 'refreshBlur').mockImplementation(() => {});
     });
 
     const start = async (page, href) => {

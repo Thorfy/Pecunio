@@ -1,3 +1,4 @@
+import { BANKIN_SELECTORS } from '../bankin/BankinPage.js';
 import { Chart } from '../lib/chart.js';
 import { THEME } from './theme.js';
 
@@ -6,6 +7,9 @@ import { THEME } from './theme.js';
  * Police et couleurs de Bankin (voir theme.js)
  */
 export class InjectedStyles {
+    /** Classe posée sur `<html>` quand les montants sont masqués (AmountHider). */
+    static AMOUNTS_HIDDEN_CLASS = 'pecunio-amounts-hidden';
+
     static getStyles() {
         return `
             /* ===== STYLES PECUNIO INJECTÉS ===== */
@@ -166,7 +170,9 @@ export class InjectedStyles {
             }
 
             /* Styles pour les éléments flous */
-            .pecunio-blurred {
+            /* Masquage des montants : tous les montants de Bankin ciblés par
+               l'adaptateur, y compris ceux affichés ou réécrits plus tard (U1) */
+            html.${InjectedStyles.AMOUNTS_HIDDEN_CLASS} :is(${BANKIN_SELECTORS.HEADER_AMOUNT}, ${BANKIN_SELECTORS.AMOUNTS}) {
                 filter: blur(6px) !important;
                 transition: filter 0.3s ease;
             }
