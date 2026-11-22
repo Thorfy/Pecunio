@@ -57,6 +57,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B19 | 🔴 | **Page Catégories vide si le navigateur n'est pas en français** : `applySettingOnDataByMonth` compare le nom du mois affiché par Bankin (« février ») au nom du mois dans la langue du navigateur (`toLocaleString('default')`) ; avec Chrome en anglais, aucune transaction ne correspond (non vérifié en réel : le Chrome testé est en français) | T | ✅ 2a |
 | B20 | 🟠 | **Infobulle du graphique « Comparaison Budget Médian » : montants NaN** : `Number(context.parsed)` alors que Chart.js fournit un objet `{ x, y }` pour un graphique en barres (signalé par l'utilisateur le 22/11/2026, présent depuis février 2026) | L + T | ✅ 2a |
 | B21 | 🟡 | **Modale « Un petit avis ? » affichée en double** : la vérification « déjà affichée » précède le délai de 2 s ; deux constructions rapprochées (chargement puis arrivée des données) programment chacune une modale (vu en recette de la phase 3a sur une installation neuve) | L + T | ✅ 3a |
+| B22 | 🟡 | **Bandeau d'état déformé dans la page Bankin** : les règles CSS de Bankin sur tous les `button` (largeur, marges, fond, prioritaires) écrasent les styles en ligne du bandeau ; corrigé en isolant son contenu dans un Shadow DOM | L + T | ✅ 3b |
 
 ### 3.2 Dette technique et qualité
 

@@ -175,8 +175,8 @@ describe('PageController — chargement des données (B12)', () => {
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         const banner = document.getElementById(StatusBanner.ID);
         expect(banner.getAttribute('role')).toBe('alert');
-        expect(banner.textContent).toContain('session non reconnue');
-        banner.querySelector('.pecunio-status-action').click();
+        expect(banner.shadowRoot.textContent).toContain('session non reconnue');
+        banner.shadowRoot.querySelector('.pecunio-status-action').click();
         expect(win.location.reload).toHaveBeenCalled();
     });
 
@@ -185,7 +185,7 @@ describe('PageController — chargement des données (B12)', () => {
         await controller.start();
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         await controller.whenIdle();
-        expect(document.getElementById(StatusBanner.ID).textContent).toContain('dernières données enregistrées');
+        expect(document.getElementById(StatusBanner.ID).shadowRoot.textContent).toContain('dernières données enregistrées');
         expect(kinds(charts.created.slice(-2))).toEqual(['LineBarChart', 'BudgetChart']);
         expect(controller.charts).toHaveLength(2);
     });
