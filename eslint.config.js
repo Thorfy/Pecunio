@@ -23,6 +23,8 @@ export default [
         },
         rules: {
             'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+            // Recommandée par ESLint 10 : activée dès maintenant
+            'no-useless-assignment': 'error',
             eqeqeq: ['error', 'smart'],
             'prefer-const': 'error',
             'no-var': 'error',

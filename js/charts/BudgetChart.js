@@ -385,7 +385,7 @@ export class BudgetChart extends BaseChartData {
         await this.initializationPromise;
         // Logger.debug(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
 
-        let primaryData = {}, comparisonData = {}, primaryLabel = '', comparisonLabel = '';
+        let primaryData, comparisonData, primaryLabel, comparisonLabel;
         const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
 
         // Primary Data (Left Column)
