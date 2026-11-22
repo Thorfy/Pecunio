@@ -1,19 +1,26 @@
 /**
- * Point d'entrée du content script Pecunio (pages *.bankin.com).
+ * Démarrage de Pecunio dans les pages *.bankin.com (content script).
  *
  * Crée les services partagés puis délègue tout le cycle de vie (détection de
  * page, construction des graphiques, rechargement, erreurs) à PageController.
- * Les noms `evt` et `settingClass` restent globaux : d'autres scripts les utilisent.
  */
-const evt = new Evt();
-const settingClass = new Settings();
-const cacheStore = new CacheStore();
+import { CacheStore } from '../core/CacheStore.js';
+import { DataManager } from '../core/DataManager.js';
+import { evt } from '../core/events.js';
+import { PageController } from '../core/PageController.js';
+import { Settings } from '../core/Settings.js';
 
-const pecunio = new PageController({
-    settings: settingClass,
-    cacheStore,
-    evt,
-    createDataManager: () => new DataManager({ cacheStore }),
-});
+/** @returns {PageController} */
+export function startPecunio() {
+    const settings = new Settings();
+    const cacheStore = new CacheStore();
 
-pecunio.start();
+    const controller = new PageController({
+        settings,
+        cacheStore,
+        evt,
+        createDataManager: () => new DataManager({ cacheStore }),
+    });
+    controller.start();
+    return controller;
+}

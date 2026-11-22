@@ -1,7 +1,16 @@
-// Les classes Category, Account, Transaction et DataMerger ont été extraites dans des fichiers séparés
-// Voir js/models/ et js/services/ pour les implémentations
+import { CacheStore } from '../../js/core/CacheStore.js';
+import { Config } from '../../js/core/Config.js';
+import { DateRange } from '../../js/core/DateRange.js';
+import { evt } from '../../js/core/events.js';
+import { Logger } from '../../js/core/Logger.js';
+import { Settings } from '../../js/core/Settings.js';
+import { DataMerger } from '../../js/services/DataMerger.js';
+import { ReportStorage } from '../../js/services/ReportStorage.js';
+import Choices from 'choices.js';
+import 'choices.js/public/assets/styles/choices.min.css';
 
-const evt = new Evt();
+// Popup de l'extension : période, comptes, export CSV et rapport PDF.
+
 const settingClass = new Settings();
 const cacheStore = new CacheStore();
 let setting = {};

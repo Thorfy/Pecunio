@@ -1,3 +1,9 @@
+import { Chart } from '../../js/lib/chart.js';
+import { PdfExporter } from '../../js/report/PdfExporter.js';
+import { ReportChartDataBuilder } from '../../js/report/ReportChartDataBuilder.js';
+import { ReportFilters } from '../../js/report/ReportFilters.js';
+import { ReportStorage } from '../../js/services/ReportStorage.js';
+
 /**
  * Rapport PDF Pecunio - Point d'entrée de la page report.html
  * Utilise ReportStorage, ReportFilters, ReportChartDataBuilder et PdfExporter

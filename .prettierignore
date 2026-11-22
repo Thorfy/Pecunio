@@ -1,4 +1,5 @@
-libs/
+public/
+.wxt/
 node_modules/
 dist/
 .output/
