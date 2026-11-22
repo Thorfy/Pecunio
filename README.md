@@ -1,91 +1,118 @@
-# Pecunio
+<p align="center">
+  <img src="docs/assets/brand/banner.jpg" alt="Pecunio — Vos finances Bankin, enfin lisibles" width="100%">
+</p>
 
-![pecunio](https://github.com/Thorfy/Pecunio/assets/19363319/1df62f2c-aa19-496b-b445-7ce038870ee3)
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github"><img src="https://img.shields.io/chrome-web-store/v/jeomdpldhaigmdbjobamliaipijhmiie?label=Chrome%20Web%20Store&color=6562fc&logo=googlechrome&logoColor=white" alt="Chrome Web Store"></a>
+  <a href="https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github"><img src="https://img.shields.io/chrome-web-store/users/jeomdpldhaigmdbjobamliaipijhmiie?label=utilisateurs&color=2ee6a6" alt="Utilisateurs"></a>
+  <a href="https://github.com/Thorfy/Pecunio/actions/workflows/ci.yml"><img src="https://github.com/Thorfy/Pecunio/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-**Pecunio** est une extension Chrome qui enrichit votre expérience Bankin avec des visualisations interactives et des outils pour mieux comprendre vos finances.
+<p align="center">
+  <b>Pecunio</b> est une extension Chrome qui ajoute à <a href="https://app2.bankin.com">Bankin</a> les graphiques qui lui manquent :<br>
+  évolution de vos dépenses, comparaison de budget, flux financiers, types de dépenses, export CSV et rapport PDF.
+</p>
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-blue?logo=google-chrome)](https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github)
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github"><b>Installer depuis le Chrome Web Store →</b></a>
+</p>
 
-## ✨ Fonctionnalités
+---
 
-### 📊 Visualisations avancées
+## Ce que Pecunio ajoute à Bankin
 
-- **Graphiques temporels** : Suivez l'évolution de vos dépenses par catégorie sur plusieurs mois
-- **Comparaison budgétaire** : Comparez vos dépenses entre différentes périodes avec médiane et moyenne
-- **Diagramme de flux** : Visualisez le flux de vos dépenses de manière intuitive
-- **Répartition par type** : Découvrez la répartition de vos dépenses (Essentiel, Plaisir, Épargne, Autre)
+### Sur la page Comptes
 
-### 🎯 Outils pratiques
+**Vos dépenses mois par mois**, par catégorie, revenus au-dessus et dépenses en dessous de zéro. Cliquez sur une catégorie de la légende pour la masquer, et passez en courbes d'un clic.
 
-- **Filtrage avancé** : Sélectionnez des périodes, comptes et catégories spécifiques
-- **Masquage des montants** : Protégez votre vie privée en masquant les montants sensibles
-- **Export de données** : Exportez vos données pour analyse approfondie
+<p align="center"><img src="docs/assets/screens/depenses-par-mois.png" alt="Graphique des dépenses par mois et par catégorie" width="90%"></p>
 
-## 🔒 Données et vie privée
+**La comparaison de budget** : une année ou un mois face à une autre période, en médiane ou en moyenne, catégorie par catégorie.
 
-- Pecunio lit vos données avec la session Bankin de votre navigateur ; rien n'est envoyé ailleurs que vers Bankin.
-- Les transactions, catégories et comptes sont gardés en cache sur votre ordinateur (`chrome.storage.local`) pour afficher les graphiques plus vite.
-- **Dès que Bankin affiche sa page de connexion** (déconnexion ou session expirée), Pecunio efface ce cache, les données du dernier rapport PDF et les en-têtes d'authentification. Seules vos préférences (période, comptes, catégories masquées, masquage des montants) sont conservées.
+<p align="center"><img src="docs/assets/screens/comparaison-budget.png" alt="Comparaison du budget entre deux années" width="90%"></p>
+
+### Sur la page Catégories
+
+**Les flux financiers du mois** : d'où vient l'argent, où il part, jusqu'aux sous-catégories, et ce qu'il reste. Et **la répartition par type** : essentiel, plaisir, épargne.
+
+<table>
+  <tr>
+    <td width="66%"><img src="docs/assets/screens/flux-financiers.png" alt="Diagramme des flux financiers du mois"></td>
+    <td width="34%"><img src="docs/assets/screens/types-de-depenses.png" alt="Répartition des dépenses par type"></td>
+  </tr>
+</table>
+
+### Dans la popup et le rapport
+
+<table>
+  <tr>
+    <td width="30%" valign="top"><img src="docs/assets/screens/popup.png" alt="Popup de Pecunio"></td>
+    <td width="70%" valign="top">
+      <p><b>La popup</b> règle la période et les comptes analysés, et exporte :</p>
+      <ul>
+        <li><b>CSV</b> : toutes vos transactions de la période, avec la vraie date et le mois de rattachement choisi dans Bankin, prêtes pour un tableur ;</li>
+        <li><b>Rapport PDF</b> : un bilan mensuel ou annuel (revenus, dépenses, solde, répartitions, flux, évolution, détail des transactions).</li>
+      </ul>
+      <img src="docs/assets/screens/rapport.png" alt="Rapport budgétaire PDF">
+    </td>
+  </tr>
+</table>
+
+### Et aussi
+
+- **Masquage des montants** : un clic sur l'œil à côté du solde floute les montants de la page et des graphiques. Pratique pour montrer son écran.
+- **Interface en français**, montants au format `1 234,50 €`, boutons utilisables au clavier.
+- **Plusieurs onglets Bankin** ouverts en même temps : chacun affiche ses graphiques.
+
+## 🔒 Vos données restent chez vous
+
+- Pecunio lit vos données avec la session Bankin de votre navigateur. **Rien n'est envoyé ailleurs que vers Bankin** : pas d'analytics, pas de serveur Pecunio.
+- Les transactions sont gardées en cache sur votre ordinateur (`chrome.storage.local`) pour afficher les graphiques plus vite.
+- **Dès que Bankin affiche sa page de connexion** (déconnexion ou session expirée), Pecunio efface ce cache, le dernier rapport et les en-têtes d'authentification. Seules vos préférences (période, comptes, catégories masquées, masquage des montants) sont conservées.
 - Les boutons « Réinitialiser » de la popup effacent à la demande les données ou les préférences.
-
-## 📸 Aperçu
-
-<img width="387" height="594" alt="Capture d'écran 2025-09-05 121114" src="https://github.com/user-attachments/assets/f3c17660-2444-4fdb-9683-a892239f5216" />
-<img width="387" height="600" alt="Capture d'écran 2025-09-05 121152" src="https://github.com/user-attachments/assets/bc0d9ca8-ddba-4fdb-965a-ab42016dea87" />
-<img width="1914" height="741" alt="Capture d'écran 2025-09-05 122412" src="https://github.com/user-attachments/assets/755d77b5-5717-42f5-ae61-9a1997b91015" />
-<img width="2009" height="1251" alt="image" src="https://github.com/user-attachments/assets/b64ec9c1-fb90-4e9a-a3e1-413ccd9bd3e3" />
-<img width="1910" height="1005" alt="Capture d'écran 2025-09-05 122555" src="https://github.com/user-attachments/assets/5978b81b-8bcb-4337-8680-49db9eb3da7f" />
-<img width="1903" height="728" alt="Capture d'écran 2025-09-05 122715" src="https://github.com/user-attachments/assets/71d092d0-1685-4851-98bd-756e7d1491ca" />
+- Permissions : stockage local, lecture des en-têtes des requêtes Bankin (`webRequest`, pour réutiliser votre session) et accès aux pages `*.bankin.com` uniquement.
 
 ## 🚀 Installation
 
-1. Installez l'extension depuis le [Chrome Web Store](https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github)
-2. Connectez-vous à votre compte Bankin
-3. (Recommandé) **Épinglez Pecunio** à la barre d'outils pour y accéder rapidement
-4. Les graphiques apparaissent automatiquement sur vos pages de comptes et catégories
+1. Installez Pecunio depuis le [Chrome Web Store](https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie?github).
+2. Connectez-vous à [Bankin](https://app2.bankin.com) dans Chrome.
+3. Les graphiques apparaissent sur les pages **Comptes** et **Catégories**. Épinglez l'extension pour garder la popup à portée de clic.
 
-## 💡 Comment ça marche ?
+Pecunio est un projet indépendant, ni affilié ni approuvé par Bankin.
 
-Pecunio s'intègre directement dans l'interface Bankin. Une fois installé, vous verrez automatiquement :
-
-- Sur la **page des comptes** : Graphiques temporels et comparaison budgétaire
-- Sur la **page des catégories** : Diagramme de flux et répartition par type de dépenses
-
-Tous les graphiques sont interactifs et se mettent à jour selon vos filtres et sélections.
+---
 
 ## 🛠️ Développement
 
-Prérequis : Node.js 22+. L'extension est construite avec [WXT](https://wxt.dev) (Vite).
+Prérequis : Node.js 22+. L'extension est construite avec [WXT](https://wxt.dev) (Vite), testée avec Vitest et Playwright.
 
 ```bash
 npm install         # dépendances et outillage
 npm run dev         # build en continu + Chrome de développement avec l'extension chargée
 npm run build       # build de production dans .output/chrome-mv3
-npm run zip         # zip pour le Chrome Web Store dans .output/
 npm run check       # lint + types + tests + build
-npm test            # tests unitaires
-npm run test:tz     # tests sous 3 fuseaux horaires
+npm run test:tz     # tests unitaires sous 3 fuseaux horaires
 npm run test:e2e    # scénarios de bout en bout (Playwright, Bankin simulé)
-npm run typecheck   # vérification des types (tsc sur le JSDoc)
-npm run lint:fix    # corrections automatiques du lint
+npm run screens     # régénère les captures du README (données de démonstration)
 ```
 
-Organisation :
+Pour tester dans votre Chrome : `npm run build`, puis `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier **`.output/chrome-mv3`**. Après chaque build, recharger l'extension (↻) puis l'onglet Bankin.
 
 | Dossier | Contenu |
 |---|---|
 | `entrypoints/` | points d'entrée WXT : service worker, content script, popup, page du rapport |
 | `js/` | code de l'extension en modules ES (cœur, adaptateur Bankin, modèles, graphiques, interface) |
 | `public/` | fichiers copiés tels quels (images, html2pdf) |
-| `test/` | tests Vitest (unitaires, et contrat avec les pages Bankin) |
-| `scripts/` | outillage (tests sous plusieurs fuseaux, capture anonymisée des pages Bankin) |
+| `test/` | tests Vitest : unitaires et contrat avec les pages Bankin |
+| `e2e/` | scénarios Playwright, Bankin simulé et données de démonstration |
+| `scripts/` | outillage : fuseaux horaires, capture anonymisée des pages Bankin, captures du README |
+| `docs/` | tests, publication, audits, identité visuelle (`docs/assets/brand/`) |
 
-Le manifest est généré par WXT à partir de `wxt.config.js` et de `entrypoints/` ; la version vient de `package.json`.
+Chaque PR passe la CI : lint, types, tests unitaires sous Paris, New York et UTC, build et scénarios de bout en bout. Un tag `vX.Y.Z` relance tous les contrôles et, s'ils passent, **publie** la version sur le Chrome Web Store (après l'examen de Google).
 
-Les tests sont décrits dans [docs/TESTING.md](docs/TESTING.md).
+**Documentation** : [tests](docs/TESTING.md) · [publication](docs/RELEASE.md) · [changelog](CHANGELOG.md) · [architecture](docs/ARCHITECTURE.md) · [audit de modernisation](docs/AUDIT-MODERNISATION.md) · [audit des écrans](docs/AUDIT-UX.md)
 
-Pour tester dans votre Chrome : `npm run build`, puis `chrome://extensions` → mode développeur → « Charger l'extension non empaquetée » → dossier **`.output/chrome-mv3`** (et non plus la racine du dépôt). Après chaque `npm run build`, cliquer sur ↻ dans `chrome://extensions` puis recharger l'onglet Bankin.
-
-La CI (`.github/workflows/ci.yml`) lance le lint, la vérification des types, le build, les tests unitaires (sous Paris, New York et UTC) et les scénarios de bout en bout sur chaque PR. Un tag `vX.Y.Z` (identique à la version de `package.json`) relance tous les contrôles et, s'ils passent, **publie** la version sur le Chrome Web Store (après l'examen de Google) puis la release GitHub. Procédure : [docs/RELEASE.md](docs/RELEASE.md) ; historique : [CHANGELOG.md](CHANGELOG.md).
-
-Le plan de modernisation est décrit dans [docs/AUDIT-MODERNISATION.md](docs/AUDIT-MODERNISATION.md).
+<p align="center">
+  <img src="docs/assets/brand/logo-128.png" alt="Logo Pecunio" width="64"><br>
+  <sub><i>Pecunio</i> — du latin <i>pecunia</i>, l'argent.</sub>
+</p>

@@ -7,7 +7,7 @@ import globals from 'globals';
 
 export default [
     {
-        ignores: ['libs/**', 'public/**', 'node_modules/**', 'dist/**', '.output/**', '.wxt/**', 'coverage/**'],
+        ignores: ['libs/**', 'public/**', 'node_modules/**', 'dist/**', '.output/**', '.wxt/**', 'coverage/**', 'test-results/**', 'playwright-report/**'],
     },
     js.configs.recommended,
     {

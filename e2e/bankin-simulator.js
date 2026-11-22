@@ -16,12 +16,16 @@ const CORS_HEADERS = {
     'access-control-allow-methods': 'GET, OPTIONS',
 };
 
-/** Mois proposés par le sélecteur de la page Catégories (données de 2024). */
-const MONTHS = [
+/** Mois proposés par défaut par le sélecteur de la page Catégories (données de 2024). */
+const DEFAULT_MONTHS = [
     { label: 'Janvier 2024', short: 'Janv.' },
     { label: 'Février 2024', short: 'Févr.' },
     { label: 'Mars 2024', short: 'Mars' },
 ];
+
+/** Réglages de la page simulée (voir installBankinSimulator). */
+let MONTHS = DEFAULT_MONTHS;
+let extraCss = '';
 
 const header = `
 <td class="bgw vam topHeader"><header class="dtb tlf w100">
@@ -106,7 +110,7 @@ function renderPage(pathname) {
 <body><form id="signin"><input type="email" placeholder="Votre email"><button type="submit">Me connecter</button></form></body></html>`;
     }
     const bodies = Object.fromEntries(['/accounts', '/categories', '/categories/2'].map((p) => [p, bodyFor(p)]));
-    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bankin' (simulé)</title></head>
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Bankin' (simulé)</title><style>${extraCss}</style></head>
 <body><div id="root" class="content h100"><section class="cntr mw100 w100 dashboard dtb h100"><section class="dtc vat h100">
 <table class="w100 h100"><tbody id="bankin-content">${bodyFor(pathname)}</tbody></table>
 </section></section></div>
@@ -116,10 +120,15 @@ function renderPage(pathname) {
 /**
  * Installe le Bankin simulé sur un contexte Playwright.
  * @param {import('@playwright/test').BrowserContext} context
- * @param {{ transactions?: object[], categories?: object[], accounts?: object[] }} [data]
+ * @param {{ transactions?: object[], categories?: object[], accounts?: object[],
+ *   months?: { label: string, short: string }[], css?: string }} [data]
+ *   months : mois du sélecteur de la page Catégories (le dernier est affiché) ;
+ *   css : styles ajoutés à la page (ex. couleurs des catégories de Bankin)
  * @returns {Promise<{ apiCalls: string[] }>} appels reçus par l'API (chemin + requête)
  */
 export async function installBankinSimulator(context, data = {}) {
+    MONTHS = data.months ?? DEFAULT_MONTHS;
+    extraCss = data.css ?? '';
     const state = {
         apiCalls: [],
         transactions: data.transactions ?? sampleTransactions(),
