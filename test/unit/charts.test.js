@@ -476,3 +476,14 @@ describe('Graphiques — destruction (B16)', () => {
         expect(update).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('LineBarChart — taille (B23)', () => {
+    test('B23 — canvas dans un conteneur de hauteur fixe, sans conserver le ratio', async () => {
+        const container = LineBarChart.createCanvasContainer();
+        expect(container.style.height).toBe(Config.CHART.LINE_CHART_HEIGHT);
+        const chart = new LineBarChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        const config = await chart.getChartJsConfig();
+        expect(config.options.maintainAspectRatio).toBe(false);
+        expect(config.options.responsive).toBe(true);
+    });
+});
