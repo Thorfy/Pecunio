@@ -144,7 +144,7 @@ class BudgetChart extends BaseChartData {
 
         // Initial Chart Load (after awaiting initializationPromise)
         this.initializationPromise.then(() => {
-             // Ensure data is loaded before first draw, especially categoryLookup for storage listener
+            if (this._destroyed) return; // graphique remplacé entre-temps
             this._setupStorageListener();
             this._updateChartView();
         }).catch(error => {
@@ -169,45 +169,61 @@ class BudgetChart extends BaseChartData {
         }
 
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-            chrome.storage.onChanged.addListener((changes, areaName) => {
-                if (areaName === 'local') {
-                    let relevantChangeDetected = false;
-                    for (const key in changes) {
-                        if (knownCategoryNamesForVisibility.includes(key)) {
-                            relevantChangeDetected = true;
-                            break;
-                        }
-                    }
-                    if (relevantChangeDetected) {
-                        console.log('[ChartDataBudget] _setupStorageListener: Relevant category visibility changed, calling _updateChartView.');
-                        this._updateChartView();
-                    }
+            // Un seul écouteur par graphique, retiré par destroy() (bug B16)
+            this._removeStorageListener();
+            this._storageListener = (changes, areaName) => {
+                if (areaName !== 'local') return;
+                const relevantChangeDetected = Object.keys(changes).some(key => knownCategoryNamesForVisibility.includes(key));
+                if (relevantChangeDetected && this.budgetChart) {
+                    this._updateChartView();
                 }
-            });
-            // console.log('[ChartDataBudget] _setupStorageListener: Added chrome.storage.onChanged listener.');
+            };
+            chrome.storage.onChanged.addListener(this._storageListener);
         } else {
             console.warn('[ChartDataBudget] _setupStorageListener: chrome.storage.onChanged not available.');
         }
     }
 
+    _removeStorageListener() {
+        if (this._storageListener && typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+            chrome.storage.onChanged.removeListener(this._storageListener);
+        }
+        this._storageListener = null;
+    }
+
+    /**
+     * Détruit le graphique, ses écouteurs et l'écouteur de stockage (bug B16).
+     */
+    destroy() {
+        this._destroyed = true;
+        this._removeStorageListener();
+        if (this.budgetChart) {
+            if (this.budgetChart._pecunioAmountVisibilityHandler) {
+                window.removeEventListener('pecunio_amounts_visibility_changed', this.budgetChart._pecunioAmountVisibilityHandler);
+            }
+            this.budgetChart.destroy();
+            this.budgetChart = null;
+        }
+    }
+
     async _initializeData() {
-        // console.log('[ChartDataBudget] _initializeData: Starting data organization.');
+        // Logger.debug('[ChartDataBudget] _initializeData: Starting data organization.');
         await this._organizeTransactions();
-        // console.log('[ChartDataBudget] _initializeData: Data organization complete.');
+        // Logger.debug('[ChartDataBudget] _initializeData: Data organization complete.');
     }
 
 
 
     async _organizeTransactions() {
         this.organizedData = {};
-        // console.log('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
+        // Logger.debug('[ChartDataBudget] _organizeTransactions: Starting. Initial this.transactions count:', this.transactions ? this.transactions.length : 0);
 
         const filteredTransactions = await this.applySettingOnData();
-        // console.log('[ChartDataBudget] _organizeTransactions: Transactions count after applySettingOnData:', filteredTransactions ? filteredTransactions.length : 0);
+        // Logger.debug('[ChartDataBudget] _organizeTransactions: Transactions count after applySettingOnData:', filteredTransactions ? filteredTransactions.length : 0);
 
         if (!filteredTransactions || filteredTransactions.length === 0) {
             console.warn('[ChartDataBudget] _organizeTransactions: No transactions to organize after filtering.');
-            // console.log(`[ChartDataBudget] _organizeTransactions: Completed (no data). Organized data for 0 years.`);
+            // Logger.debug(`[ChartDataBudget] _organizeTransactions: Completed (no data). Organized data for 0 years.`);
             return;
         }
 
@@ -231,7 +247,7 @@ class BudgetChart extends BaseChartData {
             if (!this.organizedData[year][month][categoryName]) this.organizedData[year][month][categoryName] = [];
             this.organizedData[year][month][categoryName].push(transaction.amount);
         });
-        // console.log(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
+        // Logger.debug(`[ChartDataBudget] _organizeTransactions: Completed. Organized data for ${Object.keys(this.organizedData).length} years.`);
     }
 
 
@@ -239,7 +255,7 @@ class BudgetChart extends BaseChartData {
 
 
     getCalculatedMonthlyValueForYear(year, calculationType = 'median') {
-        // console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
+        // Logger.debug(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Called for year ${year}, type: ${calculationType}.`);
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -294,12 +310,12 @@ class BudgetChart extends BaseChartData {
                 result[categoryName] = 0;
             }
         });
-        // console.log(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Result for ${year}, type ${calculationType}:`, result); // Verbose
+        // Logger.debug(`[ChartDataBudget] getCalculatedMonthlyValueForYear: Result for ${year}, type ${calculationType}:`, result); // Verbose
         return result;
     }
 
     getActualSpendingForMonth(year, month) {
-        // console.log(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
+        // Logger.debug(`[ChartDataBudget] getActualSpendingForMonth: Called for year ${year}, month ${month}.`);
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -324,7 +340,7 @@ class BudgetChart extends BaseChartData {
     }
 
     getHistoricalCalculatedValueForMonth(targetMonth, currentYear, calculationType = 'median') {
-        // console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
+        // Logger.debug(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Called for month ${targetMonth}, up to year ${currentYear - 1}, type: ${calculationType}.`);
         const result = {};
         // Initialize all known categories to 0
         if (this.categoryLookup && this.categoryLookup.size > 0) {
@@ -355,13 +371,13 @@ class BudgetChart extends BaseChartData {
                 result[categoryName] = BaseChartData.calculateMedian(historicalMonthlyTotals);
             }
         });
-        // console.log(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Result for month ${targetMonth}, type ${calculationType}:`, result); // Verbose
+        // Logger.debug(`[ChartDataBudget] getHistoricalCalculatedValueForMonth: Result for month ${targetMonth}, type ${calculationType}:`, result); // Verbose
         return result;
     }
 
     async prepareData(selectedYearLeft, selectedMonthLeft, selectedYearRight, selectedMonthRight, calculationType = 'median') {
         await this.initializationPromise;
-        // console.log(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
+        // Logger.debug(`[ChartDataBudget] prepareData: Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, Type: ${calculationType}.`);
 
         let primaryData = {}, comparisonData = {}, primaryLabel = '', comparisonLabel = '';
         const calcTypeString = calculationType.charAt(0).toUpperCase() + calculationType.slice(1);
@@ -402,12 +418,12 @@ class BudgetChart extends BaseChartData {
                         }
                     });
                 });
-                // console.log('[ChartDataBudget] prepareData: Fetched visibilitySettings:', visibilitySettings); // Verbose
+                // Logger.debug('[ChartDataBudget] prepareData: Fetched visibilitySettings:', visibilitySettings); // Verbose
             } catch (error) { // Should not be reached if promise always resolves
                 console.error('[ChartDataBudget] prepareData: Exception fetching visibility settings:', error);
             }
         } else if (categoryNamesArray.length === 0) {
-             // console.log('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
+             // Logger.debug('[ChartDataBudget] prepareData: No categories to fetch visibility for.');
         } else {
              console.warn('[ChartDataBudget] prepareData: chrome.storage.local not available.');
         }
@@ -419,10 +435,10 @@ class BudgetChart extends BaseChartData {
                 primaryDatasetData.push(primaryData[name] || 0);
                 comparisonDatasetData.push(comparisonData[name] || 0);
             } else {
-                // console.log(`[ChartDataBudget] prepareData: Filtering out hidden category: ${name}`); // Verbose
+                // Logger.debug(`[ChartDataBudget] prepareData: Filtering out hidden category: ${name}`); // Verbose
             }
         }
-        // console.log(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
+        // Logger.debug(`[ChartDataBudget] prepareData: Returning ${finalLabels.length} visible categories out of ${categoryNamesArray.length} total.`);
         return {
             labels: finalLabels,
             datasets: [
@@ -444,7 +460,7 @@ class BudgetChart extends BaseChartData {
 
         const selectedCalcType = this.calcTypeSelector.value;
 
-        // console.log(`[ChartDataBudget] _updateChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
+        // Logger.debug(`[ChartDataBudget] _updateChartView. Left: ${selectedYearLeft}/${selectedMonthLeft}, Right: ${selectedYearRight}/${selectedMonthRight}, CalcType: ${selectedCalcType}`);
 
         if (!this || typeof this.prepareData !== 'function') { // Check instance and method
             console.error('[ChartDataBudget] _updateChartView: instance is not ready or prepareData is missing.');
@@ -531,7 +547,7 @@ class BudgetChart extends BaseChartData {
                     }
                 });
                 BaseChartData._attachAmountVisibilityListener(this.budgetChart);
-                // console.log('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
+                // Logger.debug('[ChartDataBudget] _updateChartView: New budget bar chart created successfully.');
             } catch (error) {
                 console.error('[ChartDataBudget] _updateChartView: Error creating new budget bar chart:', error);
                 this.budgetChart = null;

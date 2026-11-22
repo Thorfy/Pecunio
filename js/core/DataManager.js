@@ -392,9 +392,9 @@ class DataManager {
         if (!validation.valid && validation.invalidItems.length > 0) {
             // Logger les données invalides pour debug
             console.warn(`[DataManager] Found ${validation.invalidItems.length} invalid ${dataType} out of ${data.length}:`);
-            validation.invalidItems.forEach(({ index, item, errors }) => {
+            validation.invalidItems.forEach(({ index, errors }) => {
+                // Pas de contenu de la transaction : ce sont des données bancaires
                 console.warn(`  [${dataType}][${index}] Errors: ${errors.join(', ')}`);
-                console.warn(`  [${dataType}][${index}] Data:`, JSON.stringify(item, null, 2));
             });
         }
 

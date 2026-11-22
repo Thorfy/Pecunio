@@ -137,7 +137,7 @@ class Evt {
      */
     enableDebug() {
         this._debugMode = true;
-        console.log('[Evt] Debug mode enabled');
+        Logger.debug('[Evt] Debug mode enabled');
     }
 
     /**
@@ -145,7 +145,7 @@ class Evt {
      */
     disableDebug() {
         this._debugMode = false;
-        console.log('[Evt] Debug mode disabled');
+        Logger.debug('[Evt] Debug mode disabled');
     }
 
     /**
@@ -179,7 +179,7 @@ class Evt {
      */
     _log(...args) {
         if (this._debugMode) {
-            console.log('[Evt]', ...args);
+            Logger.debug('[Evt]', ...args);
         }
     }
 

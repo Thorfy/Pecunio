@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 shouldSort: true,
             });
 
-            console.log('[Popup] Accounts loaded:', cache_data_accounts.length);
+            Logger.debug('[Popup] Accounts loaded:', cache_data_accounts.length);
         } else {
             console.warn('[Popup] No accounts found in cache');
         }
@@ -170,12 +170,12 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Recharger les comptes quand ils sont chargés depuis le cache ou l'API
     evt.listen('cache_data_accounts_loaded', async () => {
-        console.log('[Popup] Accounts cache loaded event received');
+        Logger.debug('[Popup] Accounts cache loaded event received');
         await loadAccounts();
     });
 
     evt.listen('data_loaded', async () => {
-        console.log('[Popup] Data loaded event received');
+        Logger.debug('[Popup] Data loaded event received');
         await cacheStore.load();
         await loadAccounts();
         const tx = cacheStore.get('transactions');
@@ -369,7 +369,7 @@ async function checkAndShowPinInstructions() {
                 }
             } catch (error) {
                 // Si l'API n'est pas disponible (ancienne version de Chrome), ne rien afficher
-                console.log('[Popup] Impossible de vérifier l\'état d\'épinglage:', error);
+                Logger.debug('[Popup] Impossible de vérifier l\'état d\'épinglage:', error);
                 pinInstructionsSection.style.display = 'none';
             }
         };

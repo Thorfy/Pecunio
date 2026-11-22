@@ -53,7 +53,7 @@ class ReviewPrompt {
             const dismissedAt = data[this.STORAGE_KEYS.DISMISSED_AT] || 0;
 
             await this._setStorage({ [this.STORAGE_KEYS.BUILD_COUNT]: buildCount });
-            console.log(`[ReviewPrompt] Builds: ${buildCount}, State: ${state}`);
+            Logger.debug(`[ReviewPrompt] Builds: ${buildCount}, State: ${state}`);
 
             if (!this._shouldShow(buildCount, state, dismissedAt)) return;
             if (document.querySelector(`#${this.DOM.OVERLAY_ID}`)) return;
@@ -75,7 +75,7 @@ class ReviewPrompt {
      */
     static _shouldShow(buildCount, state, dismissedAt) {
         if (typeof Config !== 'undefined' && Config.REVIEW && Config.REVIEW.DEBUG) {
-            console.log('[ReviewPrompt] DEBUG mode — forcing display');
+            Logger.debug('[ReviewPrompt] DEBUG mode — forcing display');
             return true;
         }
         if (state === this.STATE.REVIEWED || state === this.STATE.NEVER) return false;

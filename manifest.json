@@ -40,6 +40,7 @@
       ],
                           "js": [
               "js/core/Config.js",
+              "js/core/Logger.js",
               "js/core/DateRange.js",
               "js/core/TransactionFilter.js",
               "js/core/Evt.js",
@@ -60,6 +61,8 @@
               "js/charts/ExpenseTypeChart.js",
               "js/ui/AmountHider.js",
               "js/ui/ReviewPrompt.js",
+              "js/ui/StatusBanner.js",
+              "js/core/PageController.js",
               "libs/js/chart.js",
               "libs/js/chartjs-adapter-date-fns.js",
               "libs/js/chartjs-chart-sankey.js",
