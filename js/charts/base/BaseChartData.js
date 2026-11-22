@@ -82,104 +82,55 @@ class BaseChartData {
     }
 
     /**
-     * Applique les filtres de paramètres sur les données de transactions
-     * @param {Object} options - Options de filtrage
-     * @param {string} options.startDate - Date de début (optionnel)
-     * @param {string} options.endDate - Date de fin (optionnel)
-     * @param {Array} options.accountsSelected - Comptes sélectionnés (optionnel)
-     * @param {Array} options.exceptionCategories - Catégories à exclure (optionnel)
+     * Applique la période et les comptes des réglages (voir TransactionFilter).
+     * N'exclut pas les catégories d'exception : chaque graphique le fait lui-même.
+     * @param {Object} [options] - Surcharge des réglages
+     * @param {string|null} [options.startDate]
+     * @param {string|null} [options.endDate]
+     * @param {Array<number>|null} [options.accountsSelected]
      * @returns {Array} Transactions filtrées
      */
     applySettingOnData(options = {}) {
-        // Utiliser l'instance injectée ou fallback sur settingClass global (pour compatibilité)
-        const settingsProvider = this.settingsInstance || (typeof settingClass !== 'undefined' ? settingClass : null);
-        
-        const {
-            startDate = settingsProvider ? settingsProvider.getSetting('startDate') : null,
-            endDate = settingsProvider ? settingsProvider.getSetting('endDate') : null,
-            accountsSelected = this.accountsSelected,
-            exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS
-        } = options;
-
         if (!this.transactions || !Array.isArray(this.transactions)) {
             console.warn('[BaseChartData] applySettingOnData: No transactions to process or not an array.');
             return [];
         }
 
-        let startDateParsed = startDate ? Date.parse(startDate) : null;
-        let endDateParsed = endDate ? Date.parse(endDate) : null;
+        // Instance de Settings injectée, ou instance globale (compatibilité)
+        const settingsProvider = this.settingsInstance || (typeof settingClass !== 'undefined' ? settingClass : null);
+        const setting = (key) => (settingsProvider ? settingsProvider.getSetting(key) : null);
 
-        // Calibration : borner les dates aux données réelles (si date set < première data, partir de la première data)
-        const accountOnly = this.transactions.filter(t => {
-            if (!t || !t.date || !t.account || t.account.id == null) return false;
-            if (accountsSelected && accountsSelected.length > 0 && !accountsSelected.includes(parseInt(t.account.id))) return false;
-            return true;
-        });
-        const dates = accountOnly.map(t => this.getAdjustedDate(t)).filter(Boolean);
-        if (dates.length > 0) {
-            const firstDataTime = Math.min(...dates.map(d => d.getTime()));
-            const lastDataTime = Math.max(...dates.map(d => d.getTime()));
-            if (startDateParsed != null && startDateParsed < firstDataTime) startDateParsed = firstDataTime;
-            if (endDateParsed != null && endDateParsed > lastDataTime) endDateParsed = lastDataTime;
-        }
+        const {
+            startDate = setting('startDate'),
+            endDate = DateRange.getEffectiveEndDate({ endDate: setting('endDate'), noEndDate: !!setting('noEndDate') }),
+            accountsSelected = this.accountsSelected
+        } = options;
 
-        return this.transactions.filter(transaction => {
-            if (!transaction || !transaction.date || !transaction.account || transaction.account.id == null) {
-                return false;
-            }
-            const dateForProcessing = this.getAdjustedDate(transaction);
-            if (!dateForProcessing) return false;
-            const txTime = dateForProcessing.getTime();
-
-            let dateFilterPassed = true;
-            if (startDateParsed != null && endDateParsed != null) {
-                dateFilterPassed = txTime >= startDateParsed && txTime <= endDateParsed;
-            } else if (startDateParsed != null) {
-                dateFilterPassed = txTime >= startDateParsed;
-            } else if (endDateParsed != null) {
-                dateFilterPassed = txTime <= endDateParsed;
-            }
-
-            let accountFilterPassed = true;
-            if (accountsSelected && accountsSelected.length > 0) {
-                accountFilterPassed = accountsSelected.includes(parseInt(transaction.account.id));
-            }
-            return dateFilterPassed && accountFilterPassed;
-        });
+        return TransactionFilter.apply(
+            this.transactions.filter(t => t && t.account && t.account.id != null),
+            { startDate, endDate, accountsSelected }
+        );
     }
 
     /**
-     * Applique les filtres de paramètres avec filtrage par mois/année spécifiques
-     * @param {string} targetMonth - Mois cible (nom du mois)
-     * @param {number} targetYear - Année cible
-     * @param {Array} exceptionCategories - Catégories à exclure (optionnel)
+     * Transactions d'un mois donné (mois de rattachement Bankin).
+     * @param {string|number} targetMonth - Mois tel qu'affiché par Bankin (« février »),
+     *   en français ou en anglais, ou numéro 1-12 — indépendant de la langue du navigateur (bug B19)
+     * @param {string|number} targetYear - Année
      * @returns {Array} Transactions filtrées
      */
-    applySettingOnDataByMonth(targetMonth, targetYear, exceptionCategories = Config.CATEGORIES.EXCEPTION_IDS) {
+    applySettingOnDataByMonth(targetMonth, targetYear) {
         if (!this.transactions || !Array.isArray(this.transactions)) {
             return [];
         }
-
-        return this.transactions.filter(transaction => {
-            if (!transaction || !transaction.date) {
-                return false;
-            }
-
-            // Utiliser la date ajustée qui tient compte de current_month
-            const transactionDate = this.getAdjustedDate(transaction);
-            if (!transactionDate) {
-                return false;
-            }
-            
-            // S'assurer que la date est au premier jour du mois pour la comparaison
-            const dateForComparison = new Date(transactionDate);
-            dateForComparison.setDate(1);
-            
-            const transactionMonth = dateForComparison.toLocaleString('default', { month: 'long' });
-            const transactionYear = dateForComparison.getUTCFullYear();
-            
-            return transactionMonth === targetMonth && transactionYear === parseInt(targetYear);
-        });
+        const month = DateRange.monthIndexFromLabel(targetMonth);
+        const year = parseInt(targetYear, 10);
+        if (month == null || isNaN(year)) {
+            console.warn('[BaseChartData] applySettingOnDataByMonth: unknown month', targetMonth, targetYear);
+            return [];
+        }
+        const wanted = `${year}-${String(month).padStart(2, '0')}`;
+        return this.transactions.filter(transaction => DateRange.getBudgetMonth(transaction) === wanted);
     }
 
     /**
@@ -206,8 +157,8 @@ class BaseChartData {
                 if (transaction.category.id === category.id) {
                     preparedData.get(category.id).push(transaction);
                 } else {
-                    // Vérifier les catégories enfants
-                    category.categories.forEach(childCategory => {
+                    // Vérifier les catégories enfants (absentes pour certaines catégories : bug B17)
+                    (category.categories || []).forEach(childCategory => {
                         if (!preparedData.has(childCategory.id)) {
                             preparedData.set(childCategory.id, []);
                         }
@@ -243,7 +194,7 @@ class BaseChartData {
                 if (transaction.category.id === category.id && !exceptionCategories.includes(transaction.category.id)) {
                     preparedData[category.id].push(transaction);
                 } else {
-                    category.categories.forEach(childCategory => {
+                    (category.categories || []).forEach(childCategory => {
                         if (transaction.category.id === childCategory.id && !exceptionCategories.includes(transaction.category.id)) {
                             preparedData[category.id].push(transaction);
                         }
@@ -263,17 +214,7 @@ class BaseChartData {
      * @returns {Date} Date ajustée selon current_month
      */
     getAdjustedDate(transaction) {
-        if (!transaction || !transaction.date) {
-            return null;
-        }
-        
-        let adjustedDate = new Date(transaction.date);
-        if (transaction.current_month != null && typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)) {
-            adjustedDate.setDate(1);
-            adjustedDate.setMonth(adjustedDate.getMonth() + transaction.current_month);
-        }
-        
-        return adjustedDate;
+        return DateRange.toLocalDate(DateRange.getBudgetDate(transaction));
     }
 
     /**
@@ -308,9 +249,7 @@ class BaseChartData {
      * @returns {string} Date formatée
      */
     formatDateToYearMonth(date) {
-        const month = `${date.getMonth() + 1}`.padStart(2, "0");
-        const year = date.getUTCFullYear();
-        return [year, month].join("-");
+        return (DateRange.toDateOnly(date) || '').slice(0, 7);
     }
 
     /**

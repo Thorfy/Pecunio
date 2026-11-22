@@ -83,7 +83,8 @@ class ReportChartDataBuilder {
         const byMonth = new Map();
         mergedData.forEach(row => {
             if (row.amount >= 0) return;
-            const d = row.date ? String(row.date).slice(0, 7) : '';
+            // Mois de rattachement Bankin s'il est connu, sinon mois de la date
+            const d = row.budgetMonth || (row.date ? String(row.date).slice(0, 7) : '');
             if (!d) return;
             const cat = row.parentCategoryName || row.categoryName || 'Non catégorisé';
             if (!byMonth.has(d)) byMonth.set(d, new Map());

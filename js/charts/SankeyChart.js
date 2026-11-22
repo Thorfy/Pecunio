@@ -132,6 +132,21 @@ class SankeyChart extends BaseChartData {
         return datasets
 
     }
+    /**
+     * Flux net d'un ensemble de transactions, toujours positif ou nul.
+     * Revenus : somme des montants ; dépenses : opposé de la somme
+     * (une dépense de 100 € remboursée de 40 € donne 60 €).
+     * @param {Array} transactions
+     * @param {boolean} isIncome
+     * @returns {number}
+     */
+    static netFlow(transactions, isIncome) {
+        const net = transactions.reduce((total, transaction) =>
+            transaction && typeof transaction.amount === 'number' ? total + transaction.amount : total, 0);
+        const flow = isIncome ? net : -net;
+        return flow > 0 ? Math.round(flow * 100) / 100 : 0;
+    }
+
     convertDataToSankeyFormat(data, exceptionalCategories = [2]) {
         var sankeyData = [];
         let totalExpense = 0;
@@ -162,12 +177,8 @@ class SankeyChart extends BaseChartData {
                         return;
                     }
 
-                    let totalAmount = transactions.reduce(function (total, transaction) {
-                        if (!transaction || typeof transaction.amount !== 'number') {
-                            return total;
-                        }
-                        return total + Math.abs(transaction.amount);  // On utilise Math.abs pour éviter les valeurs négatives
-                    }, 0);
+                    // Montant net : un remboursement réduit la dépense (bug B18)
+                    const totalAmount = SankeyChart.netFlow(transactions, exceptionalCategories.includes(node.id));
 
                     if (exceptionalCategories.includes(node.id) && totalAmount > 0) {
                         totalBudget += totalAmount;
@@ -185,12 +196,7 @@ class SankeyChart extends BaseChartData {
                 return;
             }
 
-            let totalAmount = transactions.reduce(function (total, transaction) {
-                if (!transaction || typeof transaction.amount !== 'number') {
-                    return total;
-                }
-                return total + Math.abs(transaction.amount);  // On utilise Math.abs pour éviter les valeurs négatives
-            }, 0);
+            const totalAmount = SankeyChart.netFlow(transactions, exceptionalCategories.includes(node.id));
 
             if (!exceptionalCategories.includes(node.id) && totalAmount > 0) {
                 totalExpense += totalAmount;

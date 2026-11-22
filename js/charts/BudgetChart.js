@@ -200,11 +200,10 @@ class BudgetChart extends BaseChartData {
             if (this.isExceptionCategory(transaction.category.id)) {
                 return; // Skip this transaction
             }
-            // Utiliser la date ajustée qui tient compte de current_month
-            const date = this.getAdjustedDate(transaction);
-            if (!date || isNaN(date.getTime())) return;
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
+            // Mois de rattachement Bankin (current_month), sans décalage de fuseau
+            const parts = DateRange.parts(DateRange.getBudgetDate(transaction));
+            if (!parts) return;
+            const { year, month } = parts;
             const categoryName = this.getCategoryNameById(transaction.category.id);
             if (!categoryName) {
                  console.warn(`[ChartDataBudget] _organizeTransactions: Cat ID ${transaction.category.id} not in lookup for tr ${transaction.id || 'N/A'}`);

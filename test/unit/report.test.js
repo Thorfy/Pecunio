@@ -100,6 +100,15 @@ describe('ReportChartDataBuilder', () => {
         ]);
     });
 
+    test('évolution : regroupe par mois de rattachement quand il est connu', () => {
+        const data = ReportChartDataBuilder.buildEvolutionData([
+            row({ date: '2024-01-29', budgetMonth: '2024-02', amount: -10, parentCategoryName: 'A' }),
+            row({ date: '2024-02-03', budgetMonth: '2024-02', amount: -5, parentCategoryName: 'A' }),
+        ]);
+        expect(data.labels).toEqual(['Fév 2024']);
+        expect(data.datasets[0].data).toEqual([15]);
+    });
+
     test('Sankey : Dépenses → parents → sous-catégories', () => {
         const { data, colorMap } = ReportChartDataBuilder.buildSankeyData([
             row({ amount: -30, parentCategoryName: 'Alimentation', categoryName: 'Supermarché' }),
