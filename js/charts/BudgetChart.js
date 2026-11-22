@@ -4,6 +4,7 @@ import { DateRange } from '../core/DateRange.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
 import { THEME } from '../ui/theme.js';
+import { ColorParser } from '../utils/ColorParser.js';
 import { MONTH_NAMES, formatEuros, formatNumber } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 import { BUDGET_PRESETS, formatDelta, presetPeriods, toExpenseComparison } from './budgetComparison.js';
@@ -51,6 +52,33 @@ export class BudgetChart extends BaseChartData {
 
     /** Hauteur d'une ligne (catégorie) du graphique horizontal, en pixels. */
     static ROW_HEIGHT = 34;
+
+    /** Opacité des barres de la période de référence (même couleur, plus claire). */
+    static COMPARISON_ALPHA = 0.35;
+
+    /**
+     * Même couleur avec une opacité : « rgb(1, 2, 3) » → « rgba(1, 2, 3, 0.35) ».
+     * @param {string} color
+     * @param {number} alpha
+     */
+    static withAlpha(color, alpha) {
+        const match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color || '');
+        return match ? `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})` : color;
+    }
+
+    /**
+     * Couleur de Bankin de chaque catégorie (par son nom), violet de Pecunio à défaut.
+     * @param {string[]} names
+     * @returns {string[]}
+     */
+    _categoryColors(names) {
+        return names.map((name) => {
+            const category = this.categories?.find((c) => c && c.name === name);
+            const color = category ? ColorParser.parseColorCSS(`categoryColor_${category.id}`) : '';
+            // Sans règle CSS, la couleur calculée est transparente
+            return color && !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(color) ? color : THEME.accent;
+        });
+    }
 
     static ALL_MONTHS_LABEL = 'Tous les mois';
 
@@ -518,13 +546,17 @@ export class BudgetChart extends BaseChartData {
         this._renderSummary(comparison, totals, rows.length);
 
         this.canvasContainer.style.height = `${Math.max(160, rows.length * BudgetChart.ROW_HEIGHT + 70)}px`;
+        // Couleurs des catégories de Bankin : pleine pour la période, claire pour la référence
+        const colors = this._categoryColors(rows.map((r) => r.name));
+        const light = colors.map((c) => BudgetChart.withAlpha(c, BudgetChart.COMPARISON_ALPHA));
+        const legendItem = (text, fillStyle, datasetIndex) => ({ text, fillStyle, strokeStyle: fillStyle, lineWidth: 0, datasetIndex, hidden: false });
         const config = {
             type: 'bar',
             data: {
                 labels: rows.map((r) => r.name),
                 datasets: [
-                    { label: comparison.primaryLabel, data: rows.map((r) => r.primary), backgroundColor: THEME.accent, borderRadius: 4 },
-                    { label: comparison.comparisonLabel, data: rows.map((r) => r.comparison), backgroundColor: 'rgba(101, 98, 252, 0.28)', borderRadius: 4 },
+                    { label: comparison.primaryLabel, data: rows.map((r) => r.primary), backgroundColor: colors, borderRadius: 4 },
+                    { label: comparison.comparisonLabel, data: rows.map((r) => r.comparison), backgroundColor: light, borderColor: colors, borderWidth: 1, borderRadius: 4 },
                 ],
             },
             options: {
@@ -539,7 +571,17 @@ export class BudgetChart extends BaseChartData {
                     y: { grid: { display: false } },
                 },
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: {
+                        position: 'top',
+                        // Une couleur par catégorie : la légende montre « foncé / clair » en gris neutre
+                        labels: {
+                            generateLabels: () => [
+                                legendItem(comparison.primaryLabel, THEME.textMuted, 0),
+                                legendItem(comparison.comparisonLabel, BudgetChart.withAlpha('rgb(91, 107, 124)', BudgetChart.COMPARISON_ALPHA), 1),
+                            ],
+                        },
+                        onClick: () => {},
+                    },
                     tooltip: {
                         mode: 'index',
                         intersect: false,

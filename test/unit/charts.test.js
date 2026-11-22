@@ -658,3 +658,20 @@ describe('LineBarChart — barre d\'outils (UX-2a)', () => {
         expect(LineBarChart.title('all')).toBe('Revenus et dépenses par mois');
     });
 });
+
+describe('BudgetChart — couleurs des catégories', () => {
+    test('même couleur, plus claire, pour la période de référence', () => {
+        expect(BudgetChart.withAlpha('rgb(255, 178, 0)', 0.35)).toBe('rgba(255, 178, 0, 0.35)');
+        expect(BudgetChart.withAlpha('rgba(1, 2, 3, 1)', 0.5)).toBe('rgba(1, 2, 3, 0.5)');
+        expect(BudgetChart.withAlpha('#6562fc', 0.5)).toBe('#6562fc');
+    });
+
+    test('couleur de Bankin de chaque catégorie, violet à défaut', async () => {
+        const style = document.createElement('style');
+        style.textContent = '.categoryColor_159 { background-color: rgb(103, 127, 224); }';
+        document.head.appendChild(style);
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        expect(chart._categoryColors(['Logement', 'Banque', 'Inconnue'])).toEqual(['rgb(103, 127, 224)', '#6562fc', '#6562fc']);
+        style.remove();
+    });
+});
