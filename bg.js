@@ -12,6 +12,9 @@
  *   inaccessible aux content scripts) (bug B2).
  *
  * Les noms des en-têtes doivent rester alignés avec Config.API.REQUIRED_HEADERS.
+ *
+ * La popup n'est plus ouverte automatiquement à chaque page Bankin (bug B11) :
+ * l'utilisateur l'ouvre depuis l'icône de l'extension.
  */
 const REQUIRED_HEADERS = ['Authorization', 'Bankin-Version', 'Client-Id', 'Client-Secret'];
 const SESSION_KEY = 'pecunio_auth_headers';
@@ -82,18 +85,4 @@ chrome.runtime.onConnect.addListener((port) => {
     readStoredHeaders().then((headers) => {
         if (headers && portsByTabId.get(tabId) === port) postHeaders(port, headers);
     });
-});
-
-chrome.runtime.onMessage.addListener((message) => {
-    if (message?.action !== 'openPopup') return false;
-    // openPopup() exige un geste utilisateur : en cas d'échec, un badge signale la popup.
-    chrome.action
-        .openPopup()
-        .then(() => chrome.action.setBadgeText({ text: '' }))
-        .catch((error) => {
-            console.log("[BG] Impossible d'ouvrir la popup automatiquement :", error.message);
-            chrome.action.setBadgeText({ text: '!' });
-            chrome.action.setBadgeBackgroundColor({ color: '#667eea' });
-        });
-    return false; // pas de réponse asynchrone
 });

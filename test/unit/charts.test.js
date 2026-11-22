@@ -436,3 +436,43 @@ describe('BudgetChart — infobulle', () => {
         expect(BudgetChart.formatTooltipLabel({ dataset: {} }, true)).toBe('');
     });
 });
+
+describe('Graphiques — destruction (B16)', () => {
+    test('BaseChartData.destroy détruit l\'instance Chart.js et son écouteur de masquage', () => {
+        const chart = new BaseChartData([], CATEGORIES);
+        const handler = () => {};
+        const instance = { destroy: vi.fn(), _pecunioAmountVisibilityHandler: handler };
+        const remove = vi.spyOn(window, 'removeEventListener');
+        chart.chartInstance = instance;
+        chart.destroy();
+        expect(instance.destroy).toHaveBeenCalled();
+        expect(remove).toHaveBeenCalledWith('pecunio_amounts_visibility_changed', handler);
+        expect(chart.chartInstance).toBeNull();
+        expect(() => chart.destroy()).not.toThrow();
+    });
+
+    test('B16 — BudgetChart : un seul écouteur de stockage, retiré par destroy()', async () => {
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        await chart.initializationPromise;
+        chart._setupStorageListener();
+        chart._setupStorageListener();
+        expect(chrome.storage.onChanged.listenerCount).toBe(1);
+        const budgetChart = { destroy: vi.fn() };
+        chart.budgetChart = budgetChart;
+        chart.destroy();
+        expect(chrome.storage.onChanged.listenerCount).toBe(0);
+        expect(budgetChart.destroy).toHaveBeenCalled();
+        expect(chart.budgetChart).toBeNull();
+    });
+
+    test('B16 — BudgetChart : masquer une catégorie redessine le graphique affiché', async () => {
+        const chart = new BudgetChart(sampleTransactions(), CATEGORIES, null, {}, fakeSettings({}));
+        await chart.initializationPromise;
+        const update = vi.spyOn(chart, '_updateChartView').mockResolvedValue();
+        chart._setupStorageListener();
+        chart.budgetChart = { destroy() {} };
+        chrome.storage.local.set({ Logement: true });
+        chrome.storage.local.set({ autreCle: 1 });
+        expect(update).toHaveBeenCalledTimes(1);
+    });
+});

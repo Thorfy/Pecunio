@@ -104,20 +104,11 @@ describe('bg.js — en-têtes d\'authentification', () => {
     });
 });
 
-describe('bg.js — ouverture de la popup', () => {
-    test('openPopup réussi : retire le badge', async () => {
+describe('bg.js — popup (B11)', () => {
+    test('B11 — la popup n\'est plus ouverte automatiquement ni signalée par un badge', () => {
+        expect(chrome.runtime.onMessage.listenerCount).toBe(0);
         chrome.runtime.onMessage.dispatch({ action: 'openPopup' }, {}, () => {});
-        await vi.waitFor(() => expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '' }));
-    });
-
-    test('openPopup refusé (pas de geste utilisateur) : affiche un badge « ! »', async () => {
-        chrome.action.openPopup.mockRejectedValueOnce(new Error('user gesture required'));
-        chrome.runtime.onMessage.dispatch({ action: 'openPopup' }, {}, () => {});
-        await vi.waitFor(() => expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '!' }));
-    });
-
-    test('autres messages ignorés', () => {
-        chrome.runtime.onMessage.dispatch({ action: 'autre' }, {}, () => {});
         expect(chrome.action.openPopup).not.toHaveBeenCalled();
+        expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
     });
 });

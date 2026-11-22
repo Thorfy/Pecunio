@@ -12,33 +12,7 @@ class LineBarChart extends BaseChartData {
         REFRESH_ICON: Config.SELECTORS.REFRESH_ICON
     };
 
-    /**
-     * Configure le bouton de rafraîchissement
-     * @param {DataManager} dataManager - Instance du DataManager
-     * @param {Settings} settingsInstance - Instance de Settings
-     */
-    static setupRefreshButton(dataManager, settingsInstance) {
-        const refreshIcon = document.querySelector(LineBarChart.SELECTORS.REFRESH_ICON);
-        if (refreshIcon) {
-            refreshIcon.addEventListener("click", async () => {
-                try {
-                    // refreshData() vide tout le cache avant de recharger les données
-                    setTimeout(async () => {
-                        try {
-                            await dataManager.refreshData();
-                        } catch (error) {
-                            console.error("[LineBarChart] Error refreshing data:", error);
-                            if (error.message && error.message.includes('Authentication')) {
-                                console.error("[LineBarChart] Authentication not ready. Please wait a moment and try again.");
-                            }
-                        }
-                    }, 1100);
-                } catch (error) {
-                    console.error("[LineBarChart] Error setting up refresh:", error);
-                }
-            });
-        }
-    }
+    // Le bouton ↻ de Bankin est géré par PageController (un seul écouteur, bug B4).
 
     /**
      * Crée le conteneur principal pour le chart
@@ -48,15 +22,14 @@ class LineBarChart extends BaseChartData {
     static createMainContainer(homeBlock) {
         // Injecter les styles Pecunio
         InjectedStyles.inject();
-        
-        // Style pour enlever la limitation de largeur
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .homeBlock > div {
-                max-width: none !important;
-            }
-        `;
-        document.head.appendChild(style);
+
+        // Style pour enlever la limitation de largeur (ajouté une seule fois)
+        if (!document.getElementById('pecunio-home-block-style')) {
+            const style = document.createElement('style');
+            style.id = 'pecunio-home-block-style';
+            style.textContent = '.homeBlock > div { max-width: none !important; }';
+            document.head.appendChild(style);
+        }
         homeBlock.innerHTML = "";
 
         // Container principal avec style Pecunio
