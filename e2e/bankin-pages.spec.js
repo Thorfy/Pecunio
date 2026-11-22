@@ -125,6 +125,13 @@ test.describe('Page Catégories', () => {
         // Rythme du mois (lot UX-3a)
         await expect(page.locator('.pecunio-pace-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-pace-wrapper')).toContainText('Rythme du mois');
+        // Juste sous le donut et les types de dépenses, avant les flux financiers
+        const paceFirst = await page.evaluate(() => {
+            const pace = document.querySelector('.pecunio-pace-wrapper');
+            const sankey = document.querySelector('.pecunio-sankey-wrapper');
+            return Boolean(pace.compareDocumentPosition(sankey) & Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+        expect(paceFirst).toBe(true);
 
         // Changement de mois : les graphiques sont reconstruits (nouveaux canvas)
         await page.locator(SANKEY_CHART).evaluate((canvas) => canvas.setAttribute('data-avant', ''));

@@ -122,6 +122,6 @@ describe('Contrat Bankin — PageController sur les vraies pages', () => {
     });
 
     test('page Catégories : types de dépenses et diagramme de flux, pour le mois affiché', async () => {
-        expect(await start('categories', 'https://app2.bankin.com/categories')).toEqual(['ExpenseTypeChart', 'SankeyChart', 'MonthPaceChart']);
+        expect(await start('categories', 'https://app2.bankin.com/categories')).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
     });
 });

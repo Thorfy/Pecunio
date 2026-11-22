@@ -223,13 +223,14 @@ describe('PageController — construction des graphiques', () => {
     test('page Catégories : types de dépenses, flux et rythme du mois pour le mois affiché', async () => {
         const { controller, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
         await controller.requestBuild();
-        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'SankeyChart', 'MonthPaceChart']);
+        // Rythme du mois avant le diagramme des flux (visible sans défiler)
+        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
         expect(charts.created[0].args[2]).toEqual(['septembre', '2026']);
-        expect(charts.created[2].args[2]).toEqual(['septembre', '2026']);
+        expect(charts.created[1].args[2]).toEqual(['septembre', '2026']);
         // Reconstruction (changement de mois) : une seule carte de rythme
         await controller.requestBuild();
         expect(document.querySelectorAll('.pecunio-pace-wrapper')).toHaveLength(1);
-        expect(charts.created[2].destroy).toHaveBeenCalled();
+        expect(charts.created[1].destroy).toHaveBeenCalled();
     });
 
     test("page de détail d'une catégorie : historique de la catégorie de l'adresse", async () => {
@@ -344,7 +345,7 @@ describe('PageController — navigation (B6)', () => {
         await controller.whenIdle();
 
         expect(document.querySelectorAll(expenseWrappers)).toHaveLength(0);
-        const [expenseType, sankey, pace, history] = charts.created;
+        const [expenseType, pace, sankey, history] = charts.created;
         expect([expenseType, sankey, pace].every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
         // Onglet Revenus : historique des revenus (lot UX-3a)
         expect(history.kind).toBe('CategoryHistoryChart');
@@ -358,7 +359,7 @@ describe('PageController — navigation (B6)', () => {
         expect(kinds(charts.created)).toEqual(['CategoryHistoryChart']);
         navigate(win, 'https://app2.bankin.com/categories');
         await controller.whenIdle();
-        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart', 'ExpenseTypeChart', 'SankeyChart', 'MonthPaceChart']);
+        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart', 'ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
         // L'historique ne reste pas sur la page Catégories
         expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(0);
     });

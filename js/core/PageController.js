@@ -405,17 +405,18 @@ export class PageController {
         this.charts.push(expenseTypeChart);
         await expenseTypeChart.render(rowContainer);
 
-        const sankeyChart = new SankeyChart(data.transactions, data.categories, monthParams, this.settings);
-        this.charts.push(sankeyChart);
-        await sankeyChart.render(categoryBlock);
-
-        // Rythme du mois (lot UX-3a)
+        // Rythme du mois (lot UX-3a) : juste sous le donut et les types de
+        // dépenses, visible sans faire défiler (le diagramme des flux est long)
         const { MonthPaceChart: PaceChart } = this.chartClasses;
         if (PaceChart) {
             const paceChart = new PaceChart(data.transactions, data.categories, monthParams, this.settings);
             this.charts.push(paceChart);
             await paceChart.render(categoryBlock);
         }
+
+        const sankeyChart = new SankeyChart(data.transactions, data.categories, monthParams, this.settings);
+        this.charts.push(sankeyChart);
+        await sankeyChart.render(categoryBlock);
         return true;
     }
 
