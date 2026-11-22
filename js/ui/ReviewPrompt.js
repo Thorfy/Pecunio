@@ -1,3 +1,6 @@
+import { Config } from '../core/Config.js';
+import { Logger } from '../core/Logger.js';
+
 /**
  * ReviewPrompt - Modale d'invitation à laisser un avis Chrome Web Store.
  * S'affiche sur les pages Bankin (comptes / catégories) après plusieurs utilisations
@@ -5,7 +8,7 @@
  *
  * Dépendance globale : Config (optionnel, pour Config.REVIEW.DEBUG).
  */
-class ReviewPrompt {
+export class ReviewPrompt {
     static STORE_URL = 'https://chromewebstore.google.com/detail/pecunio/jeomdpldhaigmdbjobamliaipijhmiie/reviews';
     static MIN_BUILDS_BEFORE_PROMPT = 5;
     static DISMISS_DELAY_DAYS = 14;

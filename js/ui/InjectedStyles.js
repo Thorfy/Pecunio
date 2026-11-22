@@ -1,8 +1,10 @@
+import { Chart } from '../lib/chart.js';
+
 /**
  * InjectedStyles - Styles partagés pour tous les éléments injectés sur Bankin
  * Design cohérent avec la popup mais adapté pour l'espace réduit du site
  */
-class InjectedStyles {
+export class InjectedStyles {
     static getStyles() {
         return `
             /* ===== STYLES PECUNIO INJECTÉS ===== */

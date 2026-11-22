@@ -1,3 +1,5 @@
+import { Config } from './Config.js';
+
 /**
  * CacheStore - Cache des données de l'API Bankin (transactions, catégories, comptes)
  *
@@ -6,7 +8,7 @@
  * des réglages n'efface pas le cache (et inversement) (bug B13).
  * Clés chrome.storage inchangées : cache_data_* / cache_time_*.
  */
-class CacheStore {
+export class CacheStore {
     static DATA_TYPES = ['transactions', 'categories', 'accounts'];
 
     static getAllKeys(dataTypes = CacheStore.DATA_TYPES) {

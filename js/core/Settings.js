@@ -1,8 +1,11 @@
+import { evt } from './events.js';
+import { Logger } from './Logger.js';
+
 /**
  * Settings - Préférences utilisateur (période, comptes, affichage)
  * Le cache de l'API Bankin est géré par CacheStore.
  */
-class Settings {
+export class Settings {
     /**
      * Préférences utilisateur. Le cache de l'API Bankin (cache_data_* / cache_time_*)
      * est géré à part par CacheStore.

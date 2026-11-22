@@ -1,9 +1,11 @@
+import { Config } from '../core/Config.js';
+
 /**
  * ReportStorage - Service de stockage des données du rapport PDF
  * Utilise chrome.storage.local et Config.REPORT.STORAGE_KEYS
  * Utilisé par la popup (écriture) et la page report.html (lecture)
  */
-class ReportStorage {
+export class ReportStorage {
     /**
      * Charge les données du rapport depuis le stockage
      * @returns {Promise<{mergedData: Array, stats: Object, params: Object}>}

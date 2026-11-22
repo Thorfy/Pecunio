@@ -6,7 +6,7 @@
  * Un seul bandeau à la fois ; chaque message a une clé pour pouvoir être
  * retiré sans effacer un autre message plus récent.
  */
-class StatusBanner {
+export class StatusBanner {
     static ID = 'pecunio-status-banner';
 
     static COLORS = {

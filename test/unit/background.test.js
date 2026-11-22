@@ -2,12 +2,18 @@
 // et transmission aux onglets via des ports.
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { AUTH_HEADERS } from '../fixtures/bankin.js';
-import { createPort } from '../helpers/fake-chrome.js';
+import { createFakeChrome, createPort } from '../helpers/fake-chrome.js';
 
-/** Démarre (ou redémarre) le service worker avec le `chrome` courant. */
-const startServiceWorker = async () => {
+/**
+ * Démarre le service worker. Pour simuler un redémarrage par Chrome, on repart
+ * d'un `chrome` neuf (écouteurs et mémoire perdus) en ne gardant que
+ * chrome.storage.session, comme le fait le navigateur.
+ */
+const startServiceWorker = async ({ restart = false } = {}) => {
+    if (restart) globalThis.chrome = createFakeChrome({ session: chrome.storage.session._data });
     vi.resetModules();
-    await import('/bg.js');
+    const { startAuthHeaderRelay } = await import('/js/background/authHeaders.js');
+    startAuthHeaderRelay();
 };
 
 /** Simule une requête de Bankin vers /v2/accounts. */
@@ -58,7 +64,7 @@ describe('bg.js — en-têtes d\'authentification', () => {
 
     test('B2 — les en-têtes survivent au redémarrage du service worker', async () => {
         bankinRequest();
-        await startServiceWorker(); // Chrome a tué puis relancé le service worker
+        await startServiceWorker({ restart: true }); // Chrome a tué puis relancé le service worker
         const port = openTab(4);
         await vi.waitFor(() => expect(port.postMessage).toHaveBeenCalledWith({ data: AUTH_HEADERS }), { timeout: 200 });
     });

@@ -1,3 +1,7 @@
+import { Config } from '../../core/Config.js';
+import { DateRange } from '../../core/DateRange.js';
+import { TransactionFilter } from '../../core/TransactionFilter.js';
+
 /**
  * Interface IChart - Contrat que tous les charts doivent respecter
  * 
@@ -26,7 +30,7 @@
  * 
  * Implémente IChart
  */
-class BaseChartData {
+export class BaseChartData {
     constructor(transactions, categories, accountsSelected = null, settings = null, settingsInstance = null) {
         this.transactions = transactions || [];
         this.categories = categories || [];
@@ -111,8 +115,8 @@ class BaseChartData {
             return [];
         }
 
-        // Instance de Settings injectée, ou instance globale (compatibilité)
-        const settingsProvider = this.settingsInstance || (typeof settingClass !== 'undefined' ? settingClass : null);
+        // Instance de Settings fournie au constructeur
+        const settingsProvider = this.settingsInstance;
         const setting = (key) => (settingsProvider ? settingsProvider.getSetting(key) : null);
 
         const {

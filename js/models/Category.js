@@ -2,7 +2,7 @@
  * Category - Modèle représentant une catégorie de transaction
  * Utilisé pour organiser et classifier les transactions
  */
-class Category {
+export class Category {
     constructor(id, name, parentId = null) {
         this.id = id;
         this.name = name;

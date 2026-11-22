@@ -2,7 +2,7 @@
  * ColorParser - Utilitaire pour parser les couleurs CSS
  * Extrait les couleurs depuis les classes CSS de Bankin
  */
-class ColorParser {
+export class ColorParser {
     /**
      * Parse une couleur CSS depuis une classe CSS
      * @param {string} strClass - La classe CSS (ex: "categoryColor_123")

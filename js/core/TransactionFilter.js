@@ -1,3 +1,5 @@
+import { DateRange } from './DateRange.js';
+
 /**
  * TransactionFilter - Filtre unique des transactions (période, comptes, catégories)
  *
@@ -9,7 +11,7 @@
  * La période porte sur la date budgétaire (date réelle + `current_month`),
  * bornes incluses, comparées en `YYYY-MM-DD` (voir DateRange).
  */
-class TransactionFilter {
+export class TransactionFilter {
     /** @param {object} t */
     static accountIdOf(t) {
         const id = t.accountId ?? t.account?.id;

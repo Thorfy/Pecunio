@@ -2,7 +2,7 @@
  * Account - Modèle représentant un compte bancaire
  * Utilisé pour identifier la source des transactions
  */
-class Account {
+export class Account {
     constructor(id, name) {
         this.id = id;
         this.name = name;

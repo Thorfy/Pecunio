@@ -1,4 +1,10 @@
-class BudgetChart extends BaseChartData {
+import { Config } from '../core/Config.js';
+import { DateRange } from '../core/DateRange.js';
+import { Chart } from '../lib/chart.js';
+import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { BaseChartData } from './base/BaseChartData.js';
+
+export class BudgetChart extends BaseChartData {
     /**
      * Libellé de l'infobulle d'une barre : « Série: -158.30 € ».
      * Pour un graphique en barres, Chart.js fournit `context.parsed` sous forme
