@@ -1,4 +1,21 @@
 class BudgetChart extends BaseChartData {
+    /**
+     * Libellé de l'infobulle d'une barre : « Série: -158.30 € ».
+     * Pour un graphique en barres, Chart.js fournit `context.parsed` sous forme
+     * d'objet { x, y } : la valeur est `parsed.y` (bug B20 : NaN affiché).
+     * @param {{ dataset?: { label?: string }, parsed?: number|{ y?: number }, raw?: unknown }} context
+     * @param {boolean} hideAmounts - mode « montants masqués »
+     * @returns {string}
+     */
+    static formatTooltipLabel(context, hideAmounts) {
+        const label = context?.dataset?.label || '';
+        if (hideAmounts) return label;
+        const parsed = context?.parsed;
+        const candidate = parsed != null && typeof parsed === 'object' ? parsed.y : (parsed ?? context?.raw);
+        const value = typeof candidate === 'number' ? candidate : Number(candidate);
+        return candidate == null || !Number.isFinite(value) ? `${label}: —` : `${label}: ${value.toFixed(2)} €`;
+    }
+
     constructor(transactions, categories, accountsSelected = null, settings, settingsInstance = null) {
         super(transactions, categories, accountsSelected, settings, settingsInstance);
         
@@ -503,7 +520,7 @@ class BudgetChart extends BaseChartData {
                                 mode: 'index',
                                 intersect: false,
                                 callbacks: {
-                                    label: (context) => (Config.isBlurry() ? (context.dataset.label || '') : `${context.dataset.label}: ${Number(context.parsed).toFixed(2)} €`)
+                                    label: (context) => BudgetChart.formatTooltipLabel(context, Config.isBlurry())
                                 }
                             },
                             title: {

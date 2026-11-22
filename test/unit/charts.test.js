@@ -411,3 +411,28 @@ describe('Graphiques — mois de rattachement Bankin (current_month)', () => {
         expect(ids(chart.applySettingOnData())).toEqual([1]);
     });
 });
+
+describe('BudgetChart — infobulle', () => {
+    // Contexte d'infobulle tel que Chart.js le fournit pour un graphique en barres :
+    // `parsed` est un objet { x, y }, `raw` la valeur d'origine.
+    const barContext = (y, label = 'Median 2026') => ({ dataset: { label }, parsed: { x: 0, y }, raw: y });
+
+    test('B20 — affiche le montant de la barre, pas NaN', () => {
+        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), false)).toBe('Median 2026: -158.30 €');
+        expect(BudgetChart.formatTooltipLabel(barContext(0, 'Actual Jan 2024'), false)).toBe('Actual Jan 2024: 0.00 €');
+    });
+
+    test('accepte aussi une valeur numérique simple', () => {
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: 12 }, false)).toBe('A: 12.00 €');
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, raw: 5 }, false)).toBe('A: 5.00 €');
+    });
+
+    test('valeur absente : pas de NaN', () => {
+        expect(BudgetChart.formatTooltipLabel({ dataset: { label: 'A' }, parsed: {} }, false)).toBe('A: —');
+    });
+
+    test('montants masqués : seulement le libellé', () => {
+        expect(BudgetChart.formatTooltipLabel(barContext(-158.3), true)).toBe('Median 2026');
+        expect(BudgetChart.formatTooltipLabel({ dataset: {} }, true)).toBe('');
+    });
+});
