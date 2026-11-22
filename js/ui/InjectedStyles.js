@@ -382,7 +382,8 @@ export class InjectedStyles {
                 }
             }
 
-            /* Donut de Bankin compact : marges internes de son SVG rognées */
+            /* Donut de Bankin compact : marges internes de son SVG rognées, centre
+               à la hauteur de celui des types de dépenses (légende dessous) */
             .pecunio-donut-wrapper .cntr.dtb.active {
                 display: block;
                 width: auto;
@@ -392,7 +393,7 @@ export class InjectedStyles {
                 display: block;
             }
             .pecunio-donut-wrapper #donutChart {
-                margin: -36px auto -24px !important;
+                margin: -18px auto -24px !important;
             }
 
             /* En-têtes des deux donuts au même format : chiffre, légende */

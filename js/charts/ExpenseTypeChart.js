@@ -57,7 +57,7 @@ export class ExpenseTypeChart extends BaseChartData {
         chartJsConfig.data = preparedData;
 
         // Même format que le donut de Bankin voisin : en-tête, donut, légende dessous
-        const { wrapper: expenseTypeWrapper, canvas: expenseTypeCanvas } = InjectedStyles.createDonutChart('Types de dépenses', '250px');
+        const { wrapper: expenseTypeWrapper, canvas: expenseTypeCanvas } = InjectedStyles.createDonutChart('Types de dépenses', '285px');
         const datasetValues = /** @type {number[]} */ (preparedData.datasets[0]?.data || []);
         expenseTypeWrapper.insertBefore(
             ExpenseTypeChart.createHeader(ExpenseTypeChart.mainType(preparedData.labels || [], datasetValues)),
