@@ -40,8 +40,11 @@
       ],
                           "js": [
               "js/core/Config.js",
+              "js/core/DateRange.js",
+              "js/core/TransactionFilter.js",
               "js/core/Evt.js",
               "js/core/Settings.js",
+              "js/core/CacheStore.js",
               "js/core/DataManager.js",
               "js/models/Category.js",
               "js/models/Account.js",
