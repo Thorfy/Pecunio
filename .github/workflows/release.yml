@@ -70,6 +70,10 @@ jobs:
         with:
           name: chrome-extension-${{ github.ref_name }}
           path: .output/pecunio-*-chrome.zip
+          # .output est un dossier caché : ignoré par défaut depuis upload-artifact v4.4,
+          # le zip n'était pas envoyé et la publication échouait au job suivant (v0.6.0)
+          include-hidden-files: true
+          if-no-files-found: error
 
       - name: Rapport Playwright
         if: failure()
