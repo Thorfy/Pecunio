@@ -3,7 +3,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { AUTH_HEADERS } from '../fixtures/bankin.js';
 import { createPort } from '../helpers/fake-chrome.js';
-import { knownBug } from '../helpers/known-bug.js';
 
 /** Démarre (ou redémarre) le service worker avec le `chrome` courant. */
 const startServiceWorker = async () => {
@@ -42,7 +41,7 @@ describe('bg.js — en-têtes d\'authentification', () => {
     });
 
     // --- B1 -------------------------------------------------------------
-    knownBug('B1 — attendu : deux onglets Bankin reçoivent tous les deux les en-têtes', () => {
+    test('B1 — deux onglets Bankin reçoivent tous les deux les en-têtes', () => {
         const first = openTab(1);
         const second = openTab(2);
         bankinRequest();
@@ -51,17 +50,57 @@ describe('bg.js — en-têtes d\'authentification', () => {
     });
 
     // --- B2 -------------------------------------------------------------
-    knownBug('B2 — attendu : un onglet qui se connecte après la requête reçoit les en-têtes', () => {
+    test('B2 — un onglet qui se connecte après la requête reçoit les en-têtes', async () => {
         bankinRequest();
         const late = openTab(3);
-        expect(late.postMessage).toHaveBeenCalledWith({ data: AUTH_HEADERS });
+        await vi.waitFor(() => expect(late.postMessage).toHaveBeenCalledWith({ data: AUTH_HEADERS }), { timeout: 200 });
     });
 
-    knownBug('B2 — attendu : les en-têtes survivent au redémarrage du service worker', async () => {
+    test('B2 — les en-têtes survivent au redémarrage du service worker', async () => {
         bankinRequest();
         await startServiceWorker(); // Chrome a tué puis relancé le service worker
         const port = openTab(4);
         await vi.waitFor(() => expect(port.postMessage).toHaveBeenCalledWith({ data: AUTH_HEADERS }), { timeout: 200 });
+    });
+
+    test('les en-têtes sont gardés en session, pas sur disque', () => {
+        bankinRequest();
+        expect(chrome.storage.session._data.pecunio_auth_headers).toEqual(AUTH_HEADERS);
+        expect(chrome.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    test('un onglet fermé ne reçoit plus rien, les autres si', () => {
+        const closed = openTab(1);
+        const open = openTab(2);
+        closed.onDisconnect.dispatch();
+        bankinRequest();
+        expect(closed.postMessage).not.toHaveBeenCalled();
+        expect(open.postMessage).toHaveBeenCalledWith({ data: AUTH_HEADERS });
+    });
+
+    test('un onglet dont le port est cassé est oublié sans bloquer les autres', () => {
+        const broken = openTab(1);
+        const ok = openTab(2);
+        broken.postMessage.mockImplementation(() => {
+            throw new Error('port fermé');
+        });
+        bankinRequest();
+        bankinRequest();
+        expect(broken.postMessage).toHaveBeenCalledTimes(1);
+        expect(ok.postMessage).toHaveBeenCalledTimes(2);
+    });
+
+    test('port sans onglet (ex. popup) ignoré', () => {
+        const port = createPort({ tabId: null });
+        chrome.runtime.onConnect.dispatch(port);
+        bankinRequest();
+        expect(port.postMessage).not.toHaveBeenCalled();
+    });
+
+    test('requête sans en-tête d\'authentification ignorée', () => {
+        const port = openTab(1);
+        bankinRequest({});
+        expect(port.postMessage).not.toHaveBeenCalled();
     });
 });
 
