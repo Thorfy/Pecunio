@@ -60,6 +60,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 | B22 | 🟡 | **Bandeau d'état déformé dans la page Bankin** : les règles CSS de Bankin sur tous les `button` (largeur, marges, fond, prioritaires) écrasent les styles en ligne du bandeau ; corrigé en isolant son contenu dans un Shadow DOM | L + T | ✅ 3b |
 | B23 | 🔴 | **« Vibration » du graphique temporel** : canvas en `height: 100%` dans un conteneur sans hauteur fixe + ratio 2 ⇒ hauteur idéale 582,5 px, Chart.js alterne 582/583 px toutes les 20–30 ms et redessine en continu (mesuré : 65 redimensionnements en 7 s, sans fin) ; conteneur de 580 px et `maintainAspectRatio: false` | L + T | ✅ 3b |
 | B24 | 🟠 | **Graphiques reconstruits deux fois au chargement** : construits depuis le cache puis reconstruits 50 ms plus tard à l'arrivée de données identiques (clignotement, travail inutile) ; la reconstruction est désormais ignorée quand l'empreinte données + réglages + page est inchangée | L + T | ✅ 3b |
+| B25 | 🟢 | **Préférence de masquage réécrite à chaque construction de page** : à l'insertion du bouton, `AmountHider` enregistrait `isBlurry: false` puis relisait la préférence pour savoir s'il fallait flouter ; correct seulement parce que l'enregistrement est asynchrone, et une écriture inutile dans le stockage à chaque page. L'état est désormais lu puis appliqué sans écriture | T | ✅ 5b |
 
 ### 3.2 Dette technique et qualité
 
@@ -183,7 +184,9 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 
 ### Phase 5 — Tests d'intégration et e2e _(2 j)_
 
-**5a — Playwright et pages Bankin** ✅ _(branche `test/phase-5-e2e`)_ : extension construite chargée dans Chromium face à un Bankin simulé (`e2e/`) ; POC concluant : `webRequest` voit les requêtes interceptées par Playwright, les en-têtes sont capturés comme en réel. Scénarios 1 à 6 et 9 ; job CI « Tests de bout en bout ». Reste pour **5b** : popup, export CSV, rapport PDF (scénarios 7 et 8) et tests de composants.
+**5a — Playwright et pages Bankin** ✅ _(#29)_ : extension construite chargée dans Chromium face à un Bankin simulé (`e2e/`) ; POC concluant : `webRequest` voit les requêtes interceptées par Playwright, les en-têtes sont capturés comme en réel. Scénarios 1 à 6 et 9 ; job CI « Tests de bout en bout ».
+
+**5b — Popup, export et composants** ✅ _(branche `test/phase-5b-popup-export`)_ : scénarios 7 (période changée dans la popup → onglet Bankin redessiné), 8a (CSV téléchargé, contenu de la période vérifié) et 8b (page du rapport puis PDF téléchargé et valide) ; les `alert()` de la popup comptent comme des erreurs. Tests de composants : popup (HTML réel dans happy-dom : période, comptes, export CSV, rapport, épinglage) et `AmountHider` (sur les captures réelles des pages) ; `ReviewPrompt` était déjà couvert. Correction B25.
 
 - **POC en premier (½ j)** : vérifier que `webRequest.onBeforeSendHeaders` voit les requêtes interceptées par Playwright ; sinon le test injecte les headers dans `chrome.storage.session`. ✅ Il les voit.
 - Tests de composants (Vitest + happy-dom) : popup (comptes, dates, export), AmountHider, ReviewPrompt.
@@ -214,7 +217,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
 | 3 Modules + WXT | 2–3 j | ✅ 3a (#16), 3b (#17), 3c (#23) | B15, B21–B24, D3–D6, D13 |
 | 4 Types + adaptateur | 2–3 j | ✅ 4a (#25), 4b (#27), 4c (#28) | D1, D8–D10, D14 |
-| 5 e2e | 2 j | 5a ✅ PR à merger ; 5b à faire | non-régression de tout le registre |
+| 5 e2e | 2 j | 5a ✅ (#29), 5b ✅ PR à merger | non-régression de tout le registre ; B25 |
 | 6 CI/CD | ½ j | | D12 |
 
 **Total : 11 à 14 jours.** Les phases 0 → 2 règlent tout ce que voient les utilisateurs ; 3 → 6 rendent le code durable.

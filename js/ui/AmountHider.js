@@ -37,8 +37,8 @@ export class AmountHider {
 
     loadEvent() {
         this.loadElement();
-        this.disableBlurry();
-        if (this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) this.enableBlurry();
+        // État enregistré appliqué tel quel, sans réécrire la préférence
+        this._show(Boolean(this.settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY)));
         const toggle = () => {
             if (this.isBlurry()) return this.disableBlurry();
             return this.enableBlurry();
@@ -66,20 +66,22 @@ export class AmountHider {
         window.dispatchEvent(new CustomEvent('pecunio_amounts_visibility_changed', { detail: { isBlurry: !!value } }));
     }
 
+    /** Applique l'état (flou, icône, graphiques) sans toucher à la préférence. */
+    _show(blurred) {
+        this.loadElement();
+        this._applyBlurState(blurred);
+        this._updateButtonIcon(blurred);
+        this._syncGlobalBlur(blurred);
+    }
+
     enableBlurry() {
         this.settings.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: true });
-        this.loadElement();
-        this._applyBlurState(true);
-        this._updateButtonIcon(true);
-        this._syncGlobalBlur(true);
+        this._show(true);
     }
 
     disableBlurry() {
         this.settings.setSettings({ [Config.STORAGE_KEYS.IS_BLURRY]: false });
-        this.loadElement();
-        this._applyBlurState(false);
-        this._updateButtonIcon(false);
-        this._syncGlobalBlur(false);
+        this._show(false);
     }
 
     isBlurry() {

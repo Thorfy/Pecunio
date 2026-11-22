@@ -41,11 +41,18 @@ export const test = base.extend({
         await use(await installBankinSimulator(context));
     },
 
-    /** Erreurs de la console et exceptions de toutes les pages du test. */
+    /**
+     * Erreurs de la console, exceptions et boîtes `alert()` (la popup signale
+     * ainsi ses échecs) de toutes les pages du test.
+     */
     consoleErrors: async ({ context }, use) => {
         const errors = [];
         const watch = (page) => {
             page.on('pageerror', (error) => errors.push(`exception : ${error.message}`));
+            page.on('dialog', (dialog) => {
+                errors.push(`boîte de dialogue : ${dialog.message()}`);
+                dialog.dismiss().catch(() => {});
+            });
             page.on('console', (message) => {
                 if (message.type() === 'error') errors.push(message.text());
             });
@@ -55,5 +62,12 @@ export const test = base.extend({
         await use(errors);
     },
 });
+
+/** Popup de l'extension, ouverte dans un onglet. */
+export async function openPopup(context, extensionId) {
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+    return popup;
+}
 
 export { expect };
