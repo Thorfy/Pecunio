@@ -53,6 +53,13 @@ export const makeCharts = () => {
         }
     }
     class BudgetChart extends FakeChart {}
+    class SavingsChart extends FakeChart {
+        async render(container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pecunio-savings-wrapper';
+            container.appendChild(wrapper);
+        }
+    }
     class ExpenseTypeChart extends FakeChart {
         async render(row) {
             const wrapper = document.createElement('div');
@@ -75,6 +82,13 @@ export const makeCharts = () => {
             block.appendChild(wrapper);
         }
     }
+    class VariationsChart extends FakeChart {
+        async render(block) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pecunio-variations-wrapper';
+            block.appendChild(wrapper);
+        }
+    }
     class CategoryHistoryChart extends FakeChart {
         async render(block) {
             const wrapper = document.createElement('div');
@@ -82,5 +96,5 @@ export const makeCharts = () => {
             block.appendChild(wrapper);
         }
     }
-    return { classes: { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, MonthPaceChart, CategoryHistoryChart }, created };
+    return { classes: { LineBarChart, BudgetChart, SavingsChart, ExpenseTypeChart, SankeyChart, MonthPaceChart, VariationsChart, CategoryHistoryChart }, created };
 };

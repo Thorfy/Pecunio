@@ -54,6 +54,7 @@ await bankin.locator('#budgetChartBlock canvas').waitFor();
 await settle(bankin);
 await bankin.locator('#originalChartContainer').screenshot({ path: `${OUT}/depenses-par-mois.png` });
 await bankin.locator('#budgetChartBlock').screenshot({ path: `${OUT}/comparaison-budget.png` });
+await bankin.locator('.pecunio-savings-wrapper').screenshot({ path: `${OUT}/epargne.png` });
 
 // Page Catégories : types de dépenses et flux financiers du dernier mois complet
 await bankin.goto('https://app2.bankin.com/categories');
@@ -62,6 +63,7 @@ await settle(bankin);
 await bankin.locator('.pecunio-expense-type-wrapper').screenshot({ path: `${OUT}/types-de-depenses.png` });
 await bankin.locator('.pecunio-sankey-wrapper').screenshot({ path: `${OUT}/flux-financiers.png` });
 await bankin.locator('.pecunio-pace-wrapper').screenshot({ path: `${OUT}/rythme-du-mois.png` });
+await bankin.locator('.pecunio-variations-wrapper').screenshot({ path: `${OUT}/variations.png` });
 
 // Détail d'une catégorie : historique sur 12 mois
 await bankin.goto('https://app2.bankin.com/categories/161');

@@ -68,6 +68,9 @@ test('8b — rapport PDF : page du rapport puis PDF téléchargé', async ({ con
     await report.waitForLoadState();
     await expect(report.locator('#report-period')).toContainText('2024');
     await expect(report.locator('#stat-count')).not.toHaveText('—');
+    // Taux d'épargne et solde mois par mois (rapport annuel, lot UX-3b)
+    await expect(report.locator('#stat-savings-rate')).toHaveText(/-?\d+ %/);
+    await expect(report.locator('#section-savings canvas')).toBeVisible();
     await expect(report.locator('table tbody tr').first()).toBeVisible();
 
     const [download] = await Promise.all([

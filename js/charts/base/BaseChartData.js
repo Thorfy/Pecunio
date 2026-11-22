@@ -88,6 +88,34 @@ export class BaseChartData {
      * Attache l'écouteur de visibilité des montants (blur). Met à jour la globale et appelle chart.update().
      * @param {import('chart.js').Chart} chart - Instance Chart.js
      */
+    /**
+     * Texte qui contient des montants (phrase de synthèse, ligne de liste) :
+     * écrit selon l'état du masquage, puis réécrit à chaque bascule de l'œil.
+     * Sans cela, il restait en clair, calculé une fois à la construction.
+     * L'écouteur se retire de lui-même quand l'élément a quitté la page.
+     * @param {HTMLElement} element
+     * @param {(hideAmounts: boolean) => string} render
+     */
+    static bindAmountText(element, render) {
+        element.textContent = render(Config.isBlurry());
+        // Un seul texte par élément : une nouvelle liaison remplace la précédente
+        const previous = BaseChartData.#amountTextHandlers.get(element);
+        if (previous) window.removeEventListener('pecunio_amounts_visibility_changed', previous);
+        /** @param {CustomEvent<{ isBlurry: boolean }>} e */
+        const handler = (e) => {
+            if (!element.isConnected) {
+                window.removeEventListener('pecunio_amounts_visibility_changed', handler);
+                return;
+            }
+            element.textContent = render(Boolean(e.detail?.isBlurry));
+        };
+        BaseChartData.#amountTextHandlers.set(element, handler);
+        window.addEventListener('pecunio_amounts_visibility_changed', handler);
+    }
+
+    /** @type {WeakMap<HTMLElement, EventListener>} */
+    static #amountTextHandlers = new WeakMap();
+
     static _attachAmountVisibilityListener(chart) {
         /** @param {CustomEvent<{ isBlurry: boolean }>} e */
         const handler = (e) => {

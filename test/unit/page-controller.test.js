@@ -123,8 +123,8 @@ describe('PageController — chargement des données (B12)', () => {
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         await controller.whenIdle();
         expect(document.getElementById(StatusBanner.ID).shadowRoot.textContent).toContain('dernières données enregistrées');
-        expect(kinds(charts.created.slice(-2))).toEqual(['LineBarChart', 'BudgetChart']);
-        expect(controller.charts).toHaveLength(2);
+        expect(kinds(charts.created.slice(-3))).toEqual(['LineBarChart', 'SavingsChart', 'BudgetChart']);
+        expect(controller.charts).toHaveLength(3);
     });
 
     test('D11 — bandeau « chargement » si les données tardent, retiré à leur arrivée', async () => {
@@ -196,12 +196,15 @@ describe('PageController — déconnexion (D8)', () => {
 });
 
 describe('PageController — construction des graphiques', () => {
-    test('page Comptes : graphique temporel + budget, puis masquage et invitation à l\'avis', async () => {
+    test('page Comptes : graphique temporel, épargne et budget, puis masquage et invitation à l\'avis', async () => {
         const { controller, charts } = setup();
         await controller.requestBuild();
-        expect(kinds(charts.created)).toEqual(['LineBarChart', 'BudgetChart']);
+        expect(kinds(charts.created)).toEqual(['LineBarChart', 'SavingsChart', 'BudgetChart']);
         expect(charts.created[0].rendered).toBe(true);
-        expect(charts.created[1].containerId).toBe('budgetChartBlock');
+        expect(charts.created[2].containerId).toBe('budgetChartBlock');
+        // Épargne entre le graphique temporel et la comparaison du budget
+        const savings = document.querySelector('.pecunio-savings-wrapper');
+        expect(savings.nextElementSibling.id).toBe('budgetChartBlock');
         expect(LoadingScreen.show).toHaveBeenCalled();
         expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(1);
         expect(controller.buildCount).toBe(1);
@@ -223,13 +226,18 @@ describe('PageController — construction des graphiques', () => {
     test('page Catégories : types de dépenses, flux et rythme du mois pour le mois affiché', async () => {
         const { controller, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
         await controller.requestBuild();
-        // Rythme du mois avant le diagramme des flux (visible sans défiler)
-        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
+        // Rythme du mois et plus fortes variations, côte à côte, avant le diagramme des flux
+        expect(kinds(charts.created)).toEqual(['ExpenseTypeChart', 'MonthPaceChart', 'VariationsChart', 'SankeyChart']);
         expect(charts.created[0].args[2]).toEqual(['septembre', '2026']);
         expect(charts.created[1].args[2]).toEqual(['septembre', '2026']);
-        // Reconstruction (changement de mois) : une seule carte de rythme
+        expect(charts.created[2].args[2]).toEqual(['septembre', '2026']);
+        const row = document.querySelector('.pecunio-insights-row');
+        expect([...row.children].map((c) => c.className)).toEqual(['pecunio-pace-wrapper', 'pecunio-variations-wrapper']);
+        // Reconstruction (changement de mois) : une seule ligne, une carte de chaque
         await controller.requestBuild();
+        expect(document.querySelectorAll('.pecunio-insights-row')).toHaveLength(1);
         expect(document.querySelectorAll('.pecunio-pace-wrapper')).toHaveLength(1);
+        expect(document.querySelectorAll('.pecunio-variations-wrapper')).toHaveLength(1);
         expect(charts.created[1].destroy).toHaveBeenCalled();
     });
 
@@ -257,13 +265,12 @@ describe('PageController — construction des graphiques', () => {
     test('B16 — chaque reconstruction détruit les graphiques précédents', async () => {
         const { controller, charts } = setup();
         await controller.requestBuild();
-        const [first, second] = charts.created;
+        const firstBuild = charts.created.slice();
         await controller.requestBuild();
-        expect(first.destroy).toHaveBeenCalledTimes(1);
-        expect(second.destroy).toHaveBeenCalledTimes(1);
-        expect(controller.charts).toHaveLength(2);
+        expect(firstBuild.every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
+        expect(controller.charts).toHaveLength(3);
         controller.stop();
-        expect(charts.created[2].destroy).toHaveBeenCalled();
+        expect(charts.created[3].destroy).toHaveBeenCalled();
     });
 
     test('B5 — demandes simultanées : une construction à la fois, regroupées', async () => {
@@ -272,7 +279,7 @@ describe('PageController — construction des graphiques', () => {
         await Promise.all(requests);
         // La première construction, puis une seule pour toutes les demandes reçues pendant celle-ci
         expect(controller.buildCount).toBe(2);
-        expect(charts.created).toHaveLength(4);
+        expect(charts.created).toHaveLength(6);
         expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(2);
         expect(document.querySelectorAll('#budgetChartBlock')).toHaveLength(1);
     });
@@ -338,15 +345,15 @@ describe('PageController — navigation (B6)', () => {
     test('B6 — onglet Revenus : les graphiques de dépenses sont retirés et détruits', async () => {
         const { controller, win, charts } = setup({ href: 'https://app2.bankin.com/categories', dom: CATEGORIES_DOM });
         await controller.start();
-        const expenseWrappers = '.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper, .pecunio-pace-wrapper';
-        expect(document.querySelectorAll(expenseWrappers)).toHaveLength(3);
+        const expenseWrappers = '.pecunio-expense-type-wrapper, .pecunio-sankey-wrapper, .pecunio-insights-row, .pecunio-pace-wrapper, .pecunio-variations-wrapper';
+        expect(document.querySelectorAll(expenseWrappers)).toHaveLength(5);
 
         navigate(win, 'https://app2.bankin.com/categories/2');
         await controller.whenIdle();
 
         expect(document.querySelectorAll(expenseWrappers)).toHaveLength(0);
-        const [expenseType, pace, sankey, history] = charts.created;
-        expect([expenseType, sankey, pace].every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
+        const history = charts.created.at(-1);
+        expect(charts.created.slice(0, -1).every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
         // Onglet Revenus : historique des revenus (lot UX-3a)
         expect(history.kind).toBe('CategoryHistoryChart');
         expect(history.args[2]).toEqual({ categoryId: 2, monthParams: ['septembre', '2026'] });
@@ -359,7 +366,7 @@ describe('PageController — navigation (B6)', () => {
         expect(kinds(charts.created)).toEqual(['CategoryHistoryChart']);
         navigate(win, 'https://app2.bankin.com/categories');
         await controller.whenIdle();
-        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart', 'ExpenseTypeChart', 'MonthPaceChart', 'SankeyChart']);
+        expect(kinds(charts.created)).toEqual(['CategoryHistoryChart', 'ExpenseTypeChart', 'MonthPaceChart', 'VariationsChart', 'SankeyChart']);
         // L'historique ne reste pas sur la page Catégories
         expect(document.querySelectorAll('.pecunio-history-wrapper')).toHaveLength(0);
     });
@@ -437,7 +444,7 @@ describe('PageController — reconstructions inutiles (B24)', () => {
         evt.dispatch('data_loaded');
         await controller.whenIdle();
         expect(controller.buildCount).toBe(1);
-        expect(charts.created).toHaveLength(2);
+        expect(charts.created).toHaveLength(3);
         expect(charts.created[0].destroy).not.toHaveBeenCalled();
     });
 

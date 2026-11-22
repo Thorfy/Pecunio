@@ -75,7 +75,7 @@ export class MonthPaceChart extends BaseChartData {
         wrapper.appendChild(InjectedStyles.createTitle('Rythme du mois'));
         const summary = document.createElement('p');
         summary.className = 'pecunio-budget-summary';
-        summary.textContent = MonthPaceChart.summary(pace, Config.isBlurry());
+        BaseChartData.bindAmountText(summary, (hide) => MonthPaceChart.summary(pace, hide));
         wrapper.appendChild(summary);
         const canvasContainer = InjectedStyles.createCanvasContainer();
         canvasContainer.style.height = '260px';

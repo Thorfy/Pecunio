@@ -17,6 +17,10 @@ test.describe('Page Comptes', () => {
         await page.goto(bankinUrl('/accounts'));
         await expect(page.locator(LINE_CHART)).toBeVisible();
         await expect(page.locator(BUDGET_CHART)).toBeVisible();
+        // Épargne mois par mois, entre le graphique temporel et le budget (lot UX-3b)
+        await expect(page.locator('.pecunio-savings-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-savings-wrapper')).toContainText('Épargne');
+        await expect(page.locator('.pecunio-savings-wrapper + #budgetChartBlock')).toHaveCount(1);
 
         // Le service worker a capturé les en-têtes de l'appel de Bankin (en session, pas sur disque)
         const stored = await serviceWorker.evaluate(() => chrome.storage.session.get('pecunio_auth_headers'));
@@ -88,6 +92,9 @@ test.describe('Page Comptes', () => {
         await page.locator('#hideButton').click();
         await expect(header).toHaveCSS('filter', /blur/);
         await expect(amounts.first()).toHaveCSS('filter', /blur/);
+        // Phrases de Pecunio (épargne, budget) : plus aucun montant en clair
+        await expect(page.locator('.pecunio-savings-wrapper .pecunio-budget-summary')).not.toContainText('€');
+        await expect(page.locator('#budgetChartBlock .pecunio-budget-summary')).not.toContainText('€');
 
         await page.locator('#hideButton').click();
         await expect(header).toHaveCSS('filter', 'none');
@@ -131,6 +138,10 @@ test.describe('Page Catégories', () => {
             // Vrai clic : échoue si un autre élément (le SVG du donut) recouvre l'œil
             await page.locator('#hideButton').click({ timeout: 3000 });
             await expect(html).toHaveClass(/pecunio-amounts-hidden/);
+            // Textes de Pecunio réécrits sans montants (rythme, variations, historique)
+            for (const text of await page.locator('.pecunio-budget-summary, .pecunio-variation-value, .pecunio-variation-detail').all()) {
+                await expect(text).not.toContainText('€');
+            }
             await page.locator('#hideButton').click({ timeout: 3000 });
             await expect(html).not.toHaveClass(/pecunio-amounts-hidden/);
         }
@@ -145,6 +156,8 @@ test.describe('Page Catégories', () => {
         // Rythme du mois (lot UX-3a)
         await expect(page.locator('.pecunio-pace-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-pace-wrapper')).toContainText('Rythme du mois');
+        // Plus fortes variations, à côté du rythme (lot UX-3b)
+        await expect(page.locator('.pecunio-insights-row > .pecunio-variations-wrapper')).toContainText('Plus fortes variations');
         // Juste sous le donut et les types de dépenses, avant les flux financiers
         const paceFirst = await page.evaluate(() => {
             const pace = document.querySelector('.pecunio-pace-wrapper');
@@ -161,6 +174,7 @@ test.describe('Page Catégories', () => {
         await expect(page.locator(SANKEY_CHART)).toHaveCount(1);
         await expect(page.locator(EXPENSE_TYPE_CHART)).toHaveCount(1);
         await expect(page.locator('.pecunio-pace-wrapper')).toHaveCount(1);
+        await expect(page.locator('.pecunio-variations-wrapper')).toHaveCount(1);
         expect(consoleErrors).toEqual([]);
     });
 

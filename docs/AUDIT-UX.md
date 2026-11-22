@@ -97,7 +97,7 @@ Pistes écartées pour l'instant : prévision de fin de mois (peu fiable sans hi
 |---|---|---|
 | **UX-1 Corrections** ✅ | U1 (vérifier), U12 (shields.io), U17, U18, U19, U20 ; police et couleurs de Bankin (§3, `theme.js`) | Défauts visibles et vie privée ; base visuelle commune pour la suite |
 | **UX-2 Lisibilité** | U2–U5 (période dans la page, solde superposé, comparaison budget repensée), U7–U9, popup réorganisée (U13–U16) — découpé en **UX-2a** (page Comptes ✅) et **UX-2b** (Catégories, popup ✅) | Les écrans existants deviennent utiles sans rien ajouter |
-| **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 — découpé en **UX-3a** (G3, G6, G2 ✅) et **UX-3b** (G1, G5) | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
+| **UX-3 Nouveaux graphiques** | G1, G3, G2, puis G5 — découpé en **UX-3a** (G3, G6, G2 ✅) et **UX-3b** (G1, G5 ✅) | Plus forte valeur pour un effort faible à moyen ; G3 et G6 occupent des pages aujourd'hui vides |
 | **UX-4 Exploration** | G4 (récurrents), G6, G7, G9, G8 | Plus d'effort ou de valeur à confirmer |
 
 Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, recette sur le vrai Bankin, une PR.
@@ -123,6 +123,11 @@ Chaque lot : tests unitaires des calculs, scénarios e2e sur le Bankin simulé, 
 - Historique d'une catégorie (G3, U11) : sur la page de détail `/categories/:id`, 12 mois jusqu'au mois affiché par Bankin, sous-catégories empilées dans des nuances de la couleur de Bankin de la catégorie (au-delà de 6 : 5 + « Autres »), mois affiché encadré, médiane des 12 mois précédents en pointillés, synthèse « montant, médiane, écart ». Suit le sélecteur de mois. Calculs dans `js/charts/categoryHistory.js` (testés).
 - Revenus sur 12 mois (G6, U10) : l'onglet Revenus de Bankin est le détail de « Entrées d'argent » (`/categories/2`) ; le même graphique y montre les revenus par source.
 - Rythme du mois (G2) : sur la page Catégories, dépenses cumulées jour après jour (hors revenus, virements internes et épargne, remboursements déduits) face à la médiane des cumuls des 12 mois précédents au même jour ; le mois en cours s'arrête à aujourd'hui (« Au 22 : … d'habitude à cette date »). Calculs dans `js/charts/monthPace.js` (testés).
+
+**UX-3b** ✅ _(branche `feat/ux-3b-savings-variations`)_ :
+- Épargne (G1) : sur la page Comptes, entre le graphique temporel et la comparaison du budget, solde de chaque mois en barres (vert, rouge en déficit) et taux d'épargne (solde / revenus) en courbe, sur la période choisie (6, 12, 24 mois, tout) ; même solde que le graphique temporel. Le mois en cours est atténué et exclu de la synthèse. Calculs dans `js/charts/savings.js` (testés).
+- Plus fortes variations (G5) : sur la page Catégories, à côté du rythme du mois, les 5 catégories dont la dépense s'écarte le plus (en euros) de leur médiane des 12 mois précédents ; mois en cours comparé au même jour du mois ; écarts de moins de 20 € ignorés. Calculs dans `js/charts/variations.js` (testés).
+- Rapport (U21) : taux d'épargne dans les chiffres clés ; sur plusieurs mois, solde et taux d'épargne mois par mois.
 
 ## 6. Questions à trancher
 
