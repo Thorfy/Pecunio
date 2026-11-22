@@ -104,16 +104,25 @@ export class DateRange {
     }
 
     /**
-     * Date budgétaire d'une transaction : date réelle décalée de `current_month` mois.
+     * Date budgétaire d'une transaction : sa date réelle, ou, si elle est
+     * rattachée à un autre mois dans Bankin (`current_month`), la borne de ce
+     * mois la plus proche de la date réelle : le 1er pour un mois suivant, le
+     * dernier jour pour un mois précédent. Un salaire du 29 octobre rattaché à
+     * novembre compte ainsi dès le 1er novembre ; décalé au 29 novembre, il
+     * sortait d'une période qui s'arrête aujourd'hui (le 22).
      * @param {{ date?: string|Date, current_month?: number|null }} transaction
      * @returns {string|null} `YYYY-MM-DD`
      */
     static getBudgetDate(transaction) {
         if (!transaction || transaction.date == null) return null;
         const offset = typeof transaction.current_month === 'number' && !isNaN(transaction.current_month)
-            ? transaction.current_month
+            ? Math.trunc(transaction.current_month)
             : 0;
-        return DateRange.addMonths(transaction.date, offset);
+        const shifted = DateRange.addMonths(transaction.date, offset);
+        if (!shifted || offset === 0) return shifted;
+        if (offset > 0) return `${shifted.slice(0, 7)}-01`;
+        const [year, month] = shifted.split('-').map(Number);
+        return DateRange.lastDayOfMonth(year, month);
     }
 
     /**

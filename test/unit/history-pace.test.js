@@ -95,6 +95,13 @@ describe('buildMonthPace', () => {
         expect(p.delta).toBeNull(); // pas d'historique
     });
 
+    test('dépense de fin octobre rattachée à novembre : comptée dès le 1er novembre', () => {
+        const transactions = [t('2026-10-30', -700, 180, { current_month: 1 }), t('2026-11-03', -100, 188)];
+        const p = buildMonthPace({ transactions, month: { year: 2026, month: 11 }, today: new Date(2026, 10, 22), incomeCategoryIds: income });
+        expect(p.current[0]).toBe(700);
+        expect(p.spent).toBe(800);
+    });
+
     test('virements internes et épargne exclus ; remboursements déduits', () => {
         const transactions = [t('2026-01-05', -300, 326), t('2026-01-06', -200, 282), t('2026-01-07', -50, 188), t('2026-01-08', 20, 188)];
         const p = buildMonthPace({ transactions, month: { year: 2026, month: 1 }, today: new Date(2026, 5, 1) });

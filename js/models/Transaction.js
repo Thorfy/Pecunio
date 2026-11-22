@@ -51,8 +51,8 @@ export class Transaction {
     }
 
     /**
-     * Date budgétaire `YYYY-MM-DD` : date réelle décalée du mois de rattachement
-     * Bankin (`current_month`), jour conservé. Voir DateRange.getBudgetDate.
+     * Date budgétaire `YYYY-MM-DD` : date réelle, ou borne du mois de
+     * rattachement Bankin (`current_month`). Voir DateRange.getBudgetDate.
      * @returns {string|null}
      */
     getBudgetDate() {

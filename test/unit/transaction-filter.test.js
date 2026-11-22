@@ -53,6 +53,14 @@ describe('TransactionFilter', () => {
         expect(TransactionFilter.matches(moved, { startDate: '2024-01-01', endDate: '2024-01-31' })).toBe(false);
     });
 
+    test('mois en cours : un salaire de fin du mois précédent rattaché à ce mois est compté', () => {
+        // Salaire du 29 octobre rattaché à novembre, période arrêtée à aujourd'hui (22 novembre)
+        const salary = tx({ id: 1, date: '2026-10-29', current_month: 1 });
+        expect(TransactionFilter.matches(salary, { startDate: '2025-12-01', endDate: '2026-11-22' })).toBe(true);
+        expect(TransactionFilter.matches(salary, { startDate: '2026-11-01', endDate: '2026-11-22' })).toBe(true);
+        expect(TransactionFilter.matches(salary, { startDate: '2026-10-01', endDate: '2026-10-31' })).toBe(false);
+    });
+
     test('ids invalides ignorés', () => {
         expect(TransactionFilter.accountIdOf({ account: { id: 'x' } })).toBeNull();
         expect(TransactionFilter.categoryIdOf({ categoryId: '' })).toBeNull();
