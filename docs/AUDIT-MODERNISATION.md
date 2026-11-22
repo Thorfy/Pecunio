@@ -65,7 +65,7 @@ Source : **C** = lecture du code, **L** = confirmé en conditions réelles dans 
 
 | # | Constat | Phase |
 |---|---|---|
-| D1 | Couplage fort au DOM Bankin : classes CSS utilitaires (`.dbl.fs14.fw7.lh18.elp`…), IDs de catégories en dur (`326, 282, 2, 163`) | 4 |
+| D1 | Couplage fort au DOM Bankin : classes CSS utilitaires (`.dbl.fs14.fw7.lh18.elp`…), IDs de catégories en dur (`326, 282, 2, 163`) — ✅ 4b : adaptateur `BankinPage` (seul module qui lit le HTML de Bankin) + tests de contrat sur captures anonymisées ; IDs de catégories uniquement dans `Config.CATEGORIES` | ✅ 4b |
 | D2 | 134 `console.*` en production, dont des transactions brutes (données bancaires dans la console) — ✅ 2b : `Logger` (debug silencieux par défaut), plus de transactions dans la console | 2b |
 | D3 | Classes globales + ordre de chargement maintenu à 3 endroits | ✅ 3a |
 | D4 | Librairies copiées sans gestionnaire de paquets, Chart.js 3.7.1 — ✅ 3a : npm ; ✅ 3b : versions à jour + Dependabot | ✅ 3b |
@@ -163,14 +163,18 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 
 ### Phase 4 — Types, adaptateur Bankin, finitions _(2–3 j)_
 
-**4a — Types et réglages** ✅ _(branche `feat/phase-4a-types-settings`)_ :
+**4a — Types et réglages** ✅ _(#25)_ :
 - TypeScript en JSDoc + `checkJs` (pas de `.ts`) : `npm run typecheck` (`tsc`, 0 erreur) dans `npm run check` et en CI ; types de l'API Bankin dans `js/types/bankin.d.ts`.
 - Schéma unique des réglages (`js/core/SettingsSchema.js`) : valeurs par défaut, validation, **numéro de version `settings_version` + migration** v1 → v2 au démarrage.
 - Visibilité des catégories dans la préférence `hiddenCategories` (`js/core/CategoryVisibility.js`) ; réglage inutilisé `accounts` supprimé (D14).
 - Purge à la déconnexion (D8) : sur la page de connexion Bankin, effacement du cache de l'API, des données du rapport et des en-têtes d'authentification du service worker ; les préférences sont gardées. Section « Données et vie privée » dans le README.
 - « Réinitialiser les paramètres » (popup) affiche de nouveau toutes les catégories.
 
-**4b — Adaptateur Bankin** : **adaptateur `BankinPage`** : tous les sélecteurs, la détection de page, la lecture du mois actif ; tests de contrat sur des snapshots HTML anonymisés (alerte dès que Bankin change son interface). IDs de catégories en configuration (D1).
+**4b — Adaptateur Bankin** ✅ _(branche `feat/phase-4b-bankin-adapter`)_ :
+- **Adaptateur `js/bankin/BankinPage.js`** : détection de page, tous les sélecteurs, lecture du mois affiché, blocs d'insertion, montants à flouter ; `PageController`, `AmountHider`, `LoadingScreen` et `SankeyChart` passent par lui. Plus aucun sélecteur Bankin dans `Config` (D1).
+- Sélecteurs du donut rattachés à `.categoryChart` (et non plus au bloc Pecunio dans lequel le donut est déplacé) : ils trouvent le donut avant comme après son déplacement.
+- **Tests de contrat** (`test/contract/`) sur des captures anonymisées des pages Comptes et Catégories (`test/fixtures/bankin-pages/`), y compris la construction des graphiques par `PageController`. Outil de capture `scripts/bankin-snapshot.js` (anonymisation dans le navigateur, testée) et `npm run snapshot:snippet` ; procédure dans `docs/TESTING.md`.
+- IDs de catégories : une seule source, `Config.CATEGORIES` (copie en dur retirée de `ReportFilters`).
 
 **4c — Finitions** : interface entièrement en français, dates des axes en `fr` (D9) ; « Toggle chart type » remplacé par un vrai bouton HTML accessible (D10).
 
@@ -203,7 +207,7 @@ Restructuration **sans changement de comportement** (les tests des phases 1–2 
 | 2a Données & auth | 1,5–2 j | ✅ mergée (#14) | B1–B3, B7–B10, B13, B14, B17–B20 |
 | 2b Cycle de vie | 1–1,5 j | ✅ mergée (#15) | B4–B6, B11, B12, B16, D2, D11 |
 | 3 Modules + WXT | 2–3 j | ✅ 3a (#16), 3b (#17), 3c (#23) | B15, B21–B24, D3–D6, D13 |
-| 4 Types + adaptateur | 2–3 j | 4a ✅ PR à merger ; 4b, 4c à faire | D1, D8–D10, D14 |
+| 4 Types + adaptateur | 2–3 j | 4a ✅ (#25), 4b ✅ PR à merger ; 4c à faire | D1, D8–D10, D14 |
 | 5 e2e | 2 j | | non-régression de tout le registre |
 | 6 CI/CD | ½ j | | D12 |
 

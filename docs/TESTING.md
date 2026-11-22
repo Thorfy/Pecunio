@@ -21,8 +21,11 @@ npm run test:bugs      # exécute les tests de bugs connus comme des tests norma
 | `test/helpers/fake-chrome.js` | `chrome.storage` (callback et promesse), `runtime` (ports, messages), `webRequest`, `tabs`, `action` |
 | `test/helpers/known-bug.js` | `knownBug(...)` pour les bugs du registre |
 | `test/helpers/timezone.js` | `EAST_OF_UTC`, `WEST_OF_UTC`, `NOT_UTC` pour les tests dépendant du fuseau |
+| `test/helpers/page-controller.js` | Fausse fenêtre et fausses classes de graphiques pour `PageController` |
 | `test/fixtures/bankin.js` | Données **synthétiques** au format de l'API Bankin (`tx()`, `CATEGORIES`, `ACCOUNTS`, `apiPage()`…) |
+| `test/fixtures/bankin-pages/*.html` | Captures **anonymisées** des pages Comptes et Catégories de Bankin |
 | `test/unit/*.test.js` | Tests, un fichier par domaine |
+| `test/contract/*.test.js` | Tests de contrat : l'adaptateur `BankinPage` sur les captures des vraies pages |
 
 ### Écrire un test
 
@@ -54,6 +57,20 @@ knownBug('B7 — attendu : un « # » ne tronque pas le fichier exporté', () =>
 - Quand le bug est corrigé, le test passe et Vitest le signale en erreur : remplacer `knownBug` par `test`, et supprimer le test « comportement actuel » associé s'il existe.
 - `npm run test:bugs` montre les vrais messages d'échec, pour vérifier qu'un `knownBug` échoue pour la bonne raison (et pas à cause d'une erreur dans le test).
 - Les bugs qui dépendent du fuseau utilisent `(NOT_UTC ? knownBug : test)(...)`.
+
+## Tests de contrat Bankin
+
+Tout ce que Pecunio lit de la page Bankin passe par l'adaptateur `js/bankin/BankinPage.js`. Les tests de `test/contract/` le vérifient sur des captures anonymisées des vraies pages (`test/fixtures/bankin-pages/`) : chaque élément utilisé est présent, le mois affiché est lu, et `PageController` construit ses graphiques.
+
+**Quand Bankin change son interface** (graphiques absents, bouton de masquage disparu…), recapturer les pages :
+
+1. `npm run snapshot:snippet` affiche un extrait de code.
+2. Dans Chrome, sur la page Bankin à capturer (Comptes ou Catégories, connecté, extension active), ouvrir la console (F12) et y coller l'extrait : la capture anonymisée est copiée dans le presse-papiers.
+3. La coller dans `test/fixtures/bankin-pages/accounts.html` ou `categories.html`, en gardant le commentaire d'en-tête (date de capture).
+4. **Relire la capture avant de la commiter** : aucun nom, montant ou numéro ne doit y figurer (les textes deviennent « Texte », les montants « 0,00 € »).
+5. `npm test` : les tests de contrat indiquent les éléments introuvables (`missingElements`) ; corriger les sélecteurs dans `BANKIN_SELECTORS`.
+
+L'anonymisation a lieu dans le navigateur, avant la copie ; elle est testée dans `test/unit/bankin-snapshot.test.js`.
 
 ## Recette manuelle dans Chrome
 

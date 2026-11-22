@@ -21,37 +21,11 @@ export class Config {
         CACHE_DURATION: 10 * 60 * 1000 // 10 minutes
     };
 
-    // Configuration des catégories
+    // Catégories Bankin (identifiants de l'API, identiques pour tous les utilisateurs)
     static CATEGORIES = {
         EXCEPTION_IDS: [326, 282], // Catégories à exclure des calculs (virements internes, épargne)
         BUDGET_CATEGORY_ID: 2, // « Entrées d'argent » : alimente le Budget du diagramme de flux
         EXPENSES_CATEGORY_ID: 163 // identifiant du nœud « Dépenses » du diagramme de flux
-    };
-
-    // Configuration des URLs
-    static URLS = {
-        CATEGORIES_PAGE: "https://app2.bankin.com/categories"
-    };
-
-    // Configuration des sélecteurs CSS
-    static SELECTORS = {
-        HOME_BLOCK: ".homeBlock",
-        REFRESH_ICON: ".refreshIcon",
-        MONTH_SELECTOR: "#monthSelector",
-        MONTH_SELECTOR_ACTIVE: "#monthSelector .active .dib",
-        CATEGORY_CHART: ".categoryChart",
-        HIDE_BUTTON: "#hideButton",
-        /** Sélecteurs complets pour le flou (liste, header, légendes donut) */
-        BLURRY_SELECTORS: [
-            ".amountGreen,.amountRed,.amountBlack",
-            "#contentList .dtc.vam.tar.w30 span",
-            ".pecunio-donut-wrapper .mt2.tac span.fs2.fw7",
-            ".pecunio-donut-wrapper #donutChart text"
-        ].join(","),
-        HEADER_AMOUNT: ".dbl.fs14.fw7.lh18.elp",
-        HEADER_TEXT: ".dbl.fs1.elp",
-        BUTTON_CONTAINER: ".dbl.fs1.elp",
-        CATEGORY_PAGE_BUTTON_CONTAINER: ".pecunio-donut-wrapper .mt2.tac, .scrollable.categoryChart .mt2.tac"
     };
 
     // Configuration des paramètres de stockage

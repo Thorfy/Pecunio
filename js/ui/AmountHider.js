@@ -1,3 +1,4 @@
+import { BankinPage } from '../bankin/BankinPage.js';
 import { Config } from '../core/Config.js';
 import { InjectedStyles } from './InjectedStyles.js';
 
@@ -5,8 +6,9 @@ export class AmountHider {
     /**
      * @param {import('../core/Settings.js').Settings} settings préférences (état du masquage)
      */
-    constructor(settings) {
+    constructor(settings, bankin = new BankinPage(document)) {
         this.settings = settings;
+        this.bankin = bankin;
         this.insertButton();
     }
 
@@ -17,11 +19,8 @@ export class AmountHider {
             button = document.createElement('img');
             button.id = "hideButton";
             button.classList.add('pecunio-hide-button');
-            this.spanHeaderAmmount = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
-            let container = document.querySelector(Config.SELECTORS.BUTTON_CONTAINER);
-            if (!container && typeof Config !== 'undefined' && location.href.indexOf(Config.URLS.CATEGORIES_PAGE) !== -1) {
-                container = document.querySelector(Config.SELECTORS.CATEGORY_PAGE_BUTTON_CONTAINER);
-            }
+            this.spanHeaderAmmount = this.bankin.headerAmount();
+            const container = this.bankin.hideButtonContainer(BankinPage.detectPage(location.href));
             if (container) {
                 container.append(button);
             }
@@ -32,10 +31,8 @@ export class AmountHider {
     }
 
     loadElement() {
-        this.spanHeaderAmmount = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
-        this.spanHeaderText = document.querySelector(Config.SELECTORS.HEADER_TEXT);
-        this.hideButton = document.querySelector(Config.SELECTORS.HIDE_BUTTON);
-        this.blurryDivs = document.querySelectorAll(Config.SELECTORS.BLURRY_SELECTORS);
+        this.spanHeaderAmmount = this.bankin.headerAmount();
+        this.blurryDivs = this.bankin.amountElements();
     }
 
     loadEvent() {
@@ -97,10 +94,10 @@ export class AmountHider {
      * À appeler après un changement de page ou injection de contenu (ex: charts).
      */
     /** @param {import('../core/Settings.js').Settings} settings */
-    static refreshBlur(settings) {
+    static refreshBlur(settings, bankin = new BankinPage(document)) {
         if (!settings.getSetting(Config.STORAGE_KEYS.IS_BLURRY)) return;
-        const header = document.querySelector(Config.SELECTORS.HEADER_AMOUNT);
-        const all = document.querySelectorAll(Config.SELECTORS.BLURRY_SELECTORS);
+        const header = bankin.headerAmount();
+        const all = bankin.amountElements();
         if (header) header.classList.add('pecunio-blurred');
         all.forEach(el => el.classList.add('pecunio-blurred'));
         document.querySelectorAll('img.pecunio-hide-button').forEach(btn => {

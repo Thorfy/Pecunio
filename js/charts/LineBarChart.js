@@ -1,3 +1,4 @@
+import { BANKIN_SELECTORS } from '../bankin/BankinPage.js';
 import { getHiddenCategories, setCategoryHidden } from '../core/CategoryVisibility.js';
 import { Config } from '../core/Config.js';
 import { DateRange } from '../core/DateRange.js';
@@ -11,14 +12,6 @@ export class LineBarChart extends BaseChartData {
         super(transactions, categories, accountsSelected, settings, settingsInstance);
         this.chartInstance = null;
     }
-
-    /**
-     * Sélecteurs CSS utilisés par ce chart
-     */
-    static SELECTORS = {
-        HOME_BLOCK: Config.SELECTORS.HOME_BLOCK,
-        REFRESH_ICON: Config.SELECTORS.REFRESH_ICON
-    };
 
     // Le bouton ↻ de Bankin est géré par PageController (un seul écouteur, bug B4).
 
@@ -45,7 +38,7 @@ export class LineBarChart extends BaseChartData {
         if (!document.getElementById('pecunio-home-block-style')) {
             const style = document.createElement('style');
             style.id = 'pecunio-home-block-style';
-            style.textContent = '.homeBlock > div { max-width: none !important; }';
+            style.textContent = `${BANKIN_SELECTORS.ACCOUNTS_BLOCK} > div { max-width: none !important; }`;
             document.head.appendChild(style);
         }
         homeBlock.innerHTML = "";

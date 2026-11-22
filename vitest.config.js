@@ -19,6 +19,7 @@ export default defineConfig({
                 'js/services/**': { statements: 95, branches: 80, functions: 95, lines: 95 },
                 'js/report/**': { statements: 90, branches: 75, functions: 90, lines: 90 },
                 'js/core/**': { statements: 85, branches: 80, functions: 85, lines: 85 },
+                'js/bankin/**': { statements: 95, branches: 90, functions: 95, lines: 95 },
                 'js/charts/base/**': { statements: 85, branches: 80, functions: 90, lines: 85 },
             },
         },
