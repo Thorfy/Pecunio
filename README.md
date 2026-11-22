@@ -48,7 +48,7 @@
   <tr>
     <td width="30%" valign="top"><img src="docs/assets/screens/popup.png" alt="Popup de Pecunio"></td>
     <td width="70%" valign="top">
-      <p><b>La popup</b> règle la période et les comptes analysés, et exporte :</p>
+      <p><b>La popup</b> règle la période (ce mois, 3 mois, 12 mois, tout ou dates libres) et les comptes analysés, et exporte :</p>
       <ul>
         <li><b>CSV</b> : toutes vos transactions de la période, avec la vraie date et le mois de rattachement choisi dans Bankin, prêtes pour un tableur ;</li>
         <li><b>Rapport PDF</b> : un bilan mensuel ou annuel (revenus, dépenses, solde, répartitions, flux, évolution, détail des transactions).</li>

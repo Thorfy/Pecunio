@@ -1,6 +1,7 @@
 import { Config } from '../core/Config.js';
 import { Chart } from '../lib/chart.js';
 import { InjectedStyles } from '../ui/InjectedStyles.js';
+import { THEME } from '../ui/theme.js';
 import { formatEuros, formatPercent } from '../utils/format.js';
 import { BaseChartData } from './base/BaseChartData.js';
 
@@ -127,16 +128,12 @@ export class ExpenseTypeChart extends BaseChartData {
             };
         }
 
-        // Convertir en format Chart.js
-        const labels = [];
-        const data = [];
-        const expenseTypes = []; // Garder les types bruts pour les couleurs
-
-        expenseTypeMap.forEach((total, expenseType) => {
-            labels.push(this._formatExpenseType(expenseType));
-            data.push(total);
-            expenseTypes.push(expenseType);
-        });
+        // Ordre fixe (Essentiel, Plaisir, Épargne, Autre), types inconnus ensuite (U7)
+        const order = ['ESSENTIAL', 'PLEASURE', 'SAVING', 'OTHER'];
+        const rank = (type) => (order.includes(type) ? order.indexOf(type) : order.length);
+        const expenseTypes = [...expenseTypeMap.keys()].sort((a, b) => rank(a) - rank(b));
+        const labels = expenseTypes.map((type) => this._formatExpenseType(type));
+        const data = expenseTypes.map((type) => Math.round(expenseTypeMap.get(type) * 100) / 100);
 
         // Générer les couleurs en fonction des types
         const colors = this._generateColors(expenseTypeMap.size, expenseTypes);
@@ -173,19 +170,18 @@ export class ExpenseTypeChart extends BaseChartData {
                         position: 'bottom',
                         labels: {
                             padding: 12,
-                            font: {
-                                size: 13,
-                                family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                            },
+                            font: { size: 13 },
                             usePointStyle: true,
                             pointStyle: 'circle',
                             generateLabels: (chart) => {
                                 const data = chart.data;
                                 if (data.labels.length && data.datasets.length) {
                                     const dataset = data.datasets[0];
+                                    const values = /** @type {number[]} */ (dataset.data);
                                     return data.labels.map((label, i) => {
                                         return {
-                                            text: label,
+                                            // Part de chaque type (U7) : un pourcentage, pas un montant
+                                            text: ExpenseTypeChart.legendText(String(label), values, i),
                                             fillStyle: dataset.backgroundColor[i],
                                             strokeStyle: dataset.borderColor[i],
                                             lineWidth: dataset.borderWidth,
@@ -222,8 +218,50 @@ export class ExpenseTypeChart extends BaseChartData {
                         }
                     }
                 },
-                cutout: '60%' // Pour un style donut plus moderne
-            }
+                cutout: '62%'
+            },
+            plugins: [ExpenseTypeChart.centerTotalPlugin()],
+        };
+    }
+
+    /**
+     * Libellé de légende : « Essentiel · 82 % ».
+     * @param {string} label
+     * @param {number[]} values
+     * @param {number} index
+     */
+    static legendText(label, values, index) {
+        const total = values.reduce((a, b) => a + b, 0);
+        if (label === 'Aucune donnée' || total <= 0) return label;
+        return `${label} · ${formatPercent((values[index] / total) * 100)}`;
+    }
+
+    /**
+     * Total des dépenses au centre du donut (U7) ; masqué avec les montants.
+     * @returns {import('chart.js').Plugin}
+     */
+    static centerTotalPlugin() {
+        return {
+            id: 'pecunioCenterTotal',
+            afterDraw(chart) {
+                const values = /** @type {number[]} */ (chart.data.datasets[0]?.data || []);
+                const total = values.reduce((a, b) => a + b, 0);
+                if (Config.isBlurry() || chart.data.labels?.[0] === 'Aucune donnée' || total <= 0) return;
+                const { left, right, top, bottom } = chart.chartArea;
+                const x = (left + right) / 2;
+                const y = (top + bottom) / 2;
+                const { ctx } = chart;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = THEME.text;
+                ctx.font = `700 16px ${THEME.fontFamily}`;
+                ctx.fillText(formatEuros(total), x, y - 8);
+                ctx.fillStyle = THEME.textMuted;
+                ctx.font = `400 12px ${THEME.fontFamily}`;
+                ctx.fillText('dépensés', x, y + 12);
+                ctx.restore();
+            },
         };
     }
 

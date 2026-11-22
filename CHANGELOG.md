@@ -10,6 +10,9 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 ## [Non publié]
 
 ### Ajouté
+- Popup refaite à l'identité Pecunio : période en un clic (ce mois, 3 mois, 12 mois, tout), sections plus claires, actions rares repliées dans « Avancé », astuce d'épinglage refermable.
+- Types de dépenses : total du mois au centre du graphique et part de chaque type dans la légende.
+- Flux financiers plus lisibles : petits montants regroupés, « Non dépensé » et « Dépassement » quand les dépenses dépassent les revenus.
 - Graphique des dépenses : période au choix (6, 12, 24 mois ou tout), 12 mois par défaut, ligne du solde de chaque mois, vue simplifiée (5 catégories principales + « Autres ») ou toutes les catégories.
 - Comparaison du budget repensée : « Mois dernier », « Ce mois-ci » ou « Cette année » en un clic, dépenses triées en barres horizontales, total et écart affichés ; « Personnaliser » pour d'autres périodes.
 - Interface des graphiques entièrement en français : mois des axes (« janv. 2026 »), montants au format `-1 234,50 €`, libellés de la comparaison budget (« Tous les mois », « Réel févr. 2024 », « Médiane 2026 »).
