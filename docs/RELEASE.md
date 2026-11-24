@@ -43,9 +43,11 @@ Mise en place côté Google (une fois, dans Google Cloud Shell, avec le compte d
 
 ```bash
 gcloud config set project resonant-petal-394515
-gcloud iam workload-identity-pools providers create-oidc pecunio --location=global --workload-identity-pool=github   --issuer-uri=https://token.actions.githubusercontent.com   --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"   --attribute-condition="assertion.repository=='Thorfy/Pecunio'"
+gcloud iam workload-identity-pools providers create-oidc pecunio --location=global --workload-identity-pool=github   --issuer-uri=https://token.actions.githubusercontent.com   --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository"   --attribute-condition="assertion.repository=='Thorfy/Pecunio' && (assertion.ref.startsWith('refs/tags/v') || assertion.ref=='refs/heads/main')"
 gcloud iam service-accounts add-iam-policy-binding cws-publisher@resonant-petal-394515.iam.gserviceaccount.com   --role=roles/iam.workloadIdentityUser   --member="principalSet://iam.googleapis.com/projects/867456897646/locations/global/workloadIdentityPools/github/attribute.repository/Thorfy/Pecunio"
 ```
+
+La condition n'accepte que les tags de version et `main` (lancement manuel) : une autre branche du dépôt ne peut pas obtenir de jeton pour le store. Pour l'appliquer à un fournisseur déjà créé : `gcloud iam workload-identity-pools providers update-oidc pecunio --location=global --workload-identity-pool=github --attribute-condition="…"` (même condition).
 
 Si Pecunio dépend d'un autre compte développeur que ProperTease, ajouter aussi l'adresse du compte de service dans la section **Compte** de son tableau de bord. Pour vérifier : onglet **Actions** → « Release Chrome extension » → **Run workflow** : l'étape « Accès à la fiche de l'extension » doit afficher « Fiche accessible » (lecture seule, rien n'est envoyé).
 
