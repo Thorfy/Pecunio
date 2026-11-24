@@ -89,7 +89,7 @@
 - Les transactions sont gardées en cache sur votre ordinateur (`chrome.storage.local`) pour afficher les graphiques plus vite.
 - **Dès que Bankin affiche sa page de connexion** (déconnexion ou session expirée), Pecunio efface ce cache, le dernier rapport et les en-têtes d'authentification. Seules vos préférences (période, comptes, catégories masquées, masquage des montants) sont conservées.
 - Les boutons « Réinitialiser » de la popup effacent à la demande les données ou les préférences.
-- Permissions : stockage local, lecture des en-têtes des requêtes Bankin (`webRequest`, pour réutiliser votre session) et accès aux pages `*.bankin.com` uniquement.
+- Permissions : stockage local, lecture des en-têtes des requêtes Bankin (`webRequest`, pour réutiliser votre session) et accès à l'application Bankin (`app2.bankin.com`) et à son API (`sync.bankin.com`) uniquement.
 
 ## 🚀 Installation
 

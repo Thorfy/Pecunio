@@ -14,7 +14,8 @@ describe('Manifest', () => {
 
     test('permissions limitées à Bankin', () => {
         expect(config.manifest.permissions.sort()).toEqual(['storage', 'unlimitedStorage', 'webRequest']);
-        expect(config.manifest.host_permissions).toEqual(['https://*.bankin.com/*']);
+        expect(config.manifest.host_permissions).toEqual(['https://app2.bankin.com/*', 'https://sync.bankin.com/*']);
+        for (const { matches } of config.manifest.web_accessible_resources) expect(matches).toEqual(['https://app2.bankin.com/*']);
     });
 
     test('version sémantique (reprise de package.json dans le manifest)', () => {

@@ -484,9 +484,11 @@ import { ReportStorage } from '../../js/services/ReportStorage.js';
                 document.getElementById('report-container').innerHTML = `
                     <div class="report-section" style="text-align:center; padding: 48px;">
                         <p style="color: var(--fintech-danger); margin-bottom: 16px;">${escapeHtml(err.message)}</p>
-                        <button type="button" class="btn btn-secondary" onclick="window.close()">Fermer</button>
+                        <button type="button" class="btn btn-secondary" id="btn-error-close">Fermer</button>
                     </div>
                 `;
+                // Pas de onclick dans le HTML : la CSP des pages d'extension (MV3) le bloque
+                document.getElementById('btn-error-close')?.addEventListener('click', () => window.close());
                 const ab = /** @type {HTMLElement} */ (document.querySelector('.actions-bar'));
                 if (ab) ab.style.display = 'none';
             });

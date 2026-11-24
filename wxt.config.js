@@ -19,11 +19,13 @@ export default defineConfig({
         author: /** @type {any} */ ('Remy Lefebvre'),
         icons: { 64: 'asset/icon.png' },
         permissions: ['webRequest', 'storage', 'unlimitedStorage'],
-        host_permissions: ['https://*.bankin.com/*'],
+        // Moindre privilège : l'application (app2) et son API (sync). webRequest a
+        // besoin des deux : l'adresse de la requête et la page qui l'émet.
+        host_permissions: ['https://app2.bankin.com/*', 'https://sync.bankin.com/*'],
         web_accessible_resources: [
             {
                 resources: ['asset/Loading.gif', 'asset/eye.png', 'asset/eyeClose.png'],
-                matches: ['https://*.bankin.com/*'],
+                matches: ['https://app2.bankin.com/*'],
             },
         ],
     },
