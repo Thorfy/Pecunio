@@ -155,6 +155,9 @@ jobs:
     # Seulement si tous les contrôles du job build sont passés. Lancement manuel :
     # vérification de l'accès seulement (lecture), rien n'est envoyé.
     needs: build
+    # Environnement protégé : approbation du mainteneur avant tout accès au store,
+    # et seulement depuis un tag v* ou main (Settings → Environments)
+    environment: chrome-web-store
     permissions:
       contents: read
       id-token: write   # jeton GitHub échangé contre un jeton Google, sans clé
