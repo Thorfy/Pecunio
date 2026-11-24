@@ -9,6 +9,9 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 
 ## [Non publié]
 
+### Ajouté
+- Rythme de l'année sur la page Comptes : dépenses cumulées jour après jour d'une année au choix, comparées à une autre année ou à la médiane des années précédentes (jusqu'à 5). Affiché dès qu'une année complète est disponible.
+
 ## [0.6.0] - 2026-11-22
 
 ### Ajouté

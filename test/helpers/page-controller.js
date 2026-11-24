@@ -89,6 +89,13 @@ export const makeCharts = () => {
             block.appendChild(wrapper);
         }
     }
+    class YearPaceChart extends FakeChart {
+        async render(block) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pecunio-year-pace-wrapper';
+            block.appendChild(wrapper);
+        }
+    }
     class CategoryHistoryChart extends FakeChart {
         async render(block) {
             const wrapper = document.createElement('div');
@@ -96,5 +103,5 @@ export const makeCharts = () => {
             block.appendChild(wrapper);
         }
     }
-    return { classes: { LineBarChart, BudgetChart, SavingsChart, ExpenseTypeChart, SankeyChart, MonthPaceChart, VariationsChart, CategoryHistoryChart }, created };
+    return { classes: { LineBarChart, BudgetChart, SavingsChart, ExpenseTypeChart, SankeyChart, MonthPaceChart, VariationsChart, YearPaceChart, CategoryHistoryChart }, created };
 };

@@ -6,6 +6,7 @@ import { LineBarChart } from '../charts/LineBarChart.js';
 import { MonthPaceChart } from '../charts/MonthPaceChart.js';
 import { SavingsChart } from '../charts/SavingsChart.js';
 import { VariationsChart } from '../charts/VariationsChart.js';
+import { YearPaceChart } from '../charts/YearPaceChart.js';
 import { SankeyChart } from '../charts/SankeyChart.js';
 import { Chart } from '../lib/chart.js';
 import { AmountHider } from '../ui/AmountHider.js';
@@ -84,7 +85,7 @@ export class PageController {
         this.evt = evt;
         this.createDataManager = createDataManager;
         this.win = win;
-        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart, SavingsChart, VariationsChart };
+        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart, SavingsChart, VariationsChart, YearPaceChart };
 
         this.dataManager = null;
         this.charts = [];
@@ -380,6 +381,14 @@ export class PageController {
             const savingsChart = new Savings(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
             this.charts.push(savingsChart);
             await savingsChart.render(mainContainer);
+        }
+
+        // Rythme de l'année, année et référence au choix (s'il y a au moins une année complète)
+        const { YearPaceChart: YearPace } = this.chartClasses;
+        if (YearPace) {
+            const yearPaceChart = new YearPace(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
+            this.charts.push(yearPaceChart);
+            await yearPaceChart.render(mainContainer);
         }
 
         const budgetBlock = this.document.createElement('div');

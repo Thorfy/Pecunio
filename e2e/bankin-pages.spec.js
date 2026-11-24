@@ -20,7 +20,10 @@ test.describe('Page Comptes', () => {
         // Épargne mois par mois, entre le graphique temporel et le budget (lot UX-3b)
         await expect(page.locator('.pecunio-savings-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-savings-wrapper')).toContainText('Épargne');
-        await expect(page.locator('.pecunio-savings-wrapper + #budgetChartBlock')).toHaveCount(1);
+        // Rythme de l'année ensuite (données de démo : 2024 complète)
+        await expect(page.locator('.pecunio-year-pace-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-year-pace-wrapper')).toContainText("Rythme de l'année");
+        await expect(page.locator('.pecunio-savings-wrapper + .pecunio-year-pace-wrapper + #budgetChartBlock')).toHaveCount(1);
 
         // Le service worker a capturé les en-têtes de l'appel de Bankin (en session, pas sur disque)
         const stored = await serviceWorker.evaluate(() => chrome.storage.session.get('pecunio_auth_headers'));
@@ -94,6 +97,7 @@ test.describe('Page Comptes', () => {
         await expect(amounts.first()).toHaveCSS('filter', /blur/);
         // Phrases de Pecunio (épargne, budget) : plus aucun montant en clair
         await expect(page.locator('.pecunio-savings-wrapper .pecunio-budget-summary')).not.toContainText('€');
+        await expect(page.locator('.pecunio-year-pace-wrapper .pecunio-budget-summary')).not.toContainText('€');
         await expect(page.locator('#budgetChartBlock .pecunio-budget-summary')).not.toContainText('€');
 
         await page.locator('#hideButton').click();
