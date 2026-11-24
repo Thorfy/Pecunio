@@ -93,7 +93,7 @@ export class SavingsChart extends BaseChartData {
         if (savings.months.length === 0) return null;
 
         const canvasContainer = InjectedStyles.createCanvasContainer();
-        canvasContainer.style.height = '240px';
+        canvasContainer.style.height = '220px';
         const canvas = InjectedStyles.createCanvas();
         canvasContainer.appendChild(canvas);
         wrapper.appendChild(canvasContainer);
@@ -138,7 +138,8 @@ export class SavingsChart extends BaseChartData {
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
-                    x: { grid: { display: false } },
+                    // Libellés droits : un mois sur deux quand la carte est étroite
+                    x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 8 } },
                     amount: {
                         position: 'left',
                         min: ranges.left.min,

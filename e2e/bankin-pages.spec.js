@@ -1,5 +1,6 @@
 // Scénarios de bout en bout sur les pages Bankin (extension chargée, Bankin simulé).
 // Numéros : plan de modernisation, phase 5 (docs/AUDIT-MODERNISATION.md).
+import { tx } from '../test/fixtures/bankin.js';
 import { bankinUrl, expect, test } from './fixtures.js';
 
 const LINE_CHART = '#originalChartContainer canvas';
@@ -8,19 +9,37 @@ const EXPENSE_TYPE_CHART = '.pecunio-expense-type-wrapper canvas';
 const SANKEY_CHART = '.pecunio-sankey-wrapper canvas';
 const TOGGLE = '.pecunio-chart-type-toggle';
 
+/**
+ * Ajoute des dépenses à l'année en cours : le jeu de données ne couvre que
+ * 2024, et le rythme de l'année n'apparaît qu'avec une autre année à
+ * comparer à une année complète.
+ */
+const addCurrentYear = (bankin) => {
+    const year = new Date().getFullYear();
+    bankin.transactions.push(
+        tx({ id: 9001, amount: -800, date: `${year}-01-05`, categoryId: 180, description: 'Loyer janvier' }),
+        tx({ id: 9002, amount: -110, date: `${year}-01-12`, categoryId: 188, description: 'Courses' }),
+    );
+};
+
 /** Nombre d'appels à l'API des transactions reçus par le Bankin simulé. */
 const transactionCalls = (bankin) => bankin.apiCalls.filter((call) => call.startsWith('/v2/transactions')).length;
 
 test.describe('Page Comptes', () => {
     test('1 — en-têtes capturés, graphique temporel et comparaison budget affichés', async ({ context, serviceWorker, bankin, consoleErrors }) => {
+        addCurrentYear(bankin);
         const page = await context.newPage();
         await page.goto(bankinUrl('/accounts'));
         await expect(page.locator(LINE_CHART)).toBeVisible();
         await expect(page.locator(BUDGET_CHART)).toBeVisible();
-        // Épargne mois par mois, entre le graphique temporel et le budget (lot UX-3b)
+        // Comparaison du budget et rythme de l'année côte à côte (année en cours face à 2024)
+        await expect(page.locator('.pecunio-year-pace-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-year-pace-wrapper')).toContainText("Rythme de l'année");
+        await expect(page.locator('.pecunio-accounts-row > #budgetChartBlock + .pecunio-year-pace-wrapper')).toHaveCount(1);
+        // Épargne mois par mois en bas (lot UX-3b)
         await expect(page.locator('.pecunio-savings-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-savings-wrapper')).toContainText('Épargne');
-        await expect(page.locator('.pecunio-savings-wrapper + #budgetChartBlock')).toHaveCount(1);
+        await expect(page.locator('.pecunio-accounts-row + .pecunio-savings-wrapper')).toHaveCount(1);
 
         // Le service worker a capturé les en-têtes de l'appel de Bankin (en session, pas sur disque)
         const stored = await serviceWorker.evaluate(() => chrome.storage.session.get('pecunio_auth_headers'));
@@ -82,6 +101,7 @@ test.describe('Page Comptes', () => {
     });
 
     test('9 — masquage des montants : flou appliqué puis retiré', async ({ context, bankin, consoleErrors }) => {
+        addCurrentYear(bankin);
         const page = await context.newPage();
         await page.goto(bankinUrl('/accounts'));
         await expect(page.locator(LINE_CHART)).toBeVisible();
@@ -94,6 +114,7 @@ test.describe('Page Comptes', () => {
         await expect(amounts.first()).toHaveCSS('filter', /blur/);
         // Phrases de Pecunio (épargne, budget) : plus aucun montant en clair
         await expect(page.locator('.pecunio-savings-wrapper .pecunio-budget-summary')).not.toContainText('€');
+        await expect(page.locator('.pecunio-year-pace-wrapper .pecunio-budget-summary')).not.toContainText('€');
         await expect(page.locator('#budgetChartBlock .pecunio-budget-summary')).not.toContainText('€');
 
         await page.locator('#hideButton').click();

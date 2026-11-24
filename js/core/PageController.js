@@ -6,6 +6,7 @@ import { LineBarChart } from '../charts/LineBarChart.js';
 import { MonthPaceChart } from '../charts/MonthPaceChart.js';
 import { SavingsChart } from '../charts/SavingsChart.js';
 import { VariationsChart } from '../charts/VariationsChart.js';
+import { YearPaceChart } from '../charts/YearPaceChart.js';
 import { SankeyChart } from '../charts/SankeyChart.js';
 import { Chart } from '../lib/chart.js';
 import { AmountHider } from '../ui/AmountHider.js';
@@ -84,7 +85,7 @@ export class PageController {
         this.evt = evt;
         this.createDataManager = createDataManager;
         this.win = win;
-        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart, SavingsChart, VariationsChart };
+        this.chartClasses = charts || { LineBarChart, BudgetChart, ExpenseTypeChart, SankeyChart, CategoryHistoryChart, MonthPaceChart, SavingsChart, VariationsChart, YearPaceChart };
 
         this.dataManager = null;
         this.charts = [];
@@ -374,22 +375,35 @@ export class PageController {
         this.charts.push(lineBarChart);
         await lineBarChart.render(lineBarChart.createContainer(mainContainer));
 
-        // Épargne mois par mois, sur la période du graphique temporel (G1, lot UX-3b)
+        // Comparaison du budget et rythme de l'année côte à côte (empilés si la place manque)
+        const accountsRow = this.document.createElement('div');
+        accountsRow.className = 'pecunio-accounts-row';
+        mainContainer.appendChild(accountsRow);
+
+        const budgetBlock = this.document.createElement('div');
+        budgetBlock.id = 'budgetChartBlock';
+        budgetBlock.classList.add('pecunio-section');
+        accountsRow.appendChild(budgetBlock);
+
+        const budgetChart = new BudgetChart(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
+        this.charts.push(budgetChart);
+        budgetChart.createUI(budgetBlock.id);
+
+        // Rythme de l'année, année et référence au choix (s'il y a au moins une année complète)
+        const { YearPaceChart: YearPace } = this.chartClasses;
+        if (YearPace) {
+            const yearPaceChart = new YearPace(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
+            this.charts.push(yearPaceChart);
+            await yearPaceChart.render(accountsRow);
+        }
+
+        // Épargne mois par mois, sur la période du graphique temporel (G1, lot UX-3b), en bas
         const { SavingsChart: Savings } = this.chartClasses;
         if (Savings) {
             const savingsChart = new Savings(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
             this.charts.push(savingsChart);
             await savingsChart.render(mainContainer);
         }
-
-        const budgetBlock = this.document.createElement('div');
-        budgetBlock.id = 'budgetChartBlock';
-        budgetBlock.classList.add('pecunio-section');
-        mainContainer.appendChild(budgetBlock);
-
-        const budgetChart = new BudgetChart(data.transactions, data.categories, data.accountsSelected, data.settings, this.settings);
-        this.charts.push(budgetChart);
-        budgetChart.createUI(budgetBlock.id);
         return true;
     }
 

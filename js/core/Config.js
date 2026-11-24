@@ -63,7 +63,7 @@ export class Config {
     // Configuration des charts
     static CHART = {
         /** Hauteur fixe du graphique temporel (évite la boucle de redimensionnement, bug B23) */
-        LINE_CHART_HEIGHT: '580px'
+        LINE_CHART_HEIGHT: '440px'
     };
 
     // Configuration des assets

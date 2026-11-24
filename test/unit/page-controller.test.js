@@ -123,8 +123,8 @@ describe('PageController — chargement des données (B12)', () => {
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         await controller.whenIdle();
         expect(document.getElementById(StatusBanner.ID).shadowRoot.textContent).toContain('dernières données enregistrées');
-        expect(kinds(charts.created.slice(-3))).toEqual(['LineBarChart', 'SavingsChart', 'BudgetChart']);
-        expect(controller.charts).toHaveLength(3);
+        expect(kinds(charts.created.slice(-4))).toEqual(['LineBarChart', 'BudgetChart', 'YearPaceChart', 'SavingsChart']);
+        expect(controller.charts).toHaveLength(4);
     });
 
     test('D11 — bandeau « chargement » si les données tardent, retiré à leur arrivée', async () => {
@@ -199,12 +199,14 @@ describe('PageController — construction des graphiques', () => {
     test('page Comptes : graphique temporel, épargne et budget, puis masquage et invitation à l\'avis', async () => {
         const { controller, charts } = setup();
         await controller.requestBuild();
-        expect(kinds(charts.created)).toEqual(['LineBarChart', 'SavingsChart', 'BudgetChart']);
+        expect(kinds(charts.created)).toEqual(['LineBarChart', 'BudgetChart', 'YearPaceChart', 'SavingsChart']);
         expect(charts.created[0].rendered).toBe(true);
-        expect(charts.created[2].containerId).toBe('budgetChartBlock');
-        // Épargne entre le graphique temporel et la comparaison du budget
-        const savings = document.querySelector('.pecunio-savings-wrapper');
-        expect(savings.nextElementSibling.id).toBe('budgetChartBlock');
+        expect(charts.created[1].containerId).toBe('budgetChartBlock');
+        // Comparaison du budget et rythme de l'année sur une ligne, sous le graphique temporel ; épargne en bas
+        const row = document.querySelector('.pecunio-accounts-row');
+        expect([...row.children].map((c) => c.id || c.className)).toEqual(['budgetChartBlock', 'pecunio-year-pace-wrapper']);
+        expect(row.nextElementSibling.className).toBe('pecunio-savings-wrapper');
+        expect(charts.created[2].args[2]).toEqual([101]);
         expect(LoadingScreen.show).toHaveBeenCalled();
         expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(1);
         expect(controller.buildCount).toBe(1);
@@ -268,7 +270,7 @@ describe('PageController — construction des graphiques', () => {
         const firstBuild = charts.created.slice();
         await controller.requestBuild();
         expect(firstBuild.every((c) => c.destroy.mock.calls.length === 1)).toBe(true);
-        expect(controller.charts).toHaveLength(3);
+        expect(controller.charts).toHaveLength(4);
         controller.stop();
         expect(charts.created[3].destroy).toHaveBeenCalled();
     });
@@ -279,7 +281,7 @@ describe('PageController — construction des graphiques', () => {
         await Promise.all(requests);
         // La première construction, puis une seule pour toutes les demandes reçues pendant celle-ci
         expect(controller.buildCount).toBe(2);
-        expect(charts.created).toHaveLength(6);
+        expect(charts.created).toHaveLength(8);
         expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(2);
         expect(document.querySelectorAll('#budgetChartBlock')).toHaveLength(1);
     });
@@ -444,7 +446,7 @@ describe('PageController — reconstructions inutiles (B24)', () => {
         evt.dispatch('data_loaded');
         await controller.whenIdle();
         expect(controller.buildCount).toBe(1);
-        expect(charts.created).toHaveLength(3);
+        expect(charts.created).toHaveLength(4);
         expect(charts.created[0].destroy).not.toHaveBeenCalled();
     });
 
