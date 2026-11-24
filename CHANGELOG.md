@@ -14,6 +14,11 @@ version que `package.json`), voir [docs/RELEASE.md](docs/RELEASE.md).
 
 ### Modifié
 - Page Comptes plus compacte : comparaison du budget et rythme de l'année côte à côte (empilés quand la place manque), épargne en bas, graphique des dépenses moins haut.
+- Permissions réduites : Pecunio n'accède plus qu'à l'application Bankin (app2.bankin.com) et à son API (sync.bankin.com), et non plus à tous les sites *.bankin.com.
+
+### Corrigé
+- Sécurité : les identifiants de session Bankin ne peuvent plus être envoyés hors de sync.bankin.com, même si l'API renvoyait une adresse de page suivante piégée.
+- Rapport : le bouton « Fermer » de l'écran d'erreur fonctionne (il était bloqué par la politique de sécurité de Chrome).
 
 ## [0.6.0] - 2026-11-22
 

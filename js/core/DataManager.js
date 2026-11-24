@@ -480,9 +480,30 @@ export class DataManager {
         }
     }
 
+    /**
+     * Adresse complète d'une page de l'API. Le chemin peut venir de la réponse
+     * précédente (`next_uri`) : toute adresse hors de sync.bankin.com est
+     * refusée, sinon les en-têtes d'authentification y seraient envoyés
+     * (`.evil.example/…` collé au domaine donnerait sync.bankin.com.evil.example).
+     * @param {string} path chemin (`/v2/…`) ou adresse absolue
+     * @returns {string}
+     */
+    static apiUrl(path) {
+        let url;
+        try {
+            url = new URL(path, DataManager.DOMAIN + '/');
+        } catch {
+            url = null;
+        }
+        if (!url || url.origin !== DataManager.DOMAIN || url.username || url.password) {
+            throw new ValidationError(`Refused API URL outside ${DataManager.DOMAIN}`, 'api_url');
+        }
+        return url.href;
+    }
+
     /** Récupère et valide une seule page de l'API. */
     async _fetchPage(url) {
-        const fullUrl = DataManager.DOMAIN + url;
+        const fullUrl = DataManager.apiUrl(url);
         const response = await fetch(fullUrl, {
             method: 'GET',
             headers: this.authHeader,

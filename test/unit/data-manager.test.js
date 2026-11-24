@@ -47,6 +47,38 @@ describe('DataManager._fetchPaginatedData', () => {
         expect(fetch).toHaveBeenCalledWith(`${DOMAIN}/v2/transactions?limit=500`, expect.objectContaining({ headers: AUTH_HEADERS }));
     });
 
+    test.each([
+        '//evil.example/v2/transactions',
+        'https://evil.example/v2/transactions',
+        'http://sync.bankin.com/v2/transactions',
+        'https://user:pass@sync.bankin.com/v2/transactions',
+    ])('next_uri hors de sync.bankin.com (%s) → refusé, en-têtes jamais envoyés', async (nextUri) => {
+        mockFetch({ '/v2/transactions?limit=500': jsonResponse(apiPage([tx({ id: 1 })], nextUri)) });
+        await expect(authenticatedManager()._fetchPaginatedData('/v2/transactions?limit=500', [], 3, 0)).rejects.toBeInstanceOf(ValidationError);
+        expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    // Collés au domaine, ces chemins donnaient sync.bankin.com.evil.example ou evil.example
+    test.each(['.evil.example/v2/transactions', '@evil.example/v2/transactions'])(
+        'next_uri relatif piégé (%s) → reste sur sync.bankin.com',
+        async (nextUri) => {
+            mockFetch({ '/v2/transactions?limit=500': jsonResponse(apiPage([tx({ id: 1 })], nextUri)) });
+            await expect(authenticatedManager()._fetchPaginatedData('/v2/transactions?limit=500', [], 0, 0)).rejects.toThrow();
+            const urls = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)));
+            expect(urls).toHaveLength(2);
+            for (const url of urls) expect(url.origin).toBe(DOMAIN);
+        },
+    );
+
+    test('next_uri absolu sur sync.bankin.com → suivi', async () => {
+        mockFetch({
+            '/v2/accounts': jsonResponse(apiPage([ACCOUNTS[0]], `${DOMAIN}/v2/accounts?after=1`)),
+            '/v2/accounts?after=1': jsonResponse(apiPage([ACCOUNTS[1]])),
+        });
+        const data = await authenticatedManager()._fetchPaginatedData('/v2/accounts', [], 3, 0);
+        expect(data).toHaveLength(2);
+    });
+
     test('sans authentification → AuthenticationError', async () => {
         const dm = authenticatedManager();
         dm.authHeader = null;

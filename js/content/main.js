@@ -1,5 +1,5 @@
 /**
- * Démarrage de Pecunio dans les pages *.bankin.com (content script).
+ * Démarrage de Pecunio dans les pages de l'application Bankin, app2.bankin.com (content script).
  *
  * Crée les services partagés puis délègue tout le cycle de vie (détection de
  * page, construction des graphiques, rechargement, erreurs) à PageController.
