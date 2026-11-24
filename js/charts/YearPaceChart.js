@@ -79,6 +79,18 @@ export class YearPaceChart extends BaseChartData {
         return choices.years.find((y) => YearPaceChart.referenceOptions(choices, y).length > 0) ?? null;
     }
 
+    /** Largeur minimale d'un repère de mois (« sept. » en 11 px) avant d'en sauter un sur deux. */
+    static MONTH_TICK_WIDTH = 40;
+
+    /**
+     * Repère affiché pour ce mois ? Tous si l'axe est assez large, sinon un sur deux (janvier, mars…).
+     * @param {number} month 1 à 12
+     * @param {number} axisWidth largeur de l'axe en pixels
+     */
+    static showMonthTick(month, axisWidth) {
+        return axisWidth / 12 >= YearPaceChart.MONTH_TICK_WIDTH || month % 2 === 1;
+    }
+
     /** « 24 novembre » pour un indice de l'axe. */
     static dayLabel(index) {
         const { month, day } = monthDayFromIndex(index);
@@ -126,8 +138,10 @@ export class YearPaceChart extends BaseChartData {
 
         const wrapper = document.createElement('div');
         wrapper.className = 'pecunio-section pecunio-year-pace-wrapper';
-        wrapper.appendChild(InjectedStyles.createTitle("Rythme de l'année"));
-
+        // Titre et listes sur une même ligne
+        const header = document.createElement('div');
+        header.className = 'pecunio-card-header';
+        header.appendChild(InjectedStyles.createTitle("Rythme de l'année"));
         const controls = document.createElement('div');
         controls.className = 'pecunio-controls';
         const group = (label, id) => {
@@ -148,14 +162,16 @@ export class YearPaceChart extends BaseChartData {
             this.yearSelect.appendChild(option);
         }
         this.yearSelect.value = String(year);
-        wrapper.appendChild(controls);
+        header.appendChild(controls);
+        wrapper.appendChild(header);
 
         this.summaryElement = document.createElement('p');
         this.summaryElement.className = 'pecunio-budget-summary';
         BaseChartData.bindAmountText(this.summaryElement, (hide) => (this.pace ? YearPaceChart.summary(this.pace, hide) : ''));
         wrapper.appendChild(this.summaryElement);
+        // Hauteur dans le CSS (.pecunio-year-pace-canvas) : la carte s'allonge à côté du budget
         const canvasContainer = InjectedStyles.createCanvasContainer();
-        canvasContainer.style.height = '260px';
+        canvasContainer.classList.add('pecunio-year-pace-canvas');
         const canvas = InjectedStyles.createCanvas();
         canvasContainer.appendChild(canvas);
         wrapper.appendChild(canvasContainer);
@@ -242,9 +258,11 @@ export class YearPaceChart extends BaseChartData {
                         ticks: {
                             autoSkip: false,
                             maxRotation: 0,
-                            callback: (_, index) => {
+                            font: { size: 11 },
+                            /** @this {{ width: number }} échelle de Chart.js */
+                            callback(_, index) {
                                 const { month, day } = monthDayFromIndex(index);
-                                return day === 1 ? YearPaceChart.MONTH_TICKS[month - 1] : null;
+                                return day === 1 && YearPaceChart.showMonthTick(month, this.width) ? YearPaceChart.MONTH_TICKS[month - 1] : null;
                             },
                         },
                     },

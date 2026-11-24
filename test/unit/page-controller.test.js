@@ -123,7 +123,7 @@ describe('PageController — chargement des données (B12)', () => {
         await vi.waitFor(() => expect(StatusBanner.isVisible('data-error')).toBe(true));
         await controller.whenIdle();
         expect(document.getElementById(StatusBanner.ID).shadowRoot.textContent).toContain('dernières données enregistrées');
-        expect(kinds(charts.created.slice(-4))).toEqual(['LineBarChart', 'SavingsChart', 'YearPaceChart', 'BudgetChart']);
+        expect(kinds(charts.created.slice(-4))).toEqual(['LineBarChart', 'BudgetChart', 'YearPaceChart', 'SavingsChart']);
         expect(controller.charts).toHaveLength(4);
     });
 
@@ -199,13 +199,13 @@ describe('PageController — construction des graphiques', () => {
     test('page Comptes : graphique temporel, épargne et budget, puis masquage et invitation à l\'avis', async () => {
         const { controller, charts } = setup();
         await controller.requestBuild();
-        expect(kinds(charts.created)).toEqual(['LineBarChart', 'SavingsChart', 'YearPaceChart', 'BudgetChart']);
+        expect(kinds(charts.created)).toEqual(['LineBarChart', 'BudgetChart', 'YearPaceChart', 'SavingsChart']);
         expect(charts.created[0].rendered).toBe(true);
-        expect(charts.created[3].containerId).toBe('budgetChartBlock');
-        // Épargne puis rythme de l'année entre le graphique temporel et la comparaison du budget
-        const savings = document.querySelector('.pecunio-savings-wrapper');
-        expect(savings.nextElementSibling.className).toBe('pecunio-year-pace-wrapper');
-        expect(savings.nextElementSibling.nextElementSibling.id).toBe('budgetChartBlock');
+        expect(charts.created[1].containerId).toBe('budgetChartBlock');
+        // Comparaison du budget et rythme de l'année sur une ligne, sous le graphique temporel ; épargne en bas
+        const row = document.querySelector('.pecunio-accounts-row');
+        expect([...row.children].map((c) => c.id || c.className)).toEqual(['budgetChartBlock', 'pecunio-year-pace-wrapper']);
+        expect(row.nextElementSibling.className).toBe('pecunio-savings-wrapper');
         expect(charts.created[2].args[2]).toEqual([101]);
         expect(LoadingScreen.show).toHaveBeenCalled();
         expect(ReviewPrompt.tryShow).toHaveBeenCalledTimes(1);

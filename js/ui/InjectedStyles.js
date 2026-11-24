@@ -379,6 +379,66 @@ export class InjectedStyles {
                     flex-direction: column;
                 }
             }
+
+            /* Page Comptes : comparaison du budget et rythme de l'année côte à côte quand la
+               carte principale est assez large (selon sa largeur, pas celle de
+               l'écran : la colonne de gauche de Bankin en prend une partie) */
+            .pecunio-accounts-row {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            /* Même carte des deux côtés (le bloc budget porte aussi .pecunio-container) */
+            .pecunio-accounts-row > .pecunio-section {
+                min-width: 0;
+                margin: 0;
+                padding: 12px;
+                border-radius: 8px;
+                box-shadow: none;
+            }
+
+            /* Titres alignés en haut des deux cartes (marge par défaut des <h3> retirée) */
+            .pecunio-accounts-row .pecunio-title {
+                margin-top: 0;
+            }
+
+            /* Rythme de l'année : 220 px, ou toute la hauteur de la carte quand
+               le budget à côté est plus haut. Canvas en position absolue : sa
+               taille ne remonte pas à son conteneur (pas de boucle, bug B23) */
+            .pecunio-year-pace-canvas {
+                height: 220px;
+            }
+            .pecunio-year-pace-canvas > .pecunio-canvas {
+                position: absolute;
+                inset: 0;
+            }
+            .pecunio-accounts-row > .pecunio-year-pace-wrapper {
+                display: flex;
+                flex-direction: column;
+            }
+            .pecunio-accounts-row .pecunio-year-pace-canvas {
+                flex: 1 1 0;
+                height: auto;
+                min-height: 220px;
+            }
+
+            /* Titre de carte et ses réglages sur une même ligne (repliés dessous si étroit) */
+            .pecunio-card-header {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px 16px;
+                margin-bottom: 8px;
+            }
+            .pecunio-card-header > .pecunio-title {
+                margin: 0;
+            }
+            .pecunio-card-header > .pecunio-controls {
+                margin: 0;
+                gap: 8px;
+            }
             .pecunio-variations {
                 list-style: none;
                 margin: 8px 0 0;

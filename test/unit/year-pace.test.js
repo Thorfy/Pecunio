@@ -129,4 +129,9 @@ describe('Phrase de synthèse et légende', () => {
         expect(text({ ...single, lastIndex: 364 }, false)).toBe('Sur 2026 : 900,00 € dépensés, contre 1 000,00 € en 2025, écart -10 %');
         expect(YearPaceChart.referenceLabel([2025])).toBe('2025');
     });
+
+    test("repères des mois : tous si l'axe est large, un sur deux sinon", () => {
+        expect([2, 3].map((m) => YearPaceChart.showMonthTick(m, 600))).toEqual([true, true]);
+        expect([1, 2, 3].map((m) => YearPaceChart.showMonthTick(m, 300))).toEqual([true, false, true]);
+    });
 });

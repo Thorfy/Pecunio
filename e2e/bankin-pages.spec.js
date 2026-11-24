@@ -17,13 +17,14 @@ test.describe('Page Comptes', () => {
         await page.goto(bankinUrl('/accounts'));
         await expect(page.locator(LINE_CHART)).toBeVisible();
         await expect(page.locator(BUDGET_CHART)).toBeVisible();
-        // Épargne mois par mois, entre le graphique temporel et le budget (lot UX-3b)
-        await expect(page.locator('.pecunio-savings-wrapper canvas')).toBeVisible();
-        await expect(page.locator('.pecunio-savings-wrapper')).toContainText('Épargne');
-        // Rythme de l'année ensuite (données de démo : 2024 complète)
+        // Comparaison du budget et rythme de l'année côte à côte (données de démo : 2024 complète)
         await expect(page.locator('.pecunio-year-pace-wrapper canvas')).toBeVisible();
         await expect(page.locator('.pecunio-year-pace-wrapper')).toContainText("Rythme de l'année");
-        await expect(page.locator('.pecunio-savings-wrapper + .pecunio-year-pace-wrapper + #budgetChartBlock')).toHaveCount(1);
+        await expect(page.locator('.pecunio-accounts-row > #budgetChartBlock + .pecunio-year-pace-wrapper')).toHaveCount(1);
+        // Épargne mois par mois en bas (lot UX-3b)
+        await expect(page.locator('.pecunio-savings-wrapper canvas')).toBeVisible();
+        await expect(page.locator('.pecunio-savings-wrapper')).toContainText('Épargne');
+        await expect(page.locator('.pecunio-accounts-row + .pecunio-savings-wrapper')).toHaveCount(1);
 
         // Le service worker a capturé les en-têtes de l'appel de Bankin (en session, pas sur disque)
         const stored = await serviceWorker.evaluate(() => chrome.storage.session.get('pecunio_auth_headers'));
